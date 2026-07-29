@@ -1,0 +1,731 @@
+/**
+ * Unit tests for BatchOrchestrator
+ * 
+ * Tests batch request orchestration including:
+ * - Validation (empty, size limits, duplicate IDs)
+ * - Parallel processing
+ * - Timeout enforcement
+ * - Partial failures
+ * - Token management
+ */
+
+import { BatchOrchestrator } from '../../../src/services/batch-orchestrator.ts';
+import { QuotaService } from '../../../src/services/quota-service.ts';
+import { AuthorizationService } from '../../../src/services/authorization-service.ts';
+import {
+  BatchSizeError,
+  EmptyBatchError,
+  DuplicateTaskIdError,
+  TaskTimeoutError
+} from '../../../src/errors/orchestration-errors.ts';
+import type { UserProfile } from '../../../src/types/auth.types.ts';
+import type { BatchRequest, AssistantConfiguration } from '../../../src/types/api.types.ts';
+import type { LLMProviderConfig } from '../../../src/types/config.types.ts';
+
+// Mock dependencies
+jest.mock('../../../src/services/quota-service.ts');
+jest.mock('../../../src/services/authorization-service.ts');
+jest.mock('../../../src/connectors/llm-connectors/factory.ts');
+jest.mock('../../../src/config/models.config.ts');
+jest.mock('../../../src/config/roles.config.ts');
+
+describe('BatchOrchestrator', () => {
+  let orchestrator: BatchOrchestrator;
+  let quotaService: jest.Mocked<QuotaService>;
+  let authzService: jest.Mocked<AuthorizationService>;
+  let user: UserProfile;
+  let providers: LLMProviderConfig[];
+
+  beforeEach(() => {
+    // Create mock services
+    quotaService = new QuotaService({} as any) as jest.Mocked<QuotaService>;
+    authzService = new AuthorizationService() as jest.Mocked<AuthorizationService>;
+
+    // Mock quota service methods
+    quotaService.requireQuota = jest.fn();
+    quotaService.reportUsage = jest.fn().mockResolvedValue({
+      success: true,
+      remainingTokens: 5000,
+      dailyLimit: 10000
+    });
+
+    // Mock authorization service methods
+    authzService.requireModelAccess = jest.fn();
+
+    // Setup test user
+    user = {
+      userId: 'user-123',
+      email: 'test@example.com',
+      tier: 'premium',
+      isAdmin: false,
+      isActive: true,
+      tokensAvailable: 8000,
+      tokensUsed: 2000,
+      authProvider: 'email',
+    };
+
+    // Setup mock providers
+    providers = [
+      {
+        name: 'gemini',
+        apiKey: 'test-key',
+        models: []
+      }
+    ];
+
+    // Mock config getters
+    const { getModelById } = require('../../../src/config/models.config.ts');
+    const { getRoleById } = require('../../../src/config/roles.config.ts');
+
+    getModelById.mockImplementation((id: string) => {
+      if (id === 'gemini-flash') {
+        return {
+          id: 'gemini-flash',
+          provider: 'gemini',
+          providerModelId: 'gemini-2.5-flash',
+          tier: 'plus',
+          displayName: 'Gemini 2.5 Flash',
+          contextWindow: 1000000,
+          costPer1kTokens: { input: 0, output: 0 }
+        };
+      }
+      return null;
+    });
+
+    getRoleById.mockImplementation((id: string) => {
+      if (id === 'grammar-corrector') {
+        return {
+          id: 'grammar-corrector',
+          name: 'Grammar Corrector',
+          systemPrompt: 'You are a grammar correction expert.',
+          allowedModels: ['gemini-flash']
+        };
+      }
+      return null;
+    });
+
+    // Mock LLM connector factory
+    const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+    
+    const mockConnector = {
+      name: 'gemini',
+      supportsStreaming: false,
+      sendRequest: jest.fn().mockResolvedValue({
+        text: '{"text": "Enhanced text"}',
+        usage: {
+          inputTokens: 10,
+          outputTokens: 20,
+          totalTokens: 30
+        },
+        model: 'gemini-flash',
+        provider: 'gemini'
+      })
+    };
+
+    LLMConnectorFactory.createAll = jest.fn().mockReturnValue(
+      new Map([['gemini', mockConnector]])
+    );
+
+    LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+    // Create orchestrator with short timeout for tests (exposeErrorDetails = false by default)
+    orchestrator = new BatchOrchestrator(
+      providers,
+      quotaService,
+      authzService,
+      30000, // 30 second timeout
+      false  // exposeErrorDetails
+    );
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Validation', () => {
+    it('should reject empty batch', async () => {
+      const request: BatchRequest = {
+        assistants: []
+      };
+
+      await expect(
+        orchestrator.processBatch(user, request)
+      ).rejects.toThrow(EmptyBatchError);
+    });
+
+    it('should return partial success when batch size exceeds tier limit', async () => {
+      const request: BatchRequest = {
+        assistants: Array(11).fill(null).map((_, i) => ({
+          id: `test-${i}`,
+          model: 'gemini-flash',
+          aiRoleId: 'grammar-corrector',
+          userText: 'test',
+          options: { improve: true }
+        }))
+      };
+
+      // Premium tier has max 10 assistants
+      const response = await orchestrator.processBatch(user, request);
+      
+      // Should return 11 results total
+      expect(response.results).toHaveLength(11);
+      
+      // First 10 should be processed successfully
+      for (let i = 0; i < 10; i++) {
+        expect(response.results[i].id).toBe(`test-${i}`);
+        expect(response.results[i].status).toBe('success');
+      }
+      
+      // 11th should have error
+      const lastResult = response.results[10];
+      expect(lastResult.id).toBe('test-10');
+      expect(lastResult.status).toBe('error');
+      if (lastResult.status === 'error') {
+        expect(lastResult.error.code).toBe('TIER_BATCH_SIZE_EXCEEDED');
+      }
+    });
+
+    it('should reject duplicate task IDs', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'duplicate',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test 1',
+            options: { improve: true }
+          },
+          {
+            id: 'duplicate',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test 2',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      await expect(
+        orchestrator.processBatch(user, request)
+      ).rejects.toThrow(DuplicateTaskIdError);
+    });
+
+    it('should accept valid batch (1-10 assistants)', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test text',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+      
+      expect(response.results).toHaveLength(1);
+      expect(response.results[0].id).toBe('test-1');
+      expect(response.results[0].status).toBe('success');
+    });
+
+    it('should handle free tier batch limit with partial success (max 3)', async () => {
+      const freeUser: UserProfile = {
+        ...user,
+        tier: 'free'
+      };
+
+      const request: BatchRequest = {
+        assistants: Array(5).fill(null).map((_, i) => ({
+          id: `task-${i}`,
+          model: 'gemini-flash',
+          aiRoleId: 'grammar-corrector',
+          userText: 'test',
+          options: { improve: true }
+        }))
+      };
+
+      // Free tier has max 3 assistants
+      const response = await orchestrator.processBatch(freeUser, request);
+      
+      // Should return 5 results total
+      expect(response.results).toHaveLength(5);
+      
+      // First 3 should be processed successfully
+      for (let i = 0; i < 3; i++) {
+        expect(response.results[i].id).toBe(`task-${i}`);
+        expect(response.results[i].status).toBe('success');
+      }
+      
+      // Last 2 should have TIER_BATCH_SIZE_EXCEEDED error
+      for (let i = 3; i < 5; i++) {
+        const result = response.results[i];
+        expect(result.id).toBe(`task-${i}`);
+        expect(result.status).toBe('error');
+        if (result.status === 'error') {
+          expect(result.error.code).toBe('TIER_BATCH_SIZE_EXCEEDED');
+        }
+      }
+    });
+
+    it('should process all assistants when within tier limit', async () => {
+      const freeUser: UserProfile = {
+        ...user,
+        tier: 'free'
+      };
+
+      const request: BatchRequest = {
+        assistants: [
+          { id: 'a', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test 1', options: { improve: true } },
+          { id: 'b', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test 2', options: { improve: true } },
+          { id: 'c', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test 3', options: { improve: true } }
+        ]
+      };
+
+      // Free tier allows exactly 3 assistants
+      const response = await orchestrator.processBatch(freeUser, request);
+      
+      expect(response.results).toHaveLength(3);
+      expect(response.results.every(r => r.status === 'success')).toBe(true);
+    });
+  });
+
+  describe('Model Access Validation', () => {
+    it('should validate model access for all assistants', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      await orchestrator.processBatch(user, request);
+
+      expect(authzService.requireModelAccess).toHaveBeenCalledWith(
+        user,
+        'gemini-flash'
+      );
+    });
+
+    it('should reject unknown model', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'unknown-model',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      await expect(
+        orchestrator.processBatch(user, request)
+      ).rejects.toThrow('Unknown model: unknown-model');
+    });
+  });
+
+  describe('Parallel Processing', () => {
+    it('should process all assistants concurrently', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'text 1',
+            options: { improve: true }
+          },
+          {
+            id: 'test-2',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'text 2',
+            options: { improve: true }
+          },
+          {
+            id: 'test-3',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'text 3',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      expect(response.results).toHaveLength(3);
+      expect(response.results[0].id).toBe('test-1');
+      expect(response.results[1].id).toBe('test-2');
+      expect(response.results[2].id).toBe('test-3');
+    });
+
+    it('should maintain result order matching input order', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          { id: 'a', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't1', options: {} },
+          { id: 'b', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't2', options: {} },
+          { id: 'c', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't3', options: {} }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      expect(response.results.map(r => r.id)).toEqual(['a', 'b', 'c']);
+    });
+  });
+
+  describe('Partial Failures', () => {
+    it('should handle partial failures gracefully', async () => {
+      // Mock connector to fail on second call
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+      
+      let callCount = 0;
+      const mockConnector = {
+        name: 'gemini',
+        supportsStreaming: false,
+        sendRequest: jest.fn().mockImplementation(() => {
+          callCount++;
+          if (callCount === 2) {
+            return Promise.reject(new Error('API Error'));
+          }
+          return Promise.resolve({
+            text: '{"text": "Enhanced"}',
+            usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+            model: 'gemini-flash',
+            provider: 'gemini'
+          });
+        })
+      };
+
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+      const request: BatchRequest = {
+        assistants: [
+          { id: 'test-1', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't1', options: {} },
+          { id: 'test-2', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't2', options: {} },
+          { id: 'test-3', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't3', options: {} }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      expect(response.results).toHaveLength(3);
+      expect(response.results[0].status).toBe('success');
+      expect(response.results[1].status).toBe('error');
+      expect(response.results[2].status).toBe('success');
+    });
+
+    it('should return all results even if some fail', async () => {
+      // Mock to fail all requests
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+      
+      const mockConnector = {
+        name: 'gemini',
+        supportsStreaming: false,
+        sendRequest: jest.fn().mockRejectedValue(new Error('All failed'))
+      };
+
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+      const request: BatchRequest = {
+        assistants: [
+          { id: 'test-1', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} },
+          { id: 'test-2', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      expect(response.results).toHaveLength(2);
+      expect(response.results[0].status).toBe('error');
+      expect(response.results[1].status).toBe('error');
+    });
+  });
+
+  describe('Token Management', () => {
+    it('should check quota before processing', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test text',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      await orchestrator.processBatch(user, request);
+
+      expect(quotaService.requireQuota).toHaveBeenCalledWith(
+        user,
+        expect.any(Number)
+      );
+    });
+
+    it('should report token usage after processing', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      await orchestrator.processBatch(user, request);
+
+      expect(quotaService.reportUsage).toHaveBeenCalledWith(
+        user.userId,
+        expect.any(Number),
+        'batch'
+      );
+    });
+
+    it('should not fail if token reporting fails', async () => {
+      quotaService.reportUsage = jest.fn().mockRejectedValue(
+        new Error('Reporting failed')
+      );
+
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      // Should still return results
+      expect(response.results).toHaveLength(1);
+      expect(response.results[0].status).toBe('success');
+    });
+
+    it('should only report tokens for successful tasks', async () => {
+      // Mock to fail first request, succeed second
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+      
+      let callCount = 0;
+      const mockConnector = {
+        name: 'gemini',
+        supportsStreaming: false,
+        sendRequest: jest.fn().mockImplementation(() => {
+          callCount++;
+          if (callCount === 1) {
+            return Promise.reject(new Error('Failed'));
+          }
+          return Promise.resolve({
+            text: '{"text": "Success"}',
+            usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+            model: 'gemini-flash',
+            provider: 'gemini'
+          });
+        })
+      };
+
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+      const request: BatchRequest = {
+        assistants: [
+          { id: 'fail', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} },
+          { id: 'success', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} }
+        ]
+      };
+
+      await orchestrator.processBatch(user, request);
+
+      // Should only report 30 tokens (from successful task)
+      expect(quotaService.reportUsage).toHaveBeenCalledWith(
+        user.userId,
+        30,
+        'batch'
+      );
+    });
+  });
+
+  describe('Result Format', () => {
+    it('should return success result with correct format', async () => {
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: { improve: true }
+          }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      expect(response.results[0]).toMatchObject({
+        id: 'test-1',
+        status: 'success',
+        enhancedText: expect.any(String),
+        total_tokens: expect.any(Number)
+      });
+    });
+
+    it('should return error result with correct format', async () => {
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+      
+      const mockConnector = {
+        name: 'gemini',
+        supportsStreaming: false,
+        sendRequest: jest.fn().mockRejectedValue(new Error('Test error'))
+      };
+
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: {}
+          }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      expect(response.results[0]).toMatchObject({
+        id: 'test-1',
+        status: 'error',
+        error: {
+          code: expect.any(String)
+        }
+      });
+    });
+  });
+
+  describe('Error Message Sanitization', () => {
+    it('should NOT include error messages when exposeErrorDetails=false', async () => {
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+
+      const mockConnector = {
+        name: 'gemini',
+        supportsStreaming: false,
+        sendRequest: jest.fn().mockRejectedValue(new Error('Sensitive API error details'))
+      };
+
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+      // Orchestrator created with exposeErrorDetails=false (default in beforeEach)
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: {}
+          }
+        ]
+      };
+
+      const response = await orchestrator.processBatch(user, request);
+
+      expect(response.results[0].status).toBe('error');
+      expect(response.results[0]).toHaveProperty('error');
+      expect((response.results[0] as any).error).toHaveProperty('code');
+      expect((response.results[0] as any).error.code).toBe('LLM_ERROR');
+      // Should NOT have message field
+      expect((response.results[0] as any).error).not.toHaveProperty('message');
+    });
+
+    it('should include error messages when exposeErrorDetails=true', async () => {
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+
+      const mockConnector = {
+        name: 'gemini',
+        supportsStreaming: false,
+        sendRequest: jest.fn().mockRejectedValue(new Error('Detailed API error'))
+      };
+
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+      // Create new orchestrator with exposeErrorDetails=true
+      const orchestratorWithDetails = new BatchOrchestrator(
+        providers,
+        quotaService,
+        authzService,
+        30000,
+        true  // exposeErrorDetails = true
+      );
+
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: {}
+          }
+        ]
+      };
+
+      const response = await orchestratorWithDetails.processBatch(user, request);
+
+      expect(response.results[0].status).toBe('error');
+      expect((response.results[0] as any).error).toHaveProperty('code', 'LLM_ERROR');
+      // Should HAVE message field
+      expect((response.results[0] as any).error).toHaveProperty('message');
+      expect((response.results[0] as any).error.message).toBe('Detailed API error');
+    });
+
+    it('should log errors regardless of exposeErrorDetails setting', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+
+      const mockConnector = {
+        name: 'gemini',
+        supportsStreaming: false,
+        sendRequest: jest.fn().mockRejectedValue(new Error('Test error for logging'))
+      };
+
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue(mockConnector);
+
+      const request: BatchRequest = {
+        assistants: [
+          {
+            id: 'test-1',
+            model: 'gemini-flash',
+            aiRoleId: 'grammar-corrector',
+            userText: 'test',
+            options: {}
+          }
+        ]
+      };
+
+      await orchestrator.processBatch(user, request);
+
+      // Should have logged error details
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+});

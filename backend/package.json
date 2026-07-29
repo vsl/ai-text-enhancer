@@ -1,0 +1,39 @@
+{
+  "name": "ai-text-enhancer-backend",
+  "version": "1.0.0",
+  "description": "Serverless AI Text Enhancer Backend",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "type-check": "tsc --noEmit",
+    "lint:portability": "grep -r 'Deno\\.' src/ && echo '❌ ERROR: Deno imports found in src/' || echo '✅ OK: No Deno imports in src/'",
+    "setup:env": "./scripts/setup-env.sh",
+    "deploy": "./scripts/deploy.sh",
+    "logs": "./scripts/logs.sh",
+    "logs:tail": "./scripts/logs.sh --tail",
+    "health": "./scripts/health-check.sh",
+    "dev": "supabase functions serve enhance --env-file .env.local --no-verify-jwt"
+  },
+  "keywords": [
+    "ai",
+    "text-enhancement",
+    "llm",
+    "serverless",
+    "supabase"
+  ],
+  "author": "",
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.76.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.7.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "jest": "^30.2.0",
+    "jose": "^6.1.0",
+    "stripe": "^19.3.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3"
+  }
+}

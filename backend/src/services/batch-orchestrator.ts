@@ -1,0 +1,422 @@
+/**
+ * Batch Orchestrator Service
+ * 
+ * Processes multiple assistant tasks in parallel within a single API request.
+ * Each assistant makes an independent LLM call with its own model, role, and options.
+ * 
+ * Platform-agnostic - uses only standard TypeScript/JavaScript APIs.
+ */
+
+import type { UserProfile } from '../types/auth.types.ts';
+import type {
+  BatchRequest,
+  BatchResponse,
+  AssistantConfiguration,
+  BatchResult,
+  SuccessResult,
+  ErrorResult
+} from '../types/api.types.ts';
+import type { AssistantProcessingResult } from '../types/orchestration.types.ts';
+import { PromptBuilder } from './prompt-builder.ts';
+import { LLMConnectorFactory } from '../connectors/llm-connectors/factory.ts';
+import type { LLMConnector } from '../types/llm.types.ts';
+import { QuotaService } from './quota-service.ts';
+import { AuthorizationService } from './authorization-service.ts';
+import { getModelById } from '../config/models.config.ts';
+import { getRoleById } from '../config/roles.config.ts';
+import { getLimitsForTier } from '../config/tier-limits.config.ts';
+import type { LLMProviderConfig } from '../types/config.types.ts';
+import {
+  EmptyBatchError,
+  DuplicateTaskIdError,
+  TaskTimeoutError,
+  UserTextLimitError,
+  ContextTextLimitError
+} from '../errors/orchestration-errors.ts';
+
+export class BatchOrchestrator {
+  private promptBuilder: PromptBuilder;
+  private connectors: Map<string, LLMConnector>;
+  private quotaService: QuotaService;
+  private authzService: AuthorizationService;
+  private readonly taskTimeoutMs: number;
+  private readonly exposeErrorDetails: boolean;
+
+  constructor(
+    providers: LLMProviderConfig[],
+    quotaService: QuotaService,
+    authzService: AuthorizationService,
+    taskTimeoutMs: number = 30000,
+    exposeErrorDetails: boolean = false
+  ) {
+    this.promptBuilder = new PromptBuilder();
+    this.connectors = LLMConnectorFactory.createAll(providers);
+    this.quotaService = quotaService;
+    this.authzService = authzService;
+    this.taskTimeoutMs = taskTimeoutMs;
+    this.exposeErrorDetails = exposeErrorDetails;
+  }
+
+  /**
+   * Process batch of assistant tasks
+   * Each assistant = independent LLM call processed in parallel
+   * 
+   * Partial success pattern: If batch size exceeds tier limit,
+   * first N assistants (within limit) are processed normally,
+   * excess assistants get TIER_BATCH_SIZE_EXCEEDED error.
+   */
+  async processBatch(
+    user: UserProfile,
+    request: BatchRequest
+  ): Promise<BatchResponse> {
+    // 1. Validate batch structure (excludes batch size - handled separately for partial success)
+    this.validateBatchStructure(user, request);
+
+    // 2. Split assistants into processable and exceeded based on tier limit
+    const tierLimits = getLimitsForTier(user.tier);
+    const { processable, exceeded } = this.splitByTierLimit(
+      request.assistants,
+      tierLimits.maxBatchSize
+    );
+
+    // 3. Create error results for exceeded assistants
+    const exceededResults: AssistantProcessingResult[] = exceeded.map(assistant => ({
+      id: assistant.id,
+      success: false,
+      error: {
+        code: 'TIER_BATCH_SIZE_EXCEEDED',
+        message: `Batch position exceeds ${user.tier} tier limit of ${tierLimits.maxBatchSize} assistants`
+      }
+    }));
+
+    // 4. If no processable assistants, return early with all errors
+    if (processable.length === 0) {
+      const results: BatchResult[] = exceededResults.map(r => this.toApiResult(r));
+      return { results };
+    }
+
+    // 5. Estimate total token usage (rough estimate for pre-flight check)
+    const estimatedTokens = this.estimateTotalTokens(processable);
+
+    // 6. Check user quota (pre-flight) - throws on failure
+    this.quotaService.requireQuota(user, estimatedTokens);
+
+    // 7. Validate model access for processable assistants - throws on failure
+    this.validateAllModelAccess(user, processable);
+
+    // 8. Process processable assistants in parallel
+    const processingResults = await this.processAllAssistants(processable);
+
+    // 9. Calculate actual token usage from successful tasks
+    const totalTokensUsed = processingResults
+      .filter(r => r.success && r.tokensUsed)
+      .reduce((sum, r) => sum + (r.tokensUsed || 0), 0);
+
+    // 10. Report token usage (post-flight)
+    if (totalTokensUsed > 0) {
+      try {
+        await this.quotaService.reportUsage(
+          user.userId,
+          totalTokensUsed,
+          'batch' // aggregated model identifier
+        );
+      } catch (error) {
+        // Log but don't fail - user already got results
+        //todo: need to implement
+        //console.error('[ORCHESTRATOR] Failed to report token usage:', error);
+      }
+    }
+
+    // 11. Combine processed and exceeded results, convert to API format
+    const allResults: AssistantProcessingResult[] = [
+      ...processingResults,
+      ...exceededResults
+    ];
+    
+    const results: BatchResult[] = allResults.map(r => this.toApiResult(r));
+
+    return { results };
+  }
+
+  /**
+   * Split assistants into processable (within tier limit) and exceeded
+   * Preserves original order - first N are processable, rest are exceeded
+   */
+  private splitByTierLimit(
+    assistants: AssistantConfiguration[],
+    maxBatchSize: number
+  ): { processable: AssistantConfiguration[]; exceeded: AssistantConfiguration[] } {
+    return {
+      processable: assistants.slice(0, maxBatchSize),
+      exceeded: assistants.slice(maxBatchSize)
+    };
+  }
+
+  /**
+   * Validate batch request structure (excluding batch size - handled separately for partial success)
+   * 
+   * Note: Batch size is NOT validated here. Instead, excess assistants are
+   * processed with TIER_BATCH_SIZE_EXCEEDED error to support partial success.
+   */
+  private validateBatchStructure(user: UserProfile, request: BatchRequest): void {
+    // Check empty
+    if (!request.assistants || request.assistants.length === 0) {
+      throw new EmptyBatchError();
+    }
+
+    // Get tier-specific limits
+    const tierLimits = getLimitsForTier(user.tier);
+
+    // Note: Batch size check removed - handled in processBatch for partial success
+
+    // Check for duplicate IDs
+    const ids = request.assistants.map(a => a.id);
+    const uniqueIds = new Set(ids);
+    if (ids.length !== uniqueIds.size) {
+      const duplicateId = ids.find((id, index) => ids.indexOf(id) !== index);
+      throw new DuplicateTaskIdError(duplicateId!);
+    }
+
+    // Validate each assistant's text lengths against tier limits
+    for (const assistant of request.assistants) {
+      // Check user text length
+      if (assistant.userText.length > tierLimits.maxUserTextLength) {
+        throw new UserTextLimitError(
+          user.tier,
+          tierLimits.maxUserTextLength,
+          assistant.userText.length
+        );
+      }
+
+      // Check context text length (if provided)
+      if (assistant.contextText && assistant.contextText.length > tierLimits.maxContextTextLength) {
+        throw new ContextTextLimitError(
+          user.tier,
+          tierLimits.maxContextTextLength,
+          assistant.contextText.length
+        );
+      }
+    }
+  }
+
+  /**
+   * Validate user has access to all requested models
+   */
+  private validateAllModelAccess(
+    user: UserProfile,
+    assistants: AssistantConfiguration[]
+  ): void {
+    for (const assistant of assistants) {
+      const model = getModelById(assistant.model);
+      
+      if (!model) {
+        throw new Error(`Unknown model: ${assistant.model}`);
+      }
+
+      this.authzService.requireModelAccess(user, assistant.model);
+    }
+  }
+
+  /**
+   * Estimate total tokens for all assistants (rough estimate)
+   */
+  private estimateTotalTokens(assistants: AssistantConfiguration[]): number {
+    return assistants.reduce((total, assistant) => {
+      const textLength = assistant.userText.length + 
+        (assistant.contextText?.length || 0);
+      // Rough estimate: 4 chars ≈ 1 token + 500 tokens overhead per assistant
+      return total + Math.ceil(textLength / 4) + 500;
+    }, 0);
+  }
+
+  /**
+   * Process all assistants in parallel using Promise.allSettled
+   */
+  private async processAllAssistants(
+    assistants: AssistantConfiguration[]
+  ): Promise<AssistantProcessingResult[]> {
+    // Create promises for all assistant tasks
+    const promises = assistants.map(assistant =>
+      this.processAssistantWithTimeout(assistant)
+    );
+
+    // Execute all in parallel, catch individual failures
+    const results = await Promise.allSettled(promises);
+
+    // Convert PromiseSettledResult to AssistantProcessingResult
+    return results.map((result, index) => {
+      const assistantId = assistants[index].id;
+
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        // Handle promise rejection - always log for admin
+        const error = result.reason as Error;
+        console.error('[ORCHESTRATOR] Task processing failed:', assistantId, error);
+
+        return {
+          id: assistantId,
+          success: false,
+          error: {
+            code: 'TASK_PROCESSING_FAILED',
+            ...(this.exposeErrorDetails && { message: error.message || 'Unknown error occurred' })
+          }
+        };
+      }
+    });
+  }
+
+  /**
+   * Process single assistant task with timeout enforcement
+   */
+  private async processAssistantWithTimeout(
+    assistant: AssistantConfiguration
+  ): Promise<AssistantProcessingResult> {
+    // Create abort controller for timeout
+    const abortController = new AbortController();
+    
+    // Create timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        abortController.abort();
+        reject(new TaskTimeoutError(assistant.id, this.taskTimeoutMs));
+      }, this.taskTimeoutMs);
+    });
+
+    // Create processing promise
+    const processingPromise = this.executeAssistantTask(
+      assistant,
+      abortController.signal
+    );
+
+    // Race between processing and timeout
+    try {
+      return await Promise.race([processingPromise, timeoutPromise]);
+    } catch (error) {
+      if (error instanceof TaskTimeoutError) {
+        // Always log for admin
+        console.error('[ORCHESTRATOR] Task timeout:', assistant.id, error);
+
+        return {
+          id: assistant.id,
+          success: false,
+          error: {
+            code: 'TASK_TIMEOUT',
+            ...(this.exposeErrorDetails && { message: error.message })
+          }
+        };
+      }
+      // Re-throw unexpected errors
+      throw error;
+    }
+  }
+
+  /**
+   * Execute assistant task: build prompt + call LLM
+   */
+  private async executeAssistantTask(
+    assistant: AssistantConfiguration,
+    abortSignal: AbortSignal
+  ): Promise<AssistantProcessingResult> {
+    try {
+      // 1. Get model and role configurations
+      const model = getModelById(assistant.model);
+      const role = getRoleById(assistant.aiRoleId);
+
+      if (!model) {
+        throw new Error(`Unknown model: ${assistant.model}`);
+      }
+
+      if (!role) {
+        throw new Error(`Unknown AI role: ${assistant.aiRoleId}`);
+      }
+
+      // 2. Build prompts using PromptBuilder
+      const { systemPrompt, userPrompt } = this.promptBuilder.buildPrompt({
+        id: assistant.id,
+        model: assistant.model,
+        aiRoleId: assistant.aiRoleId,
+        userText: assistant.userText,
+        contextText: assistant.contextText,
+        options: assistant.options
+      });
+
+      // 3. Get appropriate LLM connector
+      const connector = LLMConnectorFactory.getConnector(
+        this.connectors,
+        model.provider
+      );
+
+      // 4. Call LLM with abort signal for timeout
+      const response = await connector.sendRequest({
+        model: model.providerModelId,
+        systemPrompt,
+        userPrompt,
+        maxTokens: 2000,
+        timeout: this.taskTimeoutMs
+      });
+
+      // 5. Parse response text (should be JSON with "text" field)
+      let enhancedText = response.text;
+      
+      // Try to parse as JSON if it looks like JSON
+      if (enhancedText.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(enhancedText);
+          if (parsed.text) {
+            enhancedText = parsed.text;
+          }
+        } catch {
+          // If parsing fails, use raw text
+        }
+      }
+
+      // 6. Return success result
+      return {
+        id: assistant.id,
+        success: true,
+        enhancedText,
+        tokensUsed: response.usage.totalTokens
+      };
+
+    } catch (error) {
+      // Check if aborted (timeout)
+      if (abortSignal.aborted) {
+        throw new TaskTimeoutError(assistant.id, this.taskTimeoutMs);
+      }
+
+      // Always log for admin
+      console.error('[ORCHESTRATOR] LLM error:', assistant.id, error);
+
+      // Convert other errors to structured result
+      return {
+        id: assistant.id,
+        success: false,
+        error: {
+          code: 'LLM_ERROR',
+          ...(this.exposeErrorDetails && { message: (error as Error).message || 'LLM call failed' })
+        }
+      };
+    }
+  }
+
+  /**
+   * Convert internal result to API result format
+   */
+  private toApiResult(result: AssistantProcessingResult): BatchResult {
+    if (result.success) {
+      return {
+        id: result.id,
+        status: 'success',
+        enhancedText: result.enhancedText!,
+        total_tokens: result.tokensUsed || 0
+      } as SuccessResult;
+    } else {
+      return {
+        id: result.id,
+        status: 'error',
+        error: result.error!
+      } as ErrorResult;
+    }
+  }
+}

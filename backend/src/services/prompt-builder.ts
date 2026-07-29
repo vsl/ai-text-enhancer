@@ -1,0 +1,60 @@
+/**
+ * Prompt Builder Service
+ * 
+ * Constructs prompts from AssistantConfiguration by:
+ * 1. Looking up the role's system prompt
+ * 2. Building user prompt from TransformationOptions + text + context
+ * 3. Enforcing JSON response format
+ * 
+ * Platform-agnostic - no Deno or Node.js specific APIs.
+ */
+
+import { PromptTemplates } from './prompt-templates.ts';
+import type { 
+  PromptBuildRequest, 
+  ConstructedPrompt 
+} from '../types/prompt.types.ts';
+import type { RoleConfig } from '../types/config.types.ts';
+import { getRoleById } from '../config/roles.config.ts';
+
+export class PromptBuilder {
+  /**
+   * Build prompt from AssistantConfiguration
+   * 
+   * @param request - AssistantConfiguration from API request
+   * @returns Constructed prompt with system, user, and combined prompts
+   * @throws Error if role is not found or model not allowed for role
+   */
+  buildPrompt(request: PromptBuildRequest): ConstructedPrompt {
+    // 1. Get role configuration
+    const role = getRoleById(request.aiRoleId);
+    
+    if (!role) {
+      throw new Error(`Unknown AI role: ${request.aiRoleId}`);
+    }
+
+    // 2. Validate model is allowed for this role
+    if (!role.allowedModels.includes(request.model)) {
+      throw new Error(
+        `Model '${request.model}' is not allowed for role '${request.aiRoleId}'. ` +
+        `Allowed models: ${role.allowedModels.join(', ')}`
+      );
+    }
+
+    // 3. Build system prompt (role + JSON enforcement)
+    const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt);
+
+    // 4. Build user prompt (instructions from options + context + text)
+    const userPrompt = PromptTemplates.buildUserPrompt({
+      options: request.options,
+      userText: request.userText,
+      contextText: request.contextText
+    });
+
+    // 5. Return constructed prompt
+    return {
+      systemPrompt,
+      userPrompt
+    };
+  }
+}
