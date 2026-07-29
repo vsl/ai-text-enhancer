@@ -663,13 +663,14 @@ Before going to production:
 The monorepo includes a CI/CD pipeline (`../../.github/workflows/backend.yml`) that:
 - ✅ Runs tests and quality checks
 - ✅ Syncs environment secrets to Supabase
-- ✅ Deploys to Supabase on pushes to `main`
+- ✅ Deploys pull requests to staging and `main` to production
 - ✅ Verifies deployment with health check
 
 ### How It Works
 
 **Trigger:** Runs only for non-documentation changes under `backend/`. Pull
-requests run checks only; pushes to `main` run checks and deploy to production.
+requests run checks and deploy to staging; changes merged to `main` run checks
+and deploy to production.
 
 **Pipeline Steps:**
 1. **Checkout code** - Gets your latest code
@@ -696,20 +697,27 @@ requests run checks only; pushes to `main` run checks and deploy to production.
 
 #### Step 2: Add Required Secrets
 
-Click **"New repository secret"** for each of the following:
+The authoritative secret list is in the root
+[Repository and deployment setup](../../docs/getting-started.md) guide. GitHub
+Free private repositories use repository secrets with `STAGING_` and
+`PRODUCTION_` prefixes instead of GitHub Environments.
 
 | Secret Name | Description | Where to Get It |
 |------------|-------------|-----------------|
 | `SUPABASE_ACCESS_TOKEN` | Your Supabase personal access token | Go to https://supabase.com/dashboard/account/tokens → "Generate new token" |
-| `SUPABASE_PROJECT_ID` | Your Supabase project reference ID | Found in project URL: `https://supabase.com/dashboard/project/[PROJECT_ID]` |
-| `APP_SUPABASE_JWT_SECRET` | JWT signing/verification secret | Supabase Dashboard → Settings → API → JWT Settings (or `supabase status`) |
-| `APP_SUPABASE_SERVICE_ROLE_KEY` | Service role key for server operations | Supabase Dashboard → Settings → API → `service_role` key |
-| `BOOTSTRAP_SECRET_KEY` | Secret protecting the admin bootstrap endpoint | Generate a long random value |
+| `{ENV}_SUPABASE_PROJECT_ID` | Environment's Supabase project reference ID | Found in project URL: `https://supabase.com/dashboard/project/[PROJECT_ID]` |
+| `{ENV}_SUPABASE_DB_PASSWORD` | Environment's database password | Value chosen when creating the project |
+| `{ENV}_APP_SUPABASE_JWT_SECRET` | Legacy JWT signing/verification secret | Supabase JWT signing keys page |
+| `{ENV}_APP_SUPABASE_SERVICE_ROLE_KEY` | Secret key for server operations | Supabase Dashboard → Settings → API Keys |
+| `{ENV}_BOOTSTRAP_SECRET_KEY` | Secret protecting the admin bootstrap endpoint | Generate a long random value |
 | `GEMINI_API_KEY` | Google Gemini API key | Get from https://aistudio.google.com/app/apikey |
 | `OPENROUTER_API_KEY` | OpenRouter API key | Get from https://openrouter.ai/keys |
-| `STRIPE_SECRET_KEY` | Stripe server API key | Stripe Dashboard → Developers → API keys |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | Stripe Dashboard → Developers → Webhooks |
-| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | Stripe Dashboard → Developers → API keys |
+| `{ENV}_STRIPE_SECRET_KEY` | Stripe server API key | Stripe Dashboard → Developers → API keys |
+| `{ENV}_STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | Stripe Dashboard → Developers → Webhooks |
+| `{ENV}_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | Stripe Dashboard → Developers → API keys |
+
+Add every `{ENV}_` entry once as `STAGING_...` and once as
+`PRODUCTION_...`.
 
 #### Step 3: Add Optional Secrets (if needed)
 
@@ -723,13 +731,14 @@ Click **"New repository secret"** for each of the following:
 After adding all secrets:
 1. Go to **Actions** tab in your repository
 2. You should see the **Backend** workflow
-3. If no runs yet, make a commit and push to `main`:
+3. Make a backend change on an `agent/*` branch and open a pull request:
    ```bash
-   git add .
-   git commit -m "Setup CI/CD"
-   git push origin main
+   git switch -c agent/verify-backend-deployment
+   git add backend/
+   git commit -m "Verify backend deployment"
+   git push -u origin agent/verify-backend-deployment
    ```
-4. Watch the workflow run in real-time
+4. Watch staging deploy, then merge the pull request to verify production.
 
 ### How to Get Supabase Access Token
 
@@ -743,8 +752,8 @@ After adding all secrets:
 
 ### Triggering a Deployment
 
-The workflow has no manual trigger. Commit a backend change to a branch for
-checks, then merge it to `main` to deploy.
+The workflow has no manual trigger. Open a backend pull request to deploy
+staging, then merge it to deploy production.
 
 ### Viewing Workflow Results
 
@@ -762,7 +771,7 @@ checks, then merge it to `main` to deploy.
 ### What Happens on Each Push
 
 ```
-You push to main
+Backend pull request or merge to main
      ↓
 GitHub Actions triggers
      ↓
@@ -770,7 +779,7 @@ Runs all tests (must pass 100%)
      ↓
 Syncs your secrets to Supabase
      ↓
-Deploys new version
+Deploys staging for a PR or production for main
      ↓
 Tests health endpoint
      ↓
@@ -858,34 +867,23 @@ Add to your workflow:
 
 ✅ **DO:**
 - Keep secrets in GitHub Secrets (never in code)
-- Test locally before pushing to `main`
+- Test locally before pushing a feature branch
 - Use meaningful commit messages
 - Monitor workflow runs
 - Set up deployment notifications
 
 ❌ **DON'T:**
 - Commit `.env` files with real credentials
-- Push directly to `main` without testing
+- Push directly to `main`
 - Ignore failed workflow runs
 - Deploy with failing tests
 - Skip the health check step
 
 ### Environment-Specific Secrets
 
-For multiple environments (staging/production):
-
-1. Create separate workflows:
-   - `.github/workflows/deploy-staging.yml`
-   - `.github/workflows/deploy-production.yml`
-
-2. Use environment-specific secrets:
-   - `STAGING_SUPABASE_PROJECT_ID`
-   - `PROD_SUPABASE_PROJECT_ID`
-   - etc.
-
-3. Deploy to different branches:
-   - `develop` → staging
-   - `main` → production
+The single workflow selects `STAGING_*` repository secrets for pull requests
+and `PRODUCTION_*` secrets for `main`. See the root
+[setup guide](../../docs/getting-started.md).
 
 ---
 

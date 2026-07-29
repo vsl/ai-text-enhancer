@@ -70,9 +70,11 @@ The monorepo includes automated CI/CD via GitHub Actions (`../.github/workflows/
 6. Health check verification
 
 **Trigger:** Runs only for non-documentation changes under `backend/`. Pull
-requests run checks; pushes to `main` run checks and then deploy to production.
+requests run checks and deploy to staging; changes merged to `main` run checks
+and deploy to production.
 
-**For Setup Instructions:** See comprehensive guide in [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md#automated-deployment-with-github-actions) including required GitHub Secrets, step-by-step setup, troubleshooting, and best practices.
+**For Setup Instructions:** See the root
+[setup guide](../docs/getting-started.md).
 
 ### Single Test Execution
 ```bash

@@ -116,7 +116,9 @@ NEXT_PUBLIC_API_BASE_URL=https://your-project.supabase.co/functions/v1
 
 ### Cloudflare Pages
 
-Configure these variables for both Production and Preview in Cloudflare Pages:
+Configure these variables for both Production and Preview in Cloudflare Pages.
+Production uses production Supabase values; Preview uses staging Supabase
+values:
 
 - `NEXT_PUBLIC_APP_SUPABASE_URL` - Your Supabase project URL
 - `NEXT_PUBLIC_APP_SUPABASE_ANON_KEY` - Your Supabase anon/public key

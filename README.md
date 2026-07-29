@@ -29,6 +29,9 @@ NEXT_PUBLIC_API_BASE_URL=https://your-project.supabase.co/functions/v1
 
 See `backend/.env.local.example` for backend development variables. Do not commit environment files or secrets.
 
+See [Repository and deployment setup](docs/getting-started.md) for the initial
+Supabase, GitHub, and Cloudflare configuration.
+
 ## Cloudflare Pages
 
 Connect this GitHub repository to Cloudflare Pages with:
@@ -38,11 +41,13 @@ Connect this GitHub repository to Cloudflare Pages with:
 - Framework preset: `Next.js (Static HTML Export)`
 - Build command: `npm run build`
 - Build output directory: `out`
-- Node version: `22`
+- Environment variable `NODE_VERSION`: `22`
 - Build watch include path: `ui/*`
 - Build watch exclude path: `ui/*.md`
 
-Add the three `NEXT_PUBLIC_*` variables above to both Production and Preview environments. Preview deployments intentionally use the production Supabase backend.
+Add the three `NEXT_PUBLIC_*` variables above to both Cloudflare environments:
+Production uses production Supabase values and Preview uses staging Supabase
+values.
 
 The build-watch path prevents backend-only commits from starting a Pages build.
 The previous GitHub Pages workflow is not included in this monorepo. Disable
@@ -54,20 +59,8 @@ is verified.
 - `.github/workflows/ui.yml` tests and builds only for non-documentation changes
   under `ui/`.
 - `.github/workflows/backend.yml` checks only non-documentation changes under
-  `backend/`. Pull requests run validation; pushes to `main` also deploy to
-  production Supabase.
+  `backend/`. Pull requests validate and deploy to staging; changes merged to
+  `main` validate and deploy to production.
 
-Before the first backend change, copy these GitHub Actions secrets to this repository:
-
-- `SUPABASE_PROJECT_ID`
-- `SUPABASE_ACCESS_TOKEN`
-- `GEMINI_API_KEY`
-- `OPENROUTER_API_KEY`
-- `APP_SUPABASE_JWT_SECRET`
-- `APP_SUPABASE_SERVICE_ROLE_KEY`
-- `BOOTSTRAP_SECRET_KEY`
-- `LLM_TIMEOUT_MS`
-- `MAX_BATCH_SIZE`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PUBLISHABLE_KEY`
+Never push directly to `main`. Work on an `agent/*` branch and open a pull
+request; only the repository owner merges it.
