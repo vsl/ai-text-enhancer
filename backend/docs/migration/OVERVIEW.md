@@ -135,7 +135,7 @@ Detailed migration guides for specific platforms:
 
 1. **[AWS Lambda](./AWS_LAMBDA.md)** - Migrate to AWS Lambda + API Gateway
 2. **[Cloudflare Workers](./CLOUDFLARE_WORKERS.md)** - Migrate to Cloudflare Workers
-3. **[Vercel Edge](./VERCEL_EDGE.md)** - Migrate to Vercel Edge Functions *(coming soon)*
+3. **Vercel Edge** - Migration guide not yet written
 
 ## Why This Architecture?
 
@@ -306,8 +306,8 @@ When to migrate to each platform:
 
 For migration help:
 
-1. **Review architecture:** [CORE_ARCHITECTURE.md](../../spec/CORE_ARCHITECTURE.md)
-2. **Check API contract:** [CORE_API_CONTRACT.md](../../spec/CORE_API_CONTRACT.md)
+1. **Review architecture:** [Architecture](../architecture.md)
+2. **Check API contract:** [API Reference](../api-reference.md)
 3. **Platform guides:** See individual migration guides in this directory
 4. **Open an issue:** GitHub Issues
 

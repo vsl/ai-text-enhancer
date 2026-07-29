@@ -33,7 +33,7 @@ This guide shows how to migrate the AI Text Enhancer Backend from Supabase Edge 
 
 ## Prerequisites
 
-- Node.js 18+ installed
+- Node.js 22 installed
 - Cloudflare account (free tier OK)
 - Project tests passing locally
 - Wrangler CLI installed
@@ -567,16 +567,19 @@ name: Deploy to Cloudflare Workers
 on:
   push:
     branches: [main]
+    paths:
+      - "backend/**"
+      - "!backend/**/*.md"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v6
         with:
-          node-version: '18'
+          node-version: '22'
           
       - run: npm ci
       - run: npm test

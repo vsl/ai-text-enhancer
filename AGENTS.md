@@ -1,11 +1,16 @@
 # AI Text Enhancer
 
-This directory is one Git repository containing two applications:
+This is one Git repository containing two applications:
 
 - `ui/`: Next.js static export deployed to Cloudflare Pages.
 - `backend/`: Supabase migrations and Edge Functions.
 
-Before changing an application, read its `CLAUDE.md` for architecture and conventions. When an API contract changes, update and verify both applications in the same change.
+Follow the nearest `AGENTS.md`: `ui/AGENTS.md` for UI work and
+`backend/AGENTS.md` for backend work. The older `CLAUDE.md` files are detailed
+reference documents, not Codex instructions.
+
+When an API contract changes, update and verify both applications in the same
+change. Do not make an unrelated app change just to trigger its workflow.
 
 ## Commands
 
@@ -26,5 +31,7 @@ Use Node.js 22. Never commit `.env` files or secrets.
 
 ## Deployment
 
-- Cloudflare Pages builds `ui/` from `main` with `npm run build` and publishes `out/`.
-- GitHub Actions deploys `backend/` to Supabase only when backend files change.
+- `.github/workflows/ui.yml` checks UI changes only.
+- Cloudflare Pages builds `ui/` changes from `main` and publishes `ui/out/`.
+- `.github/workflows/backend.yml` checks backend changes and deploys them from
+  `main` to production Supabase.

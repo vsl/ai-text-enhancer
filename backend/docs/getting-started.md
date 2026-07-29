@@ -24,7 +24,7 @@ Before you begin, ensure you have the following installed:
 
 ### Required
 
-- **Node.js** (v18 or later) - [Download](https://nodejs.org/)
+- **Node.js** 22 - [Download](https://nodejs.org/)
 - **npm** (comes with Node.js)
 - **Supabase CLI** - [Installation guide](https://supabase.com/docs/guides/cli)
   ```bash
@@ -61,8 +61,8 @@ You'll need API keys for LLM providers:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd ai-text-enhancer-backend-v3
+git clone git@github-personal:vsl/ai-text-enhancer.git
+cd ai-text-enhancer/backend
 
 # Install dependencies
 npm install

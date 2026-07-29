@@ -10,7 +10,7 @@ Before deploying, ensure you have:
   ```
 
 - [ ] **Supabase project created**
-  - Visit: https://app.supabase.com
+  - Visit: https://supabase.com/dashboard
   - Create a new project or use existing one
   - Note your project reference ID
 
@@ -400,7 +400,7 @@ npm run logs:tail
 
 ### View in Dashboard
 
-Visit: `https://app.supabase.com/project/YOUR_PROJECT_REF/functions`
+Visit: `https://supabase.com/dashboard/project/YOUR_PROJECT_REF/functions`
 
 ---
 
@@ -660,29 +660,30 @@ Before going to production:
 
 ### Overview
 
-The monorepo includes a CI/CD pipeline (`../.github/workflows/deploy-backend.yml`) that automatically:
+The monorepo includes a CI/CD pipeline (`../../.github/workflows/backend.yml`) that:
 - ✅ Runs tests and quality checks
 - ✅ Syncs environment secrets to Supabase
-- ✅ Deploys to Supabase on every push to `main`
+- ✅ Deploys to Supabase on pushes to `main`
 - ✅ Verifies deployment with health check
 
 ### How It Works
 
-**Trigger:** Automatically runs when you push to the `main` branch, or can be triggered manually.
+**Trigger:** Runs only for non-documentation changes under `backend/`. Pull
+requests run checks only; pushes to `main` run checks and deploy to production.
 
 **Pipeline Steps:**
 1. **Checkout code** - Gets your latest code
 2. **Setup Node.js** - Installs Node.js 22 with npm caching
 3. **Install dependencies** - Runs `npm ci`
 4. **TypeScript type check** - Runs `npm run type-check`
-5. **Run tests** - Runs `npm test` (all 274 tests must pass)
+5. **Run tests** - Runs the complete Jest suite
 6. **Platform portability check** - Ensures no `Deno.*` in `src/`
-7. **Setup Supabase CLI** - Installs latest Supabase CLI
+7. **Setup Supabase CLI** - Installs the pinned Supabase CLI version
 8. **Link project** - Links to your Supabase project
 9. **Sync secrets** - Syncs environment variables from GitHub Secrets to Supabase
-10. **Deploy function** - Deploys the Edge Function
-11. **Health check** - Verifies deployment is working
-12. **Summary** - Shows deployment URL and next steps
+10. **Apply migrations** - Pushes pending database migrations
+11. **Deploy functions** - Deploys all five Edge Functions
+12. **Health check** - Verifies the public health endpoints
 
 ### Setting Up GitHub Actions
 
@@ -699,18 +700,21 @@ Click **"New repository secret"** for each of the following:
 
 | Secret Name | Description | Where to Get It |
 |------------|-------------|-----------------|
-| `SUPABASE_ACCESS_TOKEN` | Your Supabase personal access token | Go to https://app.supabase.com/account/tokens → "Generate new token" |
-| `SUPABASE_PROJECT_ID` | Your Supabase project reference ID | Found in project URL: `https://app.supabase.com/project/[PROJECT_ID]` |
+| `SUPABASE_ACCESS_TOKEN` | Your Supabase personal access token | Go to https://supabase.com/dashboard/account/tokens → "Generate new token" |
+| `SUPABASE_PROJECT_ID` | Your Supabase project reference ID | Found in project URL: `https://supabase.com/dashboard/project/[PROJECT_ID]` |
 | `APP_SUPABASE_JWT_SECRET` | JWT signing/verification secret | Supabase Dashboard → Settings → API → JWT Settings (or `supabase status`) |
 | `APP_SUPABASE_SERVICE_ROLE_KEY` | Service role key for server operations | Supabase Dashboard → Settings → API → `service_role` key |
+| `BOOTSTRAP_SECRET_KEY` | Secret protecting the admin bootstrap endpoint | Generate a long random value |
 | `GEMINI_API_KEY` | Google Gemini API key | Get from https://aistudio.google.com/app/apikey |
 | `OPENROUTER_API_KEY` | OpenRouter API key | Get from https://openrouter.ai/keys |
+| `STRIPE_SECRET_KEY` | Stripe server API key | Stripe Dashboard → Developers → API keys |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | Stripe Dashboard → Developers → Webhooks |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | Stripe Dashboard → Developers → API keys |
 
 #### Step 3: Add Optional Secrets (if needed)
 
 | Secret Name | Description | Default Value |
 |------------|-------------|---------------|
-| `BOOTSTRAP_SECRET_KEY` | Secret for admin bootstrap endpoint | None (bootstrap disabled) |
 | `LLM_TIMEOUT_MS` | LLM request timeout in milliseconds | `30000` |
 | `MAX_BATCH_SIZE` | Maximum assistants per batch | `10` |
 
@@ -718,7 +722,7 @@ Click **"New repository secret"** for each of the following:
 
 After adding all secrets:
 1. Go to **Actions** tab in your repository
-2. You should see the "CI/CD Pipeline" workflow
+2. You should see the **Backend** workflow
 3. If no runs yet, make a commit and push to `main`:
    ```bash
    git add .
@@ -729,7 +733,7 @@ After adding all secrets:
 
 ### How to Get Supabase Access Token
 
-1. Visit https://app.supabase.com/account/tokens
+1. Visit https://supabase.com/dashboard/account/tokens
 2. Click **"Generate new token"**
 3. Give it a name (e.g., "GitHub Actions CI/CD")
 4. Set expiration (optional, "Never" for persistent CI/CD)
@@ -737,15 +741,10 @@ After adding all secrets:
 6. **Copy the token immediately** (you can't see it again!)
 7. Add it as `SUPABASE_ACCESS_TOKEN` secret in GitHub
 
-### Manual Workflow Trigger
+### Triggering a Deployment
 
-You can manually trigger deployment without pushing code:
-
-1. Go to **Actions** tab
-2. Select **"CI/CD Pipeline"** workflow
-3. Click **"Run workflow"** button (top right)
-4. Select branch (usually `main`)
-5. Click **"Run workflow"**
+The workflow has no manual trigger. Commit a backend change to a branch for
+checks, then merge it to `main` to deploy.
 
 ### Viewing Workflow Results
 
@@ -786,15 +785,15 @@ Tests health endpoint
 **Problem:** Invalid or expired `SUPABASE_ACCESS_TOKEN`
 
 **Solution:**
-1. Generate new token at https://app.supabase.com/account/tokens
+1. Generate new token at https://supabase.com/dashboard/account/tokens
 2. Update `SUPABASE_ACCESS_TOKEN` secret in GitHub
 3. Re-run workflow
 
 #### ❌ "Project not found"
-**Problem:** Incorrect `UPABASE_PROJECT_ID`
+**Problem:** Incorrect `SUPABASE_PROJECT_ID`
 
 **Solution:**
-1. Check your project URL: `https://app.supabase.com/project/[THIS_IS_YOUR_ID]`
+1. Check your project URL: `https://supabase.com/dashboard/project/[THIS_IS_YOUR_ID]`
 2. Update `SUPABASE_PROJECT_ID` secret in GitHub
 3. Re-run workflow
 
@@ -834,19 +833,8 @@ Tests health endpoint
 
 ### Disabling Auto-Deployment
 
-If you want to deploy manually only:
-
-1. Edit `../.github/workflows/deploy-backend.yml`
-2. Remove the `push:` trigger:
-   ```yaml
-   on:
-     # push:              <- Comment out or remove
-     #   branches:
-     #     - main
-     workflow_dispatch:   # Keep this for manual triggers
-   ```
-3. Commit and push
-4. Now only manual triggers will deploy
+If automatic production deployment is no longer wanted, remove the `deploy`
+job from `../../.github/workflows/backend.yml`. Keep the pull-request checks.
 
 ### Deployment Notifications
 
@@ -906,8 +894,8 @@ For multiple environments (staging/production):
 ### Documentation
 - [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
 - [Deno Deploy](https://deno.com/deploy/docs)
-- [Project Architecture](../spec/CORE_ARCHITECTURE.md)
-- [API Contract](../spec/CORE_API_CONTRACT.md)
+- [Project Architecture](./architecture.md)
+- [API Contract](./api-reference.md)
 
 ### Common Commands
 ```bash

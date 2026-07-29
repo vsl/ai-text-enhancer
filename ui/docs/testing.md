@@ -417,8 +417,9 @@ export const mockErrorResponse = {
 
 ## Continuous Integration
 
-Cloudflare Pages verifies the production build on every UI deployment. Run the
-Jest and Playwright suites locally before merging:
+The `UI` GitHub Actions workflow runs Jest and the production build for UI
+changes. Cloudflare Pages publishes the static export after changes reach its
+connected branch. Run Playwright locally before merging when a user flow changes:
 
 ```bash
 npm test

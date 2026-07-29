@@ -314,11 +314,14 @@ interface Result {
 - Production branch: `main`
 - Build command: `npm run build`
 - Output directory: `out`
+- Build watch include path: `ui/*`
+- Build watch exclude path: `ui/*.md`
 - Production and preview builds use the same Supabase backend.
 
-**Manual Deployment**:
-1. `npm run build` creates static site in `out/`
-2. Deploy `out/` directory to any static hosting service
+**GitHub Actions**:
+- `../.github/workflows/ui.yml` runs tests and a production build only for
+  non-documentation changes under `ui/`.
+- Cloudflare Pages, not GitHub Actions, publishes the static export.
 
 ## Testing Best Practices
 

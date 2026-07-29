@@ -77,7 +77,7 @@ A sophisticated **serverless backend** for AI-powered text enhancement, designed
 
 | Category | Technology | Why |
 |----------|-----------|-----|
-| **Runtime** | Deno (current), Node.js 18+ compatible | Platform portability |
+| **Runtime** | Deno (current), Node.js 22 compatible | Platform portability |
 | **Platform** | Supabase Edge Functions | Serverless, global edge network |
 | **Language** | TypeScript (strict mode) | Type safety, better DX |
 | **HTTP Client** | Native `fetch` + timeout wrapper | Universal compatibility |
@@ -132,7 +132,7 @@ curl -X POST http://localhost:54321/functions/v1/admin/bootstrap \
   -H "Authorization: your-bootstrap-secret"
 ```
 
-See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for detailed testing instructions.
+See [Testing](./docs/testing.md) for detailed testing instructions.
 
 ### Admin API
 
@@ -148,27 +148,26 @@ All admin endpoints require:
 1. Valid JWT token in `Authorization: Bearer <token>` header
 2. User with `is_admin = true` in database
 
-See [docs/PRODUCTION_BOOTSTRAP.md](./docs/PRODUCTION_BOOTSTRAP.md) for production setup.
+See the [Deployment Guide](./docs/DEPLOYMENT.md) for production setup.
 
 ---
 
 ## 📚 Documentation
 
 ### Quick Start
-- **[Quick Reference](./spec/quick_reference.md)** - Developer commands and setup
-- **[Quick Context](./spec/QUICK_CONTEXT.md)** - Ultra-compact system overview (350 lines)
+- **[Getting Started](./docs/getting-started.md)** - Developer commands and setup
+- **[Documentation Index](./docs/index.md)** - Documentation overview
 
 ### Core Documentation
-- **[CORE_GUIDE.md](./spec/CORE_GUIDE.md)** - Complete system architecture, services, and design (600+ lines)
-- **[API_REFERENCE.md](./spec/API_REFERENCE.md)** - Full API specification with schemas and examples (900+ lines)
+- **[Architecture](./docs/architecture.md)** - System architecture and design
+- **[API Reference](./docs/api-reference.md)** - API schemas and examples
 
 ### Implementation & Maintenance
-- **[Implementation Guide](./spec/implementation_guide.md)** - Coding patterns and best practices
-- **[Prompt Construction](./spec/prompt_construction.md)** - Prompt engineering details
-- **[Technical Debt](./spec/technical_debt.md)** - Known limitations and TODOs
+- **[Developer Guides](./docs/developer-guides.md)** - Coding patterns and best practices
+- **[Known Issues](./docs/known-issues.md)** - Known limitations and TODOs
 
 ### Complete Documentation Index
-- **[spec/README.md](./spec/README.md)** - Full documentation structure and navigation guide
+- **[docs/index.md](./docs/index.md)** - Full documentation structure and navigation guide
 
 ---
 
@@ -176,7 +175,7 @@ See [docs/PRODUCTION_BOOTSTRAP.md](./docs/PRODUCTION_BOOTSTRAP.md) for productio
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v18+ (for Jest tests)
+- [Node.js](https://nodejs.org/) v22
 - [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started)
 - API keys for LLM providers (Gemini, OpenRouter)
 - Supabase account and project (for deployment)
@@ -185,8 +184,8 @@ See [docs/PRODUCTION_BOOTSTRAP.md](./docs/PRODUCTION_BOOTSTRAP.md) for productio
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd ai-text-enhancer-backend
+git clone git@github-personal:vsl/ai-text-enhancer.git
+cd ai-text-enhancer/backend
 
 # Install dependencies (for tests and development)
 npm install
@@ -216,7 +215,7 @@ APP_SUPABASE_JWT_SECRET=your_jwt_secret
 # Purpose: JWT token verification and signing
 
 SUPABASE_ACCESS_TOKEN=your_personal_access_token
-# Where: https://app.supabase.com/account/tokens → Generate new token
+# Where: https://supabase.com/dashboard/account/tokens → Generate new token
 # Purpose: CLI authentication for CI/CD deployments (GitHub Actions)
 # Note: Only needed for automated deployments, not for local development
 
@@ -244,7 +243,7 @@ supabase status  # Get URL, JWT_SECRET, and SERVICE_ROLE_KEY
 
 **Production/CI/CD:**
 - **Service Role Key & JWT Secret:** Dashboard → Settings → API
-- **Access Token (for CI/CD):** Visit https://app.supabase.com/account/tokens and generate a new token
+- **Access Token (for CI/CD):** Visit https://supabase.com/dashboard/account/tokens and generate a new token
 
 See `.env.local.example` for detailed variable descriptions.
 
@@ -385,7 +384,7 @@ curl -X GET http://localhost:54321/functions/v1/me \
 }
 ```
 
-See **[API_REFERENCE.md](./spec/API_REFERENCE.md)** for complete API documentation.
+See the **[API Reference](./docs/api-reference.md)** for complete API documentation.
 
 ---
 
@@ -634,7 +633,8 @@ EOF
     # See tests/api.test.ts for implementation details
     ```
 
-> For a complete definition of all schemas and error codes, please refer to the **[API Specification for UI](./API_SPEC_FOR_UI.md)** documentation.
+> For a complete definition of schemas and error codes, see the
+> **[API Reference](./docs/api-reference.md)**.
 
 ## Deployment to Supabase
 

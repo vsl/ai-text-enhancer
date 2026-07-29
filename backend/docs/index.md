@@ -192,7 +192,7 @@ This is **not a simple LLM wrapper**—it's an intelligent engine designed with 
 - Refer to [Developer Guides](./developer-guides.md) for coding conventions
 - Check [API Reference](./api-reference.md) for complete API contracts
 - Review [Known Issues](./known-issues.md) before suggesting improvements
-- **Note:** See [CLAUDE.md](../CLAUDE.md) in the root directory for AI-specific instructions
+- **Note:** See [AGENTS.md](../AGENTS.md) for Codex instructions
 
 ---
 
@@ -256,10 +256,10 @@ This is **not a simple LLM wrapper**—it's an intelligent engine designed with 
 - **Architecture questions**: Check [Architecture](./architecture.md)
 - **API questions**: Check [API Reference](./api-reference.md)
 - **Known issues**: Check [Known Issues](./known-issues.md)
-- **AI instructions**: Check [CLAUDE.md](../CLAUDE.md)
+- **AI instructions**: Check [AGENTS.md](../AGENTS.md)
 
 ---
 
-**Project Repository:** [GitHub](https://github.com/your-org/ai-text-enhancer-backend)
-**Documentation Issues:** [GitHub Issues](https://github.com/your-org/ai-text-enhancer-backend/issues)
-**Last Documentation Audit:** January 2025
+**Project Repository:** [GitHub](https://github.com/vsl/ai-text-enhancer)
+**Documentation Issues:** [GitHub Issues](https://github.com/vsl/ai-text-enhancer/issues)
+**Last Documentation Audit:** July 2026

@@ -71,15 +71,15 @@ The application is deployed from the monorepo root to Cloudflare Pages.
 ## 📦 Installation
 
 ### Prerequisites
-- Node.js 20.x or later
+- Node.js 22.x
 - npm 10.x or later
 
 ### Setup Instructions
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/vsl/ai-test-enh-v2.git
-   cd ai-test-enh-v2
+   git clone git@github-personal:vsl/ai-text-enhancer.git
+   cd ai-text-enhancer/ui
    ```
 
 2. **Install dependencies**
@@ -180,7 +180,7 @@ Open `coverage/lcov-report/index.html` to view the report.
 ## 📁 Project Structure
 
 ```
-ai-test-enh-v2/
+ui/
 ├── src/                          # All source code
 │   ├── app/                      # Next.js App Router pages
 │   │   ├── contact/              # Contact page
@@ -245,9 +245,13 @@ ai-test-enh-v2/
 Cloudflare Pages builds this directory from the monorepo `main` branch.
 
 **Deployment Process**:
-1. Push changes to `main`
-2. Cloudflare runs `npm run build` in `ui/`
-3. Cloudflare publishes `ui/out/`
+1. Push a UI change to `main`
+2. GitHub Actions runs the UI test and build checks
+3. Cloudflare runs `npm run build` in `ui/`
+4. Cloudflare publishes `ui/out/`
+
+Set the Cloudflare build-watch include path to `ui/*` and exclude path to
+`ui/*.md` so backend and documentation changes do not trigger deployments.
 
 **Manual Deployment**:
 ```bash

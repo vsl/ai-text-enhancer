@@ -4,7 +4,7 @@ Practical guide for daily development, including setup, commands, patterns, and 
 
 ## Prerequisites
 
-- **Node.js** 18+ (recommended: use LTS version)
+- **Node.js** 22
 - **npm** or **yarn**
 - **Git**
 
@@ -14,8 +14,8 @@ Practical guide for daily development, including setup, commands, patterns, and 
 
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
-   cd ai-test-enh-v2
+   git clone git@github-personal:vsl/ai-text-enhancer.git
+   cd ai-text-enhancer/ui
    ```
 
 2. **Install dependencies:**

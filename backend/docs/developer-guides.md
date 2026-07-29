@@ -23,7 +23,7 @@ Practical how-to guides for common development tasks, coding conventions, and im
 
 ### Prerequisites
 
-- Node.js 18+ (for Jest tests)
+- Node.js 22
 - Deno (for Edge Functions)
 - Docker (for Supabase local development)
 - Supabase CLI
@@ -725,7 +725,7 @@ curl -X POST http://localhost:54321/functions/v1/enhance \
   -d @test-request.json
 ```
 
-See [Testing Guide](../TESTING_GUIDE.md) for comprehensive testing scenarios.
+See [Testing Guide](./testing.md) for comprehensive testing scenarios.
 
 ---
 
@@ -918,4 +918,4 @@ supabase db reset                 # Reset database with migrations
 - [API Reference](./api-reference.md) - Complete API specification
 - [Architecture](./architecture.md) - System design and two-layer architecture
 - [Configuration](./configuration.md) - Environment variables and settings
-- [Testing Guide](../TESTING_GUIDE.md) - Complete testing scenarios
+- [Testing Guide](./testing.md) - Complete testing scenarios

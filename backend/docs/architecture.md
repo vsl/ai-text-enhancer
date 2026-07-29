@@ -730,7 +730,7 @@ grep -r "Request\|Response" src/
 
 | Component | Current | Compatible With |
 |-----------|---------|-----------------|
-| **Runtime** | Deno | Node.js 18+, Cloudflare Workers |
+| **Runtime** | Deno | Node.js 22, Cloudflare Workers |
 | **Platform** | Supabase Edge Functions | AWS Lambda, Vercel, Netlify |
 | **Deployment** | Supabase CLI | AWS CLI, Serverless Framework |
 

@@ -1,0 +1,89 @@
+name: Backend
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "!backend/**/*.md"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "!backend/**/*.md"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm test -- --runInBand
+      - run: npm run lint:portability
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      APP_SUPABASE_JWT_SECRET: ${{ secrets.APP_SUPABASE_JWT_SECRET }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      BOOTSTRAP_SECRET_KEY: ${{ secrets.BOOTSTRAP_SECRET_KEY }}
+      LLM_TIMEOUT_MS: ${{ secrets.LLM_TIMEOUT_MS || '30000' }}
+      MAX_BATCH_SIZE: ${{ secrets.MAX_BATCH_SIZE || '10' }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.101.0
+      - name: Link Supabase project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Sync Supabase secrets
+        run: |
+          supabase secrets set \
+            GEMINI_API_KEY="$GEMINI_API_KEY" \
+            OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
+            APP_SUPABASE_JWT_SECRET="$APP_SUPABASE_JWT_SECRET" \
+            APP_SUPABASE_SERVICE_ROLE_KEY="$APP_SUPABASE_SERVICE_ROLE_KEY" \
+            BOOTSTRAP_SECRET_KEY="$BOOTSTRAP_SECRET_KEY" \
+            LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
+            MAX_BATCH_SIZE="$MAX_BATCH_SIZE" \
+            STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" \
+            STRIPE_WEBHOOK_SECRET="$STRIPE_WEBHOOK_SECRET" \
+            STRIPE_PUBLISHABLE_KEY="$STRIPE_PUBLISHABLE_KEY"
+      - name: Apply database migrations
+        run: supabase db push --linked
+      - name: Deploy Edge Functions
+        run: |
+          for function in enhance admin me create-checkout stripe-webhook; do
+            supabase functions deploy "$function" --no-verify-jwt
+          done
+      - name: Verify deployment
+        run: |
+          base_url="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 "$base_url/enhance/health"
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 "$base_url/me/health"

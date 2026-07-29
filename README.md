@@ -39,14 +39,23 @@ Connect this GitHub repository to Cloudflare Pages with:
 - Build command: `npm run build`
 - Build output directory: `out`
 - Node version: `22`
+- Build watch include path: `ui/*`
+- Build watch exclude path: `ui/*.md`
 
 Add the three `NEXT_PUBLIC_*` variables above to both Production and Preview environments. Preview deployments intentionally use the production Supabase backend.
 
-The previous GitHub Pages workflow is not included in this monorepo. Disable the old GitHub Pages project only after the Cloudflare `*.pages.dev` deployment is verified.
+The build-watch path prevents backend-only commits from starting a Pages build.
+The previous GitHub Pages workflow is not included in this monorepo. Disable
+the old GitHub Pages project only after the Cloudflare `*.pages.dev` deployment
+is verified.
 
-## Supabase deployment
+## GitHub Actions
 
-`.github/workflows/deploy-backend.yml` deploys the backend when `backend/**` changes on `main`.
+- `.github/workflows/ui.yml` tests and builds only for non-documentation changes
+  under `ui/`.
+- `.github/workflows/backend.yml` checks only non-documentation changes under
+  `backend/`. Pull requests run validation; pushes to `main` also deploy to
+  production Supabase.
 
 Before the first backend change, copy these GitHub Actions secrets to this repository:
 

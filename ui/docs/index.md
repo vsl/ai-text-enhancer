@@ -81,7 +81,8 @@ Testing strategy and practices:
 
 ### deployment.md
 Production deployment instructions:
-- GitHub Actions workflow
+- Path-filtered GitHub checks
+- Cloudflare Pages build-watch configuration
 - Environment variable configuration
 - Build and deployment process
 - Verification steps
@@ -89,7 +90,7 @@ Production deployment instructions:
 ## Related Documentation
 
 - **[Main README](../README.md)** - User-facing project overview, features, and quick start
-- **[CLAUDE.md](../CLAUDE.md)** - AI assistant instructions and project context (references this index)
+- **[AGENTS.md](../AGENTS.md)** - Codex instructions for UI work
 
 ## Active Task Lists
 

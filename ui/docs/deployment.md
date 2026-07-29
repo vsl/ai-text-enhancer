@@ -12,6 +12,11 @@ Connect `vsl/ai-text-enhancer` and configure:
 - Build command: `npm run build`
 - Build output directory: `out`
 - Node version: `22`
+- Build watch include path: `ui/*`
+- Build watch exclude path: `ui/*.md`
+
+The build-watch path is required for this monorepo. Without it, Cloudflare
+Pages builds on backend-only commits too.
 
 ## Environment variables
 
@@ -25,8 +30,10 @@ These values are embedded in the browser build. The Supabase anon key must be th
 
 ## Verification
 
-1. Confirm the production deployment succeeds.
-2. Open the generated `*.pages.dev` URL.
-3. Verify sign-in, profile loading, text enhancement, and checkout navigation.
-4. Verify a pull request receives a working preview deployment.
-5. Disable the old GitHub Pages project after the new deployment is accepted.
+1. Push a UI change and confirm the `UI` GitHub Actions workflow succeeds.
+2. Confirm the production deployment succeeds.
+3. Open the generated `*.pages.dev` URL.
+4. Verify sign-in, profile loading, text enhancement, and checkout navigation.
+5. Verify a pull request receives a working preview deployment.
+6. Push a backend-only change and confirm Cloudflare skips the UI build.
+7. Disable the old GitHub Pages project after the new deployment is accepted.

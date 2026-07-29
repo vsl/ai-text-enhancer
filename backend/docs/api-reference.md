@@ -749,4 +749,4 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 - [Architecture Guide](./architecture.md) - System design and two-layer architecture
 - [Developer Guides](./developer-guides.md) - Implementation patterns and how-to guides
 - [Configuration](./configuration.md) - Environment variables and settings
-- [Testing Guide](../TESTING_GUIDE.md) - Complete testing scenarios
+- [Testing Guide](./testing.md) - Complete testing scenarios

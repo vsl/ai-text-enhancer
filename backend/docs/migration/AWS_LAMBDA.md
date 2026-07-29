@@ -28,7 +28,7 @@ This guide shows how to migrate the AI Text Enhancer Backend from Supabase Edge 
 
 - AWS CLI installed and configured
 - AWS account with appropriate permissions
-- Node.js 18+ installed
+- Node.js 22 installed
 - Project tests passing locally
 
 ---

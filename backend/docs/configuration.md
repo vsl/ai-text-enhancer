@@ -368,7 +368,7 @@ supabase status -o json | jq -r '.JWT_SECRET'
 ### Production (Supabase Cloud)
 
 **Step 1: Open Supabase Dashboard**
-- Go to [app.supabase.com](https://app.supabase.com)
+- Go to the [Supabase Dashboard](https://supabase.com/dashboard)
 - Select your project
 
 **Step 2: Navigate to API Settings**
