@@ -316,7 +316,8 @@ interface Result {
 - Output directory: `out`
 - Build watch include path: `ui/*`
 - Build watch exclude path: `ui/*.md`
-- Production and preview builds use the same Supabase backend.
+- Production builds use production Supabase; preview builds use staging
+  Supabase.
 
 **GitHub Actions**:
 - `../.github/workflows/ui.yml` runs tests and a production build only for

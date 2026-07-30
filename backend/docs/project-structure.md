@@ -515,7 +515,8 @@ PostgreSQL schema migrations for Supabase.
 ### CI/CD
 
 - **../../.github/workflows/backend.yml** - GitHub Actions backend pipeline
-  - Checks backend pull requests and deploys backend changes on pushes to `main`
+  - Checks and deploys backend pull requests to staging
+  - Checks and deploys backend changes on `main` to production
   - Steps: type-check → tests → portability validation → deploy → health check
 
 ---
