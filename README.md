@@ -36,7 +36,7 @@ with the Linux libraries required by Playwright. It uses the shared staging
 Supabase backend; it does not start a local Supabase stack.
 
 Copy the UI environment template and replace its placeholders with the staging
-project URL and publishable key. Never put service-role, database, Stripe, or
+project URL and publishable key. Never put service-role, database, or
 LLM secrets in this file.
 
 ```bash

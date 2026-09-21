@@ -16,9 +16,6 @@ export interface SystemConfig {
   /** Supabase configuration */
   supabase: SupabaseConfig;
 
-  /** Payment system configuration */
-  payment: PaymentConfig;
-
   /** Optional bootstrap secret key for admin user creation */
   bootstrapSecretKey?: string;
 
@@ -192,15 +189,6 @@ export interface EnvironmentConfig {
   APP_SUPABASE_SERVICE_ROLE_KEY: string;
   /** Supabase JWT secret */
   APP_SUPABASE_JWT_SECRET: string;
-
-  /** Stripe secret key for API authentication */
-  STRIPE_SECRET_KEY: string;
-
-  /** Stripe webhook signing secret for event verification */
-  STRIPE_WEBHOOK_SECRET: string;
-
-  /** Stripe publishable key (safe to expose to frontend) */
-  STRIPE_PUBLISHABLE_KEY: string;
 
   /** Optional: Bootstrap secret key for admin user creation */
   BOOTSTRAP_SECRET_KEY?: string;

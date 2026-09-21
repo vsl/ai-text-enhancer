@@ -106,16 +106,3 @@ export interface UserSession {
   profile: UserProfile | null;
   tierLimits: TierLimits;
 }
-
-/**
- * Token package for purchase
- */
-export interface TokenPackage {
-  id: string;
-  name: string;
-  tokens: number;
-  price: number;
-  popular?: boolean;
-  discount?: string;
-  costPerThousand: string;
-}

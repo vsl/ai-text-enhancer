@@ -32,7 +32,7 @@ flowchart LR
 3. For each assistant, the user selects a model, role, actions, style, and output language.
 4. Saving updates the current workflow in browser `localStorage`.
 5. Clicking **Enhance** filters out disabled assistants and creates one batch request.
-6. The UI adds the user's Supabase access token and sends `POST /enhance`.
+6. The UI maintains an invisible anonymous Supabase session, adds its access token, and sends `POST /enhance`.
 7. Results are matched back to assistant cards by assistant ID.
 
 The UI implementation is mainly in [the assistant page](../ui/src/app/text-ai-assistants/page.tsx), [the configuration panel](../ui/src/components/features/ConfigEditorModal.tsx), and [WorkflowContext](../ui/src/context/WorkflowContext.tsx).
@@ -85,9 +85,14 @@ flowchart TD
     RESPONSE --> UI["UI updates assistant cards and local token balance"]
 ```
 
-### 1. HTTP and authentication
+### 1. Anonymous session boundary
 
-The Supabase Edge Function starts the services in [index.ts](../backend/supabase/functions/enhance/index.ts). The request handler in [handler.ts](../backend/supabase/functions/enhance/handler.ts) parses JSON, validates the Bearer token, loads the user's profile and tier, and passes the body to the orchestrator.
+The public UI has no login or account controls. It creates and refreshes a
+Supabase anonymous session in the background. The Edge Function starts the
+services in [index.ts](../backend/supabase/functions/enhance/index.ts). The
+request handler in [handler.ts](../backend/supabase/functions/enhance/handler.ts)
+parses JSON, validates the anonymous Bearer token, loads the usage profile,
+and passes the body to the orchestrator.
 
 ### 2. Validation and access checks
 
@@ -162,7 +167,7 @@ The backend configuration is authoritative for API processing. The UI mirrors th
 ## Error behavior in simple terms
 
 - Bad request configuration: the whole request stops with HTTP `400` before any model call.
-- Missing or expired login: HTTP `401`.
+- Missing or expired anonymous session: HTTP `401`; the UI replaces the session and reloads.
 - Model not allowed for the user's tier: HTTP `403`.
 - Insufficient token balance: HTTP `429`.
 - One model call fails or times out: that assistant gets an error while the others can still succeed.

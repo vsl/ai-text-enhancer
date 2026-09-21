@@ -6,7 +6,7 @@
  * using standard process.env.
  */
 
-import type { SystemConfig, LLMProviderConfig } from '../types/config.types.ts';
+import type { SystemConfig, LLMProviderConfig, PaymentConfig } from '../types/config.types.ts';
 import { MODELS, getModelsByProvider } from './models.config.ts';
 import { ROLES } from './roles.config.ts';
 
@@ -25,14 +25,6 @@ export function loadConfig(): SystemConfig {
   const supabaseServiceRoleKey = process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
   const supabaseJwtSecret = process.env.APP_SUPABASE_JWT_SECRET;
 
-  // Payment system configuration (Stripe)
-  /** Stripe secret key for API authentication */
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-  /** Stripe webhook signing secret for event verification */
-  const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  /** Stripe publishable key (safe to expose to frontend) */
-  const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
-
   // Optional bootstrap secret for admin user creation
   const bootstrapSecretKey = process.env.BOOTSTRAP_SECRET_KEY;
 
@@ -43,10 +35,6 @@ export function loadConfig(): SystemConfig {
   if (!supabaseUrl) missingVars.push('SUPABASE_URL');
   if (!supabaseServiceRoleKey) missingVars.push('APP_SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseJwtSecret) missingVars.push('APP_SUPABASE_JWT_SECRET');
-  if (!stripeSecretKey) missingVars.push('STRIPE_SECRET_KEY');
-  if (!stripeWebhookSecret) missingVars.push('STRIPE_WEBHOOK_SECRET');
-  if (!stripePublishableKey) missingVars.push('STRIPE_PUBLISHABLE_KEY');
-
   if (missingVars.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missingVars.join(', ')}. ` +
@@ -90,11 +78,6 @@ export function loadConfig(): SystemConfig {
       serviceRoleKey: supabaseServiceRoleKey!,
       jwtSecret: supabaseJwtSecret!,
     },
-    payment: {
-      stripeSecretKey: stripeSecretKey!,
-      stripeWebhookSecret: stripeWebhookSecret!,
-      stripePublishableKey: stripePublishableKey!,
-    },
     bootstrapSecretKey: bootstrapSecretKey,
     rateLimits: {
       free: {
@@ -125,6 +108,28 @@ export function loadConfig(): SystemConfig {
   };
 }
 
+/** Load configuration used only by the dormant payment functions. */
+export function loadPaymentConfig(): PaymentConfig {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+  const missingVars = [
+    ['STRIPE_SECRET_KEY', stripeSecretKey],
+    ['STRIPE_WEBHOOK_SECRET', stripeWebhookSecret],
+    ['STRIPE_PUBLISHABLE_KEY', stripePublishableKey],
+  ].filter(([, value]) => !value).map(([name]) => name);
+
+  if (missingVars.length > 0) {
+    throw new Error(`Missing required payment environment variables: ${missingVars.join(', ')}`);
+  }
+
+  return {
+    stripeSecretKey: stripeSecretKey!,
+    stripeWebhookSecret: stripeWebhookSecret!,
+    stripePublishableKey: stripePublishableKey!,
+  };
+}
+
 /**
  * Get environment variable value
  * @param key - Environment variable key
@@ -145,9 +150,6 @@ export function hasRequiredEnvVars(): boolean {
     'SUPABASE_URL',
     'APP_SUPABASE_SERVICE_ROLE_KEY',
     'APP_SUPABASE_JWT_SECRET',
-    'STRIPE_SECRET_KEY',
-    'STRIPE_WEBHOOK_SECRET',
-    'STRIPE_PUBLISHABLE_KEY',
   ];
 
   return required.every((key) => !!process.env[key]);

@@ -17,11 +17,6 @@ const mockConfig: SystemConfig = {
     serviceRoleKey: 'test-service-role-key',
     jwtSecret: 'test-jwt-secret',
   },
-  payment: {
-    stripeSecretKey: 'sk_test_mock',
-    stripeWebhookSecret: 'whsec_mock',
-    stripePublishableKey: 'pk_test_mock',
-  },
   rateLimits: {
     free: {
       requestsPerDay: 100,

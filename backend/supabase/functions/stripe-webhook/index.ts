@@ -1,14 +1,15 @@
 import Stripe from 'npm:stripe@17.5.0';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { loadConfig } from '../../../src/config/index.ts';
+import { loadConfig, loadPaymentConfig } from '../../../src/config/index.ts';
 import { PaymentService } from '../../../src/services/payment-service.ts';
 import { QuotaRepository } from '../../../src/repositories/quota.repository.ts';
 
 const config = loadConfig();
-const stripe = new Stripe(config.payment.stripeSecretKey, { apiVersion: '2024-11-20.acacia' });
+const paymentConfig = loadPaymentConfig();
+const stripe = new Stripe(paymentConfig.stripeSecretKey, { apiVersion: '2024-11-20.acacia' });
 const supabase = createClient(config.supabase.url, config.supabase.serviceRoleKey);
 const quotaRepository = new QuotaRepository(supabase);
-const paymentService = new PaymentService(quotaRepository, config);
+const paymentService = new PaymentService(quotaRepository);
 
 Deno.serve(async (req) => {
   // Get raw body for signature verification
@@ -30,7 +31,7 @@ Deno.serve(async (req) => {
   // Verify webhook signature
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, config.payment.stripeWebhookSecret);
+    event = stripe.webhooks.constructEvent(body, signature, paymentConfig.stripeWebhookSecret);
   } catch (error) {
     console.error('Webhook signature verification failed:', error);
     return new Response('Invalid signature', { status: 400 });

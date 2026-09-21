@@ -6,7 +6,7 @@
  */
 
 // Core functions
-export { loadConfig, getEnvVar, hasRequiredEnvVars } from './loader.ts';
+export { loadConfig, loadPaymentConfig, getEnvVar, hasRequiredEnvVars } from './loader.ts';
 export { validateConfig, validateConfigDetailed } from './validator.ts';
 
 // Configuration data

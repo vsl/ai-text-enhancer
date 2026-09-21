@@ -8,17 +8,11 @@ import { DEFAULT_OPTIONS, TIER_LIMITS } from '@/lib/constants';
 // Mock AuthContext before imports
 jest.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({
-    user: null,
     profile: null,
-    session: null,
-    loading: false,
     tierLimits: TIER_LIMITS.free,
-    signUp: jest.fn(),
-    signIn: jest.fn(),
-    signOut: jest.fn(),
-    signInWithOAuth: jest.fn(),
-    resetPasswordForEmail: jest.fn(),
     getAuthToken: jest.fn().mockResolvedValue('anonymous'),
+    resetSession: jest.fn(),
+    updateTokenBalance: jest.fn(),
   }),
 }));
 

@@ -18,9 +18,6 @@ describe('Configuration Validator', () => {
     process.env.APP_SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
     process.env.APP_SUPABASE_JWT_SECRET = 'test-jwt-secret-with-at-least-32-chars-long';
     process.env.BOOTSTRAP_SECRET_KEY = 'test-bootstrap-secret';
-    process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
-    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_mock';
-    process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_mock';
   });
 
   afterAll(() => {

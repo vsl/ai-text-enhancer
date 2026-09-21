@@ -8,7 +8,6 @@ import { CreateWorkflowModal } from '@/components/features/CreateWorkflowModal';
 import { ConfigEditorModal } from '@/components/features/ConfigEditorModal';
 import { CharacterCounter } from '@/components/features/CharacterCounter';
 import { AssistantCard } from '@/components/features/AssistantCard';
-import { AuthModals } from '@/components/features/auth/AuthModals';
 import { AiConfig } from '@/lib/types';
 import { TOOLTIP_TEXTS, DEFAULT_OPTIONS, DEFAULT_WORKFLOW_NAMES } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
@@ -40,8 +39,7 @@ function TextAIAssistantsContent() {
     handleCancel,
   } = useWorkflow();
 
-  // Get tier limits and auth state from auth context
-  const { tierLimits, isAnonymous, profile } = useAuth();
+  const { tierLimits, profile } = useAuth();
 
   // Local UI state
   const [isInputHighlighted, setIsInputHighlighted] = useState(false);
@@ -51,7 +49,6 @@ function TextAIAssistantsContent() {
   const [configToEdit, setConfigToEdit] = useState<AiConfig | null>(null);
   const [editorMode, setEditorMode] = useState<'add' | 'edit'>('add');
   const [isCreateWorkflowModalOpen, setIsCreateWorkflowModalOpen] = useState(false);
-  const [showSignupModal, setShowSignupModal] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   // Modal handlers
@@ -163,14 +160,7 @@ function TextAIAssistantsContent() {
         onCreate={handleCreateWorkflow}
         existingWorkflowNames={workflows.map((w) => w.name)}
       />
-      <AuthModals
-        activeModal={showSignupModal ? 'signup' : null}
-        onClose={() => setShowSignupModal(false)}
-        onSwitchModal={(modal) => setShowSignupModal(modal === 'signup')}
-      />
-
-      {/* Anonymous User Info Banner */}
-      {isAnonymous && profile && (
+      {profile && (
         <div className="mx-auto w-full max-w-7xl px-4 mb-6">
           <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
             <div className="flex items-start gap-3">
@@ -180,15 +170,9 @@ function TextAIAssistantsContent() {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-foreground">Guest Mode</h3>
+                <h3 className="text-sm font-medium text-foreground">Weekly usage</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  You're using a guest account with {profile.tokens_available.toLocaleString()} free tokens.
-                  <button
-                    onClick={() => setShowSignupModal(true)}
-                    className="ml-1 text-primary hover:underline font-medium"
-                  >
-                    Create an account
-                  </button> to save your progress and quota.
+                  {profile.tokens_available.toLocaleString()} tokens remaining. Allowance resets Monday at 00:00 UTC.
                 </p>
               </div>
             </div>
@@ -399,7 +383,7 @@ function TextAIAssistantsContent() {
                     disabled={isBatchLimitReached}
                     title={
                       isBatchLimitReached
-                        ? `Maximum of ${tierLimits.maxBatchSize} assistants reached for your tier`
+                        ? `Maximum of ${tierLimits.maxBatchSize} assistants reached`
                         : 'Add a new AI assistant'
                     }
                   >

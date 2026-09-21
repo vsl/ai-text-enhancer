@@ -29,12 +29,9 @@ The backend currently verifies user tokens with the legacy JWT secret. Do not
 rotate Auth to an asymmetric signing key until that code is migrated to JWKS
 verification.
 
-Open **Authentication > URL Configuration**:
-
-- Production Site URL: `https://<pages-project>.pages.dev`
-- Add `http://localhost:3000/**` to both projects' Redirect URLs.
-- Add `https://**.<pages-project>.pages.dev/**` to both projects' Redirect
-  URLs so Cloudflare previews can complete sign-in and password-reset flows.
+Open **Authentication > Providers** and enable **Anonymous Sign-Ins**. Disable
+email/password signups and any OAuth providers. The public UI creates an
+anonymous session in the background, so it does not need Auth redirect URLs.
 
 The first successful backend deployment applies migrations, syncs function
 secrets, and deploys the Edge Functions.
@@ -60,23 +57,20 @@ Add every name below twice, once with the `STAGING_` prefix and once with the
 - `APP_SUPABASE_JWT_SECRET`
 - `APP_SUPABASE_SERVICE_ROLE_KEY`
 - `BOOTSTRAP_SECRET_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PUBLISHABLE_KEY`
 
 For example, add `STAGING_SUPABASE_PROJECT_ID` and
 `PRODUCTION_SUPABASE_PROJECT_ID`.
 
-Use Stripe test-mode keys for staging and live-mode keys for production. Create
-one webhook endpoint per environment:
+After the first anonymous-only deployment, remove the two dormant payment
+functions once from both linked projects:
 
-```text
-https://<supabase-project-ref>.supabase.co/functions/v1/stripe-webhook
+```bash
+supabase functions delete create-checkout --project-ref <project-ref>
+supabase functions delete stripe-webhook --project-ref <project-ref>
 ```
 
-Subscribe each endpoint to `checkout.session.completed`, `charge.refunded`,
-and `payment_intent.payment_failed`, then store that endpoint's signing secret
-in the matching GitHub secret.
+They are no longer deployed or supplied with payment secrets. Their source and
+historical database records remain in the repository.
 
 ## 3. Connect Cloudflare Pages
 
@@ -113,7 +107,29 @@ https://<supabase-project-ref>.supabase.co/functions/v1
 Cloudflare creates preview URLs only for pull requests whose branches are in
 this repository, not forks.
 
-## 4. Work through pull requests
+## 4. Configure the weekly anonymous allowance
+
+The database resets every anonymous user's balance each Monday at 00:00 UTC.
+Change the allowance without redeploying:
+
+```sql
+update private.runtime_settings
+set bigint_value = <amount>
+where setting_name = 'anonymous_weekly_token_allowance';
+```
+
+The new value applies immediately to new anonymous sessions and at the next
+weekly reset to existing sessions. Apply it to existing sessions immediately
+when needed:
+
+```sql
+select private.reset_anonymous_quotas();
+```
+
+Run these statements as the database owner. Neither interface is available to
+the public Data API roles.
+
+## 5. Work through pull requests
 
 Never push directly to `main`.
 
@@ -154,7 +170,8 @@ References:
 - [Cloudflare Pages preview deployments](https://developers.cloudflare.com/pages/configuration/preview-deployments/)
 - [Cloudflare Pages build watch paths](https://developers.cloudflare.com/pages/configuration/build-watch-paths/)
 - [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys)
-- [Supabase Auth redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
+- [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/auth-anonymous)
+- [Supabase Cron](https://supabase.com/docs/guides/cron)
 - [Supabase JWT signing keys](https://supabase.com/docs/guides/auth/signing-keys)
 - [GitHub environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 - [GitHub protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)

@@ -1,14 +1,10 @@
-'use client';
-
-import { useAuth } from '@/context/AuthContext';
-
 /**
  * Props for the CharacterCounter component
  */
 interface CharacterCounterProps {
   /** Current number of characters in the text field */
   currentLength: number;
-  /** Maximum allowed characters for the current tier */
+  /** Maximum allowed characters */
   maxLength: number;
   /** Label for the counter (e.g., "Text" or "Context") */
   label: string;
@@ -19,8 +15,6 @@ export function CharacterCounter({
   maxLength,
   label,
 }: CharacterCounterProps) {
-  const { profile } = useAuth();
-  const tierName = profile?.tier || 'free';
   const percentage = (currentLength / maxLength) * 100;
 
   const getColorClass = () => {
@@ -34,7 +28,7 @@ export function CharacterCounter({
       <span className={getColorClass()}>
         {currentLength} / {maxLength}
       </span>
-      {' '}characters ({tierName} tier)
+      {' '}characters
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { PaymentService } from '../../../src/services/payment-service.js';
 import { InvalidPackageError } from '../../../src/errors/payment-errors.js';
 import { TOKEN_PACKAGES } from '../../../src/config/payment.config.js';
 import type { QuotaRepository } from '../../../src/repositories/quota.repository.js';
-import type { SystemConfig } from '../../../src/types/config.types.js';
 import type Stripe from 'stripe';
 
 // Mock QuotaRepository
@@ -22,19 +21,6 @@ const mockQuotaRepository: jest.Mocked<QuotaRepository> = {
   deductTokensForRefund: jest.fn(),
   recordRefund: jest.fn(),
 } as any;
-
-// Mock SystemConfig
-const mockConfig: SystemConfig = {
-  supabase: {
-    url: 'http://localhost:54321',
-    serviceRoleKey: 'mock-service-role-key',
-    jwtSecret: 'mock-jwt-secret',
-  },
-  payment: {
-    stripeSecretKey: 'sk_test_mock',
-    stripeWebhookSecret: 'whsec_mock',
-  },
-} as SystemConfig;
 
 // Mock Stripe SDK
 const mockStripeCreate = jest.fn();
@@ -54,7 +40,7 @@ describe('PaymentService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    paymentService = new PaymentService(mockQuotaRepository, mockConfig);
+    paymentService = new PaymentService(mockQuotaRepository);
   });
 
   describe('createCheckoutSession', () => {

@@ -3,29 +3,21 @@
 const mockFunctions = {
   mockGetAuthToken: jest.fn().mockResolvedValue('anonymous'),
   mockUpdateTokenBalance: jest.fn(),
-  mockRefreshProfile: jest.fn(),
+  mockResetSession: jest.fn(),
 };
 
 jest.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({
-    user: null,
     profile: null,
-    session: null,
-    loading: false,
     tierLimits: {
       maxTextLength: 500,
       maxContextLength: 800,
       maxBatchSize: 3,
       availableModels: ['gemini-flash', 'open-router-free'],
     },
-    signUp: jest.fn(),
-    signIn: jest.fn(),
-    signOut: jest.fn(),
-    signInWithOAuth: jest.fn(),
-    resetPasswordForEmail: jest.fn(),
     getAuthToken: mockFunctions.mockGetAuthToken,
+    resetSession: mockFunctions.mockResetSession,
     updateTokenBalance: mockFunctions.mockUpdateTokenBalance,
-    refreshProfile: mockFunctions.mockRefreshProfile,
   }),
 }));
 
@@ -36,7 +28,7 @@ import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS } from '@/lib/cons
 import { AiConfig } from '@/lib/types';
 
 // Destructure mock functions for easier access
-const { mockGetAuthToken, mockUpdateTokenBalance, mockRefreshProfile } = mockFunctions;
+const { mockGetAuthToken, mockUpdateTokenBalance, mockResetSession } = mockFunctions;
 
 // Wrapper component for testing
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -50,7 +42,7 @@ describe('WorkflowContext', () => {
     // Reset mock implementations
     mockGetAuthToken.mockResolvedValue('anonymous');
     mockUpdateTokenBalance.mockClear();
-    mockRefreshProfile.mockClear();
+    mockResetSession.mockClear();
   });
 
   describe('Provider initialization', () => {
@@ -445,6 +437,18 @@ describe('WorkflowContext', () => {
       expect(typeof result.current.handleGenerate).toBe('function');
       expect(typeof result.current.handleCancel).toBe('function');
     });
+
+    it('replaces the anonymous session after a 401', async () => {
+      const consoleError = jest.spyOn(console, 'error').mockImplementation();
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 401 });
+      const { result } = renderHook(() => useWorkflow(), { wrapper });
+
+      act(() => result.current.setInputText('Test input text'));
+      await act(async () => result.current.handleGenerate());
+
+      expect(mockResetSession).toHaveBeenCalledTimes(1);
+      consoleError.mockRestore();
+    });
   });
 
   describe('Token Balance Updates - Bug Fix #2', () => {
@@ -453,10 +457,10 @@ describe('WorkflowContext', () => {
       (global.fetch as jest.Mock).mockClear();
       // Reset token balance mocks
       mockUpdateTokenBalance.mockClear();
-      mockRefreshProfile.mockClear();
+      mockResetSession.mockClear();
     });
 
-    it('should call updateTokenBalance (not refreshProfile) after successful enhancement', async () => {
+    it('should update the local token balance after successful enhancement', async () => {
       // Setup mock to dynamically respond with correct ID
       (global.fetch as jest.Mock).mockImplementation(async (_url: string, options: any) => {
         // Parse the request body to get the assistant IDs
@@ -503,8 +507,7 @@ describe('WorkflowContext', () => {
       // Verify updateTokenBalance was called with correct value
       expect(mockUpdateTokenBalance).toHaveBeenCalledWith(100);
 
-      // Verify refreshProfile was NOT called
-      expect(mockRefreshProfile).not.toHaveBeenCalled();
+      expect(mockResetSession).not.toHaveBeenCalled();
     });
 
     it('should calculate total tokens from multiple successful results', async () => {

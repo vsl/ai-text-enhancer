@@ -2,7 +2,7 @@
  * Configuration Loader Tests
  */
 
-import { loadConfig, getEnvVar, hasRequiredEnvVars } from '../../../src/config/loader';
+import { loadConfig, loadPaymentConfig, getEnvVar, hasRequiredEnvVars } from '../../../src/config/loader';
 
 describe('Configuration Loader', () => {
   // Store original environment
@@ -16,9 +16,6 @@ describe('Configuration Loader', () => {
       SUPABASE_URL: 'http://localhost:54321',
       APP_SUPABASE_SERVICE_ROLE_KEY: 'test-supabase-key',
       APP_SUPABASE_JWT_SECRET: 'test-jwt-secret',
-      STRIPE_SECRET_KEY: 'sk_test_mock',
-      STRIPE_WEBHOOK_SECRET: 'whsec_mock',
-      STRIPE_PUBLISHABLE_KEY: 'pk_test_mock',
     };
     Object.assign(process.env, { ...defaults, ...overrides });
   };
@@ -195,6 +192,26 @@ describe('Configuration Loader', () => {
       // Premium tier token limits
       expect(config.rateLimits.premium.maxTokensPerRequest).toBe(8192);
       expect(config.rateLimits.premium.maxTokensPerDay).toBe(5000000);
+    });
+  });
+
+  describe('loadPaymentConfig', () => {
+    it('loads dormant payment configuration separately', () => {
+      process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_mock';
+      process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_mock';
+
+      expect(loadPaymentConfig()).toEqual({
+        stripeSecretKey: 'sk_test_mock',
+        stripeWebhookSecret: 'whsec_mock',
+        stripePublishableKey: 'pk_test_mock',
+      });
+    });
+
+    it('requires payment variables only when payment configuration is loaded', () => {
+      setupRequiredEnv();
+      expect(loadConfig()).toBeDefined();
+      expect(() => loadPaymentConfig()).toThrow('STRIPE_SECRET_KEY');
     });
   });
 

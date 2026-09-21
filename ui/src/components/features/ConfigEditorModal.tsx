@@ -207,7 +207,7 @@ export function ConfigEditorModal({
                           value={m}
                           disabled={!isAvailable}
                         >
-                          {m}{!isAvailable ? ' (Upgrade required)' : ''}
+                          {m}{!isAvailable ? ' (Unavailable)' : ''}
                         </option>
                       );
                     })}

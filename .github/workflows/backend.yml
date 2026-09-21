@@ -56,9 +56,6 @@ jobs:
       BOOTSTRAP_SECRET_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_BOOTSTRAP_SECRET_KEY || secrets.PRODUCTION_BOOTSTRAP_SECRET_KEY }}
       LLM_TIMEOUT_MS: ${{ secrets.LLM_TIMEOUT_MS || '30000' }}
       MAX_BATCH_SIZE: ${{ secrets.MAX_BATCH_SIZE || '10' }}
-      STRIPE_SECRET_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_STRIPE_SECRET_KEY || secrets.PRODUCTION_STRIPE_SECRET_KEY }}
-      STRIPE_WEBHOOK_SECRET: ${{ github.event_name == 'pull_request' && secrets.STAGING_STRIPE_WEBHOOK_SECRET || secrets.PRODUCTION_STRIPE_WEBHOOK_SECRET }}
-      STRIPE_PUBLISHABLE_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_STRIPE_PUBLISHABLE_KEY || secrets.PRODUCTION_STRIPE_PUBLISHABLE_KEY }}
 
     steps:
       - uses: actions/checkout@v6
@@ -76,16 +73,21 @@ jobs:
             APP_SUPABASE_SERVICE_ROLE_KEY="$APP_SUPABASE_SERVICE_ROLE_KEY" \
             BOOTSTRAP_SECRET_KEY="$BOOTSTRAP_SECRET_KEY" \
             LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
-            MAX_BATCH_SIZE="$MAX_BATCH_SIZE" \
-            STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" \
-            STRIPE_WEBHOOK_SECRET="$STRIPE_WEBHOOK_SECRET" \
-            STRIPE_PUBLISHABLE_KEY="$STRIPE_PUBLISHABLE_KEY"
+            MAX_BATCH_SIZE="$MAX_BATCH_SIZE"
       - name: Apply database migrations
         run: supabase db push --linked
       - name: Deploy Edge Functions
         run: |
-          for function in enhance admin me create-checkout stripe-webhook; do
+          for function in enhance admin me; do
             supabase functions deploy "$function" --no-verify-jwt
+          done
+      - name: Remove disabled payment functions
+        run: |
+          deployed="$(supabase functions list --project-ref "$SUPABASE_PROJECT_ID" --output-format json)"
+          for function in create-checkout stripe-webhook; do
+            if jq -e --arg slug "$function" 'any(.[]; .slug == $slug)' <<< "$deployed" > /dev/null; then
+              supabase functions delete "$function" --project-ref "$SUPABASE_PROJECT_ID"
+            fi
           done
       - name: Verify deployment
         run: |

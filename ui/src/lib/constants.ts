@@ -2,7 +2,7 @@
  * Constants for the AI Text Enhancer application
  */
 
-import { AiConfig, AiRoleId, Options, Workflow, Language, LanguageLevel, Tier, TierLimits, TokenPackage } from './types';
+import { AiConfig, AiRoleId, Options, Workflow, Language, LanguageLevel, Tier, TierLimits } from './types';
 
 export const AVAILABLE_MODELS = ['gemini-flash', 'open-router-free'] as const;
 
@@ -107,10 +107,10 @@ export const TOOLTIP_TEXTS = {
 export const ERROR_MESSAGES: Record<string, string> = {
   BATCH_SIZE_EXCEEDED: "Too many assistants selected. Please reduce the number of enabled assistants.",
   EMPTY_BATCH: "No assistants are enabled. Please enable at least one assistant.",
-  AUTHENTICATION_FAILED: "Authentication failed. Please try again or contact support.",
-  AUTHORIZATION_FAILED: "Your account doesn't have access to this feature. Consider upgrading your plan.",
+  AUTHENTICATION_FAILED: "Your session could not be restored. Please reload the page.",
+  AUTHORIZATION_FAILED: "This feature is unavailable in the public demo.",
   NOT_FOUND: "Service is temporarily unavailable. Please try again later.",
-  QUOTA_EXCEEDED: "You've exceeded your usage quota. Please try again later or upgrade your plan.",
+  QUOTA_EXCEEDED: "You've reached this week's usage limit. It resets Monday at 00:00 UTC.",
   INTERNAL_ERROR: "A server error occurred. Please try again in a few moments.",
   LLM_ERROR: "The AI service is temporarily unavailable. Please try again."
 };
@@ -238,42 +238,12 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
  * Authentication error messages
  */
 export const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  INSUFFICIENT_QUOTA: "You've run out of tokens. Please upgrade your plan or wait for your quota to refresh.",
-  MODEL_ACCESS_DENIED: "This model is not available on your current tier. Please upgrade to access it.",
-  USER_TEXT_LIMIT_EXCEEDED: "Your text exceeds the maximum length for your tier. Please shorten it or upgrade.",
-  CONTEXT_TEXT_LIMIT_EXCEEDED: "Your context exceeds the maximum length for your tier. Please shorten it or upgrade.",
-  TIER_BATCH_SIZE_EXCEEDED: "You've reached the maximum number of assistants for your tier. Please upgrade to add more.",
-  INVALID_TOKEN: "Your session has expired. Please log in again.",
-  USER_BLOCKED: "Your account has been blocked. Please contact support.",
-  AUTHENTICATION_FAILED: "Authentication failed. Please try signing in again.",
+  INSUFFICIENT_QUOTA: "You've reached this week's token allowance. It resets Monday at 00:00 UTC.",
+  MODEL_ACCESS_DENIED: "This model is unavailable in the public demo.",
+  USER_TEXT_LIMIT_EXCEEDED: "Your text exceeds the maximum length. Please shorten it.",
+  CONTEXT_TEXT_LIMIT_EXCEEDED: "Your context exceeds the maximum length. Please shorten it.",
+  TIER_BATCH_SIZE_EXCEEDED: "You've reached the maximum number of assistants.",
+  INVALID_TOKEN: "Your session expired. Please reload the page.",
+  USER_BLOCKED: "Access is unavailable.",
+  AUTHENTICATION_FAILED: "Your session could not be restored. Please reload the page.",
 };
-
-/**
- * Token packages for purchase
- */
-export const TOKEN_PACKAGES: TokenPackage[] = [
-  {
-    id: 'starter',
-    name: 'Starter Pack',
-    tokens: 100000,
-    price: 5.00,
-    costPerThousand: '$0.05',
-  },
-  {
-    id: 'popular',
-    name: 'Popular Pack',
-    tokens: 500000,
-    price: 20.00,
-    popular: true,
-    discount: '20% off',
-    costPerThousand: '$0.04',
-  },
-  {
-    id: 'premium',
-    name: 'Premium Pack',
-    tokens: 1000000,
-    price: 35.00,
-    discount: '30% off',
-    costPerThousand: '$0.035',
-  },
-];

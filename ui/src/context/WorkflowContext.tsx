@@ -48,8 +48,7 @@ const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined
  * WorkflowProvider component
  */
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
-  // Get auth token function, update token balance, and sign out
-  const { getAuthToken, updateTokenBalance, signOut } = useAuth();
+  const { getAuthToken, updateTokenBalance, resetSession } = useAuth();
 
   // Persistent state using localStorage
   const [workflows, setWorkflows] = useLocalStorage<Workflow[]>(
@@ -313,9 +312,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
       // Check if response is ok
       if (!response.ok) {
-        // Handle 401 Unauthorized - sign out and reload
+        // Replace an expired anonymous session and reload.
         if (response.status === 401) {
-          await signOut();
+          await resetSession();
           window.location.reload();
           return; // Exit early since page will reload
         }
@@ -406,7 +405,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
       setIsGenerating(false);
     }
-  }, [configs, inputText, contextText, getAuthToken, updateTokenBalance, signOut]);
+  }, [configs, inputText, contextText, getAuthToken, updateTokenBalance, resetSession]);
 
   /**
    * Cancel generation

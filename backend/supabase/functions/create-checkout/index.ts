@@ -1,6 +1,6 @@
 import Stripe from 'npm:stripe@17.5.0';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { loadConfig } from '../../../src/config/index.ts';
+import { loadConfig, loadPaymentConfig } from '../../../src/config/index.ts';
 import { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
 import { PaymentService } from '../../../src/services/payment-service.ts';
 import { QuotaRepository } from '../../../src/repositories/quota.repository.ts';
@@ -16,11 +16,12 @@ const corsResponse = () => new Response('ok', { headers: corsHeaders });
 const jsonHeaders = () => ({ ...corsHeaders, 'Content-Type': 'application/json' });
 
 const config = loadConfig();
-const stripe = new Stripe(config.payment.stripeSecretKey, { apiVersion: '2024-11-20.acacia' });
+const paymentConfig = loadPaymentConfig();
+const stripe = new Stripe(paymentConfig.stripeSecretKey, { apiVersion: '2024-11-20.acacia' });
 const supabase = createClient(config.supabase.url, config.supabase.serviceRoleKey);
 const authMiddleware = new AuthMiddleware(config);
 const quotaRepository = new QuotaRepository(supabase);
-const paymentService = new PaymentService(quotaRepository, config);
+const paymentService = new PaymentService(quotaRepository);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

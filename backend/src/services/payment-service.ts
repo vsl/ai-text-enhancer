@@ -19,7 +19,6 @@
 
 import type Stripe from 'stripe';
 import type { QuotaRepository } from '../repositories/quota.repository.ts';
-import type { SystemConfig } from '../types/config.types.ts';
 import { getPackageById } from '../config/payment.config.ts';
 import { InvalidPackageError } from '../errors/payment-errors.ts';
 
@@ -40,10 +39,7 @@ export interface CheckoutSessionResult {
  * in any runtime (Deno, Node.js, Cloudflare Workers, etc.)
  */
 export class PaymentService {
-  constructor(
-    private quotaRepository: QuotaRepository,
-    private config: SystemConfig
-  ) {}
+  constructor(private quotaRepository: QuotaRepository) {}
 
   /**
    * Create a Stripe checkout session for token purchase
