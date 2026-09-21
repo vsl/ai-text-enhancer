@@ -26,13 +26,9 @@ import { getModelById } from '../config/models.config.ts';
 import { getRoleById } from '../config/roles.config.ts';
 import { getLimitsForTier } from '../config/tier-limits.config.ts';
 import type { LLMProviderConfig } from '../types/config.types.ts';
-import {
-  EmptyBatchError,
-  DuplicateTaskIdError,
-  TaskTimeoutError,
-  UserTextLimitError,
-  ContextTextLimitError
-} from '../errors/orchestration-errors.ts';
+import { LLMTimeoutError } from '../errors/llm-errors.ts';
+import { parseTextOutput } from '../config/output-contract.config.ts';
+import { validateBatchRequest } from './request-validator.ts';
 
 export class BatchOrchestrator {
   private promptBuilder: PromptBuilder;
@@ -67,10 +63,10 @@ export class BatchOrchestrator {
    */
   async processBatch(
     user: UserProfile,
-    request: BatchRequest
+    input: unknown
   ): Promise<BatchResponse> {
-    // 1. Validate batch structure (excludes batch size - handled separately for partial success)
-    this.validateBatchStructure(user, request);
+    // 1. Validate the untrusted API payload (batch size remains a partial-success limit)
+    const request: BatchRequest = validateBatchRequest(input, user);
 
     // 2. Split assistants into processable and exceeded based on tier limit
     const tierLimits = getLimitsForTier(user.tier);
@@ -153,53 +149,6 @@ export class BatchOrchestrator {
   }
 
   /**
-   * Validate batch request structure (excluding batch size - handled separately for partial success)
-   * 
-   * Note: Batch size is NOT validated here. Instead, excess assistants are
-   * processed with TIER_BATCH_SIZE_EXCEEDED error to support partial success.
-   */
-  private validateBatchStructure(user: UserProfile, request: BatchRequest): void {
-    // Check empty
-    if (!request.assistants || request.assistants.length === 0) {
-      throw new EmptyBatchError();
-    }
-
-    // Get tier-specific limits
-    const tierLimits = getLimitsForTier(user.tier);
-
-    // Note: Batch size check removed - handled in processBatch for partial success
-
-    // Check for duplicate IDs
-    const ids = request.assistants.map(a => a.id);
-    const uniqueIds = new Set(ids);
-    if (ids.length !== uniqueIds.size) {
-      const duplicateId = ids.find((id, index) => ids.indexOf(id) !== index);
-      throw new DuplicateTaskIdError(duplicateId!);
-    }
-
-    // Validate each assistant's text lengths against tier limits
-    for (const assistant of request.assistants) {
-      // Check user text length
-      if (assistant.userText.length > tierLimits.maxUserTextLength) {
-        throw new UserTextLimitError(
-          user.tier,
-          tierLimits.maxUserTextLength,
-          assistant.userText.length
-        );
-      }
-
-      // Check context text length (if provided)
-      if (assistant.contextText && assistant.contextText.length > tierLimits.maxContextTextLength) {
-        throw new ContextTextLimitError(
-          user.tier,
-          tierLimits.maxContextTextLength,
-          assistant.contextText.length
-        );
-      }
-    }
-  }
-
-  /**
    * Validate user has access to all requested models
    */
   private validateAllModelAccess(
@@ -237,7 +186,7 @@ export class BatchOrchestrator {
   ): Promise<AssistantProcessingResult[]> {
     // Create promises for all assistant tasks
     const promises = assistants.map(assistant =>
-      this.processAssistantWithTimeout(assistant)
+      this.executeAssistantTask(assistant)
     );
 
     // Execute all in parallel, catch individual failures
@@ -267,56 +216,10 @@ export class BatchOrchestrator {
   }
 
   /**
-   * Process single assistant task with timeout enforcement
-   */
-  private async processAssistantWithTimeout(
-    assistant: AssistantConfiguration
-  ): Promise<AssistantProcessingResult> {
-    // Create abort controller for timeout
-    const abortController = new AbortController();
-    
-    // Create timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        abortController.abort();
-        reject(new TaskTimeoutError(assistant.id, this.taskTimeoutMs));
-      }, this.taskTimeoutMs);
-    });
-
-    // Create processing promise
-    const processingPromise = this.executeAssistantTask(
-      assistant,
-      abortController.signal
-    );
-
-    // Race between processing and timeout
-    try {
-      return await Promise.race([processingPromise, timeoutPromise]);
-    } catch (error) {
-      if (error instanceof TaskTimeoutError) {
-        // Always log for admin
-        console.error('[ORCHESTRATOR] Task timeout:', assistant.id, error);
-
-        return {
-          id: assistant.id,
-          success: false,
-          error: {
-            code: 'TASK_TIMEOUT',
-            ...(this.exposeErrorDetails && { message: error.message })
-          }
-        };
-      }
-      // Re-throw unexpected errors
-      throw error;
-    }
-  }
-
-  /**
    * Execute assistant task: build prompt + call LLM
    */
   private async executeAssistantTask(
-    assistant: AssistantConfiguration,
-    abortSignal: AbortSignal
+    assistant: AssistantConfiguration
   ): Promise<AssistantProcessingResult> {
     try {
       // 1. Get model and role configurations
@@ -347,29 +250,18 @@ export class BatchOrchestrator {
         model.provider
       );
 
-      // 4. Call LLM with abort signal for timeout
+      // 4. Call LLM; the connector owns cancellation and timer cleanup
       const response = await connector.sendRequest({
         model: model.providerModelId,
         systemPrompt,
         userPrompt,
+        structuredOutputMode: model.structuredOutputMode,
         maxTokens: 2000,
         timeout: this.taskTimeoutMs
       });
 
-      // 5. Parse response text (should be JSON with "text" field)
-      let enhancedText = response.text;
-      
-      // Try to parse as JSON if it looks like JSON
-      if (enhancedText.trim().startsWith('{')) {
-        try {
-          const parsed = JSON.parse(enhancedText);
-          if (parsed.text) {
-            enhancedText = parsed.text;
-          }
-        } catch {
-          // If parsing fails, use raw text
-        }
-      }
+      // 5. Require the provider's structured response contract
+      const enhancedText = parseTextOutput(response.text);
 
       // 6. Return success result
       return {
@@ -380,9 +272,16 @@ export class BatchOrchestrator {
       };
 
     } catch (error) {
-      // Check if aborted (timeout)
-      if (abortSignal.aborted) {
-        throw new TaskTimeoutError(assistant.id, this.taskTimeoutMs);
+      if (error instanceof LLMTimeoutError) {
+        console.error('[ORCHESTRATOR] Task timeout:', assistant.id, error);
+        return {
+          id: assistant.id,
+          success: false,
+          error: {
+            code: 'TASK_TIMEOUT',
+            ...(this.exposeErrorDetails && { message: error.message })
+          }
+        };
       }
 
       // Always log for admin

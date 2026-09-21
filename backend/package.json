@@ -7,6 +7,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "eval:prompts": "node --experimental-transform-types scripts/evaluate-prompts.ts",
     "type-check": "tsc --noEmit",
     "lint:portability": "grep -r 'Deno\\.' src/ && echo '❌ ERROR: Deno imports found in src/' || echo '✅ OK: No Deno imports in src/'",
     "setup:env": "./scripts/setup-env.sh",
@@ -33,6 +34,7 @@
     "jest": "^30.2.0",
     "jose": "^6.1.0",
     "stripe": "^19.3.0",
+    "supabase": "2.101.0",
     "ts-jest": "^29.4.5",
     "typescript": "^5.9.3"
   }

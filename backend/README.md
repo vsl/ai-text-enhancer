@@ -15,12 +15,12 @@ A sophisticated **serverless backend** for AI-powered text enhancement, designed
 ## 🎯 What Makes This Different
 
 - **Intelligent Prompt Engineering:** Translates simple user goals ("fix typos", "make professional") into effective, structured prompts
-- **Multi-Provider Support:** Abstracted connectors for Google Gemini, OpenRouter, and local LM Studio
+- **Multi-Provider Support:** Production models on Google Gemini and OpenRouter; LM Studio connector retained for direct local tests
 - **Batch Processing:** Single API endpoint processes up to 10 enhancement tasks in parallel
 - **Tiered Access:** Model access controlled by user subscription tier (Free/Plus/Premium)
 - **Quota Management:** Pre-flight quota checks and post-flight token deduction via external user service
 - **Platform Portable:** Core business logic works on any serverless platform—only the handler needs rewriting
-- **Type-Safe:** Strict TypeScript with Ajv schema validation
+- **Type-Safe:** Strict TypeScript with dependency-free runtime validation
 - **Production Ready:** Comprehensive error handling, timeouts, structured responses
 
 ---
@@ -42,7 +42,7 @@ A sophisticated **serverless backend** for AI-powered text enhancement, designed
 │         CORE LOGIC LAYER (Platform-Free)        │
 │     All Business Logic in Standard TypeScript   │
 │  - Authentication & Authorization               │
-│  - Request Validation (Ajv)                     │
+│  - Runtime Request Validation                   │
 │  - Batch Orchestration                          │
 │  - Prompt Engineering                           │
 │  - LLM Provider Routing                         │
@@ -65,7 +65,7 @@ A sophisticated **serverless backend** for AI-powered text enhancement, designed
 - **⚡ Parallel Batch Processing** - Up to 10 tasks processed concurrently
 - **🔐 Supabase Authentication** - JWT token validation with database-backed user profiles
 - **💰 Token Quota Management** - Pre-flight quota checks and atomic database-backed token deduction
-- **📊 Structured Validation** - Ajv JSON schemas for all requests/responses
+- **📊 Structured Validation** - Dependency-free request validation and enforced `{ "text": string }` output
 - **⏱️ Timeout Control** - 30-second timeout per LLM call with AbortController
 - **🎯 Tier-Based Access** - Three-tier system (Free, Plus, Premium) with model access control
 - **🧪 Dual Testing Strategy** - Jest (core logic) + E2E (full function)
@@ -81,8 +81,8 @@ A sophisticated **serverless backend** for AI-powered text enhancement, designed
 | **Platform** | Supabase Edge Functions | Serverless, global edge network |
 | **Language** | TypeScript (strict mode) | Type safety, better DX |
 | **HTTP Client** | Native `fetch` + timeout wrapper | Universal compatibility |
-| **Validation** | Ajv | JSON schema validation |
-| **LLM SDKs** | `@google/genai`, REST APIs | Multi-provider support |
+| **Validation** | TypeScript + standard JavaScript | Dependency-free trust-boundary validation |
+| **LLM APIs** | Native `fetch` REST connectors | Portable multi-provider support |
 | **Testing** | Jest (core), Supabase CLI (E2E) | Validates portability |
 | **Config** | TypeScript modules + env vars | Type-safe, portable |
 
@@ -450,7 +450,7 @@ ai-text-enhancer-backend/
 │           └── import_map.json # Deno dependencies
 ├── src/                        # Core logic (platform-agnostic)
 │   ├── services/               # Business logic
-│   ├── schemas/                # Ajv schemas
+│   ├── services/request-validator.ts # Runtime API validation
 │   ├── config/                 # TypeScript config
 │   ├── utils/                  # Utilities
 │   └── types/                  # TypeScript types

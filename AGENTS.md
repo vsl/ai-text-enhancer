@@ -12,6 +12,32 @@ reference documents, not Codex instructions.
 When an API contract changes, update and verify both applications in the same
 change. Do not make an unrelated app change just to trigger its workflow.
 
+## Product and prompt quality
+
+The product sends one input through multiple configurable AI assistants in
+parallel so users can compare specialized results and reuse the best one.
+Saved workflows should remove repeated prompt writing and make recurring text
+work faster and more consistent.
+
+- Treat each role prompt as product behavior. It must define distinct expertise,
+  a clear primary task, role-specific quality criteria, and the expected result.
+- Keep shared safety, input-boundary, and output-format rules centralized and
+  concise. Do not shorten role prompts merely to make the overall prompt lean.
+- Treat enabled options as additive transformations. Disabled options must not
+  remove behavior inherent to a role, such as summarizing or producing a
+  complete email.
+- Prompt changes must include regression coverage for every affected role and
+  option, including the no-options case.
+
+## Code Review Rules
+
+### Prompt quality regressions
+
+- Flag a prompt change that replaces a role's expertise, task, quality criteria,
+  or required result with a generic one-line instruction. Safe path: keep the
+  shared policy lean while preserving a detailed, distinct role prompt and
+  additive option behavior.
+
 ## Commands
 
 Run from the repository root:

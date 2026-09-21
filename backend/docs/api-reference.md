@@ -1,6 +1,6 @@
 # API Reference
 
-**Last Updated:** January 2025
+**Last Updated:** August 2026
 
 Complete API specification for the AI Text Enhancer Backend, including authentication, endpoints, request/response schemas, error codes, and examples.
 
@@ -30,7 +30,7 @@ The AI Text Enhancer Backend is a serverless API that processes batches of text 
 - **Batch Processing:** Handle 1-10 enhancement tasks in a single request
 - **Parallel Execution:** All tasks processed concurrently for speed
 - **Flexible Enhancement:** Rich set of transformation options
-- **Multi-Model Support:** Access to various LLM providers (Gemini, OpenRouter, LM Studio)
+- **Multi-Model Support:** Production access through Gemini and OpenRouter
 - **Tier-Based Access:** Three-tier system (Free, Plus, Premium) with different limits
 - **Token-Based Billing:** Daily token quota per tier with atomic deduction
 
@@ -100,9 +100,9 @@ curl -X POST 'http://localhost:54321/auth/v1/signup' \
 
 | Tier | Token Quota | User Text Limit | Context Text Limit | Batch Size | Model Access |
 |------|-------------|-----------------|-------------------|------------|--------------|
-| **Free** | 50,000 tokens (welcome) | 500 chars | 800 chars | 5 | Free models |
-| **Plus** | 500,000 tokens | 2,000 chars | 3,000 chars | 10 | Free + Plus models |
-| **Premium** | 5,000,000 tokens | 10,000 chars | 15,000 chars | 10 | All models |
+| **Free** | 50,000 tokens (welcome) | 500 chars | 800 chars | 3 | Both production models |
+| **Plus** | 500,000 tokens | 2,000 chars | 3,000 chars | 10 | Both production models |
+| **Premium** | 5,000,000 tokens | 5,000 chars | 10,000 chars | 10 | Both production models |
 
 **Note:** Token quotas are NOT daily limits - they are one-time balances that deplete with usage. Tokens can be purchased or granted by admins.
 
@@ -130,7 +130,7 @@ Process a batch of text enhancement tasks.
 **Authentication:** Required (Bearer token)
 
 **Rate Limits:**
-- Batch size: 1-10 assistants per request (tier-based: Free=5, Plus/Premium=10)
+- Batch size: 1-10 assistants per request (tier-based: Free=3, Plus/Premium=10)
 - Request timeout: 30 seconds per LLM call
 - Token quota enforced per tier
 
@@ -466,7 +466,7 @@ interface BatchRequest {
 interface AssistantConfiguration {
   id: string;                   // Unique client-side identifier
   model: string;                // Model identifier (e.g., 'gemini-flash')
-  aiRoleId: string;             // AI persona (e.g., 'editor', 'translator')
+  aiRoleId: string;             // editor | summarizer | email_assistant | social_media_assistant
   userText: string;             // Text to enhance (tier-based max length)
   contextText?: string;         // Optional context (tier-based max length)
   options: TransformationOptions;
@@ -480,8 +480,8 @@ interface AssistantConfiguration {
 | `id` | string | **Yes** | Unique identifier for this task in the batch. Used to match results. |
 | `model` | string | **Yes** | Model identifier from available models list. Must be accessible to user's tier. |
 | `aiRoleId` | string | **Yes** | AI role identifier from available roles list. |
-| `userText` | string | **Yes** | Text to enhance. Length limits by tier: Free=500, Plus=2000, Premium=10000 chars. |
-| `contextText` | string | No | Additional context. Length limits by tier: Free=800, Plus=3000, Premium=15000 chars. |
+| `userText` | string | **Yes** | Nonblank text. Length limits by tier: Free=500, Plus=2000, Premium=5000 chars. |
+| `contextText` | string | No | Reference-only context. Length limits by tier: Free=800, Plus=3000, Premium=10000 chars. |
 | `options` | object | **Yes** | Transformation options (see below). |
 
 ---
@@ -501,19 +501,21 @@ interface TransformationOptions {
 
   // Style Controls
   formality?: 'Casual' | 'Neutral' | 'Formal';
-  tone?: string;                // Custom tone (e.g., 'witty', 'professional')
+  tone?: 'Confident' | 'Empathetic' | 'Cheerful' | 'Witty' | 'Direct' | 'Engaging' | 'Polite' | 'Sincere' | 'Disappointed' | 'Apologetic' | 'Pessimistic' | 'Worried';
   languageLevel?: 'default' | 'simple' | 'intermediate' | 'advanced' | 'fluent' | 'native';
 
   // Special Transformations
-  translateTo?: string;         // Language code (e.g., 'es-ES', 'ja-JP')
+  translateTo?: 'ar' | 'zh' | 'en' | 'fr' | 'de' | 'hi' | 'it' | 'ja' | 'ko' | 'pt' | 'ru' | 'es' | 'uk' | 'vi';
   addEmojis?: boolean;          // Add relevant emojis
 }
 ```
 
 **Validation Rules:**
-- At least one transformation option must be specified
+- Empty options are valid and perform the role's primary task without extra transformations
 - `shorten` and `lengthen` cannot both be `true`
-- `translateTo` must be valid ISO language code if specified
+- IDs and user text must be nonblank; assistant IDs must be unique
+- Unknown fields, models, roles, option types, and enum values are rejected
+- Model/role compatibility and tier text/context limits are checked before provider calls
 
 ---
 
@@ -567,11 +569,7 @@ These errors prevent the entire request from being processed.
 
 | Code | HTTP | Description |
 |------|------|-------------|
-| `INVALID_REQUEST` | 400 | Request failed schema validation (malformed JSON, missing fields) |
-| `BATCH_TOO_LARGE` | 400 | Batch contains more assistants than tier allows |
-| `BATCH_EMPTY` | 400 | Batch contains no assistants |
-| `TEXT_TOO_LONG` | 400 | userText exceeds tier limit |
-| `CONTEXT_TOO_LONG` | 400 | contextText exceeds tier limit |
+| `INVALID_REQUEST` | 400 | Invalid shape, ID/text, model/role, option, conflict, or tier text/context length |
 | `INVALID_TOKEN` | 401 | Bearer token is missing, malformed, or invalid |
 | `EXPIRED_TOKEN` | 401 | Bearer token has expired |
 | `AUTHENTICATION_FAILED` | 401 | Authentication service unavailable or error |
@@ -589,16 +587,9 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 
 | Code | Description |
 |------|-------------|
-| `INVALID_MODEL` | The specified model does not exist or is not supported |
-| `MODEL_ACCESS_DENIED` | User's tier does not have access to the specified model |
-| `MODEL_NOT_ALLOWED_FOR_ROLE` | The model is not allowed for the specified AI role |
-| `UNKNOWN_AI_ROLE` | The specified AI role ID does not exist |
-| `INVALID_OPTIONS` | TransformationOptions are invalid (e.g., both shorten and lengthen) |
-| `LLM_TIMEOUT` | LLM provider did not respond within timeout (30 seconds) |
-| `LLM_API_ERROR` | LLM provider returned an error (details in message) |
-| `LLM_RATE_LIMIT` | LLM provider rate limit exceeded |
-| `INVALID_LLM_RESPONSE` | LLM response couldn't be parsed or didn't match schema |
-| `TASK_TIMEOUT` | Overall task processing exceeded timeout limit |
+| `TIER_BATCH_SIZE_EXCEEDED` | Assistant position is beyond the tier batch limit |
+| `TASK_TIMEOUT` | Connector aborted the provider request at the configured timeout |
+| `LLM_ERROR` | Provider failure or malformed structured output |
 
 ---
 
@@ -645,7 +636,7 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
       "aiRoleId": "editor",
       "userText": "Welcome to our platform",
       "options": {
-        "translateTo": "es-ES"
+        "translateTo": "es"
       }
     }
   ]
@@ -701,10 +692,9 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 | Model ID | Display Name | Provider | Access Tiers | Context Window |
 |----------|--------------|----------|--------------|----------------|
 | `gemini-flash` | Gemini 2.5 Flash | Google Gemini | Free, Plus, Premium | 1,000,000 |
-| `open-router-free` | Free Model (OpenRouter) | OpenRouter | Free, Plus, Premium | 1,000,000 |
-| `local-debug-model` | Local Debug Model | LM Studio | Free, Plus, Premium | 8,192 |
+| `open-router-free` | Free Model (OpenRouter) | OpenRouter | Free, Plus, Premium | 163,840 |
 
-**Note:** Models are configured in `src/config/models.config.ts`.
+**Note:** Models are configured in `src/config/models.config.ts`. The LM Studio connector remains available for direct local connector tests but is not an API model.
 
 ---
 
@@ -712,10 +702,10 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 
 | Role ID | Name | Description | Allowed Models |
 |---------|------|-------------|----------------|
-| `editor` | Editor | Professional text editor focused on clarity, grammar, and readability | All models |
-| `summarizer` | Summarizer | Condenses text while preserving key information | All models |
-| `social_media_assistant` | Social Media Assistant | Creates engaging, shareable social media content | All models |
-| `email_assistant` | Email Assistant | Writes complete, ready-to-send professional emails | All models |
+| `editor` | Editor | Edits clarity, correctness, readability, and flow | Both production models |
+| `summarizer` | Summarizer | Condenses text while preserving key information | Both production models |
+| `social_media_assistant` | Social Media Assistant | Creates engaging, shareable social media content | Both production models |
+| `email_assistant` | Email Assistant | Writes complete, ready-to-send emails | Both production models |
 
 **Note:** Roles are configured in `src/config/roles.config.ts`.
 

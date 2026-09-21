@@ -2,10 +2,12 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { AiConfig, Workflow, Result, Options } from '@/lib/types';
-import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS, AUTH_ERROR_MESSAGES } from '@/lib/constants';
+import { AiConfig, Workflow, Result } from '@/lib/types';
+import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS, AUTH_ERROR_MESSAGES, normalizeAiConfig } from '@/lib/constants';
+import { API_BASE_URL } from '@/lib/runtime-config';
 import { getErrorMessage } from '@/lib/utils';
 import { useAuth } from './AuthContext';
+import type { BatchRequest, BatchResponse } from '../../../backend/src/types/api.types';
 
 /**
  * WorkflowContext interface defining the shape of the context
@@ -98,14 +100,15 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     const workflowToLoad = workflows.find(w => w.name === selectedWorkflow);
 
     if (workflowToLoad) {
-      // A valid workflow is selected. Load its configurations.
-      // Create new config objects with proper cloning of nested options
-      const migratedConfigs = workflowToLoad.configs.map(c => ({
-        ...c,
-        enabled: c.enabled ?? true,
-        options: { ...c.options }, // Clone options object to prevent mutations
-      }));
+      const migratedConfigs = workflowToLoad.configs.map(normalizeAiConfig);
       setConfigs(migratedConfigs);
+      if (JSON.stringify(migratedConfigs) !== JSON.stringify(workflowToLoad.configs)) {
+        setWorkflows(current => current.map(workflow =>
+          workflow.name === workflowToLoad.name
+            ? { ...workflow, configs: migratedConfigs }
+            : workflow
+        ));
+      }
     } else if (workflows.length > 0) {
       // The selected workflow doesn't exist in the list (e.g., stale data).
       // Reset the selection to the first available workflow.
@@ -116,7 +119,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       // Handle the case where there are no workflows at all.
       setConfigs([]);
     }
-  }, [selectedWorkflow, workflows, setSelectedWorkflow]);
+  }, [selectedWorkflow, workflows, setSelectedWorkflow, setWorkflows]);
 
   /**
    * Create a new workflow
@@ -125,7 +128,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     const newConfig: AiConfig = {
       id: Date.now(),
       model: AVAILABLE_MODELS[0],
-      aiRole: 'General Assistant',
+      aiRoleId: 'editor',
       options: { ...DEFAULT_OPTIONS },
       enabled: true,
     };
@@ -146,12 +149,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setResults(new Map());
     const workflowToLoad = workflows.find(w => w.name === name) || workflows[0];
     if (workflowToLoad) {
-      // Clone configs with nested options properly
-      const migratedConfigs = workflowToLoad.configs.map(c => ({
-        ...c,
-        enabled: c.enabled ?? true,
-        options: { ...c.options }, // Clone options to prevent mutations
-      }));
+      const migratedConfigs = workflowToLoad.configs.map(normalizeAiConfig);
       setConfigs(migratedConfigs);
       setSelectedWorkflow(workflowToLoad.name);
     }
@@ -169,11 +167,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         // Load the first workflow
         const firstWorkflow = updatedWorkflows[0];
         setSelectedWorkflow(firstWorkflow.name);
-        // Clone configs with nested options properly
-        setConfigs(firstWorkflow.configs.map(c => ({
-          ...c,
-          options: { ...c.options },
-        })));
+        setConfigs(firstWorkflow.configs.map(normalizeAiConfig));
       } else {
         setConfigs([]);
         setSelectedWorkflow('');
@@ -279,26 +273,23 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return newResults;
     });
 
-    // Map AI Role names to aiRoleId values
-    const aiRoleMapping: Record<string, string> = {
-      'General Assistant': 'editor',
-      'Summarizer Assistant': 'summarizer',
-      'Professional Email Assistant': 'email_assistant',
-      'Social Media Assistant': 'social_media_assistant',
-    };
-
     // Build request payload
-    const assistants = enabledConfigs.map(config => ({
-      id: config.id.toString(),
-      model: config.model,
-      aiRoleId: aiRoleMapping[config.aiRole] || 'editor',
-      userText: inputText,
-      contextText: contextText,
-      options: {
-        ...config.options,
-        languageLevel: config.options.languageLevel === '' ? 'default' : config.options.languageLevel,
-      }
-    }));
+    const assistants: BatchRequest['assistants'] = enabledConfigs.map(config => {
+      const { languageLevel, translateTo, ...options } = config.options;
+      return {
+        id: config.id.toString(),
+        model: config.model,
+        aiRoleId: config.aiRoleId,
+        userText: inputText,
+        contextText,
+        options: {
+          ...options,
+          languageLevel: languageLevel || 'default',
+          ...(translateTo && { translateTo }),
+        },
+      };
+    });
+    const request: BatchRequest = { assistants };
 
     try {
       // Get auth token
@@ -310,12 +301,11 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         'Authorization': `Bearer ${token}`,
       };
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://mupadxckjgpekkqyhohg.supabase.co/functions/v1';
-      const response = await fetch(`${apiBaseUrl}/enhance`, {
+      const response = await fetch(`${API_BASE_URL}/enhance`, {
         method: 'POST',
         signal: controller.signal,
         headers,
-        body: JSON.stringify({ assistants }),
+        body: JSON.stringify(request),
       });
 
       // Check if request was aborted
@@ -335,10 +325,10 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Parse response
-      const responseData = await response.json();
+      const responseData = await response.json() as BatchResponse;
 
       // Calculate total tokens used from all successful results BEFORE updating state
-      const totalTokensUsed = responseData.results.reduce((total: number, res: any) => {
+      const totalTokensUsed = responseData.results.reduce((total, res) => {
         if (res.status === 'success') {
           return total + (res.total_tokens || 0);
         }
@@ -348,7 +338,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       // Update results based on API response
       setResults(prevResults => {
         const newResults = new Map(prevResults);
-        responseData.results.forEach((res: any) => {
+        responseData.results.forEach((res) => {
           const configId = parseInt(res.id, 10);
           if (res.status === 'success') {
             newResults.set(configId, {
@@ -376,8 +366,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         updateTokenBalance(totalTokensUsed);
       }
 
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
+    } catch (error: unknown) {
+      const caughtError = error instanceof Error ? error : new Error('Unknown error');
+      if (caughtError.name === 'AbortError') {
         console.log('Request cancelled by user.');
         // Update UI for cancelled requests
         setResults(prevResults => {
@@ -393,14 +384,14 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           return newResults;
         });
       } else {
-        console.error("API error:", error);
+        console.error("API error:", caughtError);
         // Update UI for general fetch/network errors
         setResults(prevResults => {
           const newResults = new Map(prevResults);
           enabledConfigs.forEach(config => {
             newResults.set(config.id, {
               configId: config.id,
-              text: `An unexpected error occurred: ${error.message}`,
+              text: `An unexpected error occurred: ${caughtError.message}`,
               isLoading: false,
               error: true,
             });

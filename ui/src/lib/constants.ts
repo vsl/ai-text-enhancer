@@ -2,22 +2,25 @@
  * Constants for the AI Text Enhancer application
  */
 
-import { Options, Workflow, Language, LanguageLevel, Tier, TierLimits, TokenPackage } from './types';
+import { AiConfig, AiRoleId, Options, Workflow, Language, LanguageLevel, Tier, TierLimits, TokenPackage } from './types';
 
-export const AVAILABLE_MODELS = ['gemini-flash', 'open-router-free', 'local-debug-model'];
+export const AVAILABLE_MODELS = ['gemini-flash', 'open-router-free'] as const;
 
-export const AVAILABLE_AI_ROLES: Record<string, string> = {
-  'General Assistant': 'You are a helpful assistant. Please refine the following text based on the user\'s instructions.',
-  'Summarizer Assistant': 'You are an expert summarization assistant. Condense the key points of the following text.',
-  'Professional Email Assistant': 'You are a professional communication assistant. Rewrite the following text as a formal email.',
-  'Social Media Assistant': 'You are a social media assistant. Adapt the following text into an engaging social media post.',
-};
+export const AVAILABLE_AI_ROLES: readonly { id: AiRoleId; label: string }[] = [
+  { id: 'editor', label: 'General Assistant' },
+  { id: 'summarizer', label: 'Summarizer Assistant' },
+  { id: 'email_assistant', label: 'Professional Email Assistant' },
+  { id: 'social_media_assistant', label: 'Social Media Assistant' },
+] as const;
+
+export const getAiRoleLabel = (id: AiRoleId): string =>
+  AVAILABLE_AI_ROLES.find((role) => role.id === id)?.label ?? 'General Assistant';
 
 export const TONES = [
   'Confident', 'Empathetic', 'Cheerful', 'Witty', 'Direct',
   'Engaging', 'Polite', 'Sincere', 'Disappointed', 'Apologetic',
   'Pessimistic', 'Worried'
-];
+] as const;
 
 export const TONE_EMOJIS: Record<string, string> = {
   'Confident': '😎',
@@ -34,7 +37,7 @@ export const TONE_EMOJIS: Record<string, string> = {
   'Worried': '😥'
 };
 
-export const FORMALITY = ['Casual', 'Neutral', 'Formal'];
+export const FORMALITY = ['Casual', 'Neutral', 'Formal'] as const;
 
 export const FORMALITY_EMOJIS: Record<string, string> = {
   'Casual': '👋',
@@ -88,7 +91,7 @@ export const TOOLTIP_TEXTS = {
   configOptions: "Fine-tune the behavior of the currently selected AI configuration from your pipeline.",
   improve: "Rewrites sentences for better clarity, flow, and engagement.",
   fixMistakes: "Corrects spelling, grammar, and punctuation errors.",
-  format: "Applies formatting like lists, bolding, and paragraphs for better readability.",
+  format: "Applies formatting like lists and paragraphs for better readability.",
   shorten: "Condenses the text to be more concise while keeping the core message.",
   lengthen: "Expands on the original text to be more detailed or descriptive.",
   addEmojis: "Adds relevant emojis to make the text more expressive.",
@@ -125,13 +128,60 @@ export const DEFAULT_OPTIONS: Options = {
   translateTo: '',
 };
 
+const LEGACY_ROLE_IDS: Record<string, AiRoleId> = {
+  'General Assistant': 'editor',
+  'Summarizer Assistant': 'summarizer',
+  'Professional Email Assistant': 'email_assistant',
+  'Social Media Assistant': 'social_media_assistant',
+};
+
+export function normalizeAiConfig(
+  config: Partial<AiConfig> & Pick<AiConfig, 'id'> & { aiRole?: string }
+): AiConfig {
+  const aiRoleId = AVAILABLE_AI_ROLES.some((role) => role.id === config.aiRoleId)
+    ? config.aiRoleId!
+    : LEGACY_ROLE_IDS[config.aiRole || ''] || 'editor';
+  const stored: Partial<Options> = config.options || {};
+  const shorten = typeof stored.shorten === 'boolean' ? stored.shorten : DEFAULT_OPTIONS.shorten;
+  const lengthen = !shorten && typeof stored.lengthen === 'boolean' ? stored.lengthen : false;
+
+  return {
+    id: config.id,
+    model: typeof config.model === 'string' && AVAILABLE_MODELS.includes(config.model as typeof AVAILABLE_MODELS[number])
+      ? config.model
+      : AVAILABLE_MODELS[0],
+    aiRoleId,
+    options: {
+      improve: typeof stored.improve === 'boolean' ? stored.improve : DEFAULT_OPTIONS.improve,
+      fixMistakes: typeof stored.fixMistakes === 'boolean' ? stored.fixMistakes : DEFAULT_OPTIONS.fixMistakes,
+      format: typeof stored.format === 'boolean' ? stored.format : DEFAULT_OPTIONS.format,
+      shorten,
+      lengthen,
+      addEmojis: typeof stored.addEmojis === 'boolean' ? stored.addEmojis : DEFAULT_OPTIONS.addEmojis,
+      formality: FORMALITY.includes(stored.formality as Options['formality'])
+        ? stored.formality as Options['formality']
+        : DEFAULT_OPTIONS.formality,
+      tone: TONES.includes(stored.tone as Options['tone'])
+        ? stored.tone as Options['tone']
+        : DEFAULT_OPTIONS.tone,
+      languageLevel: LANGUAGE_LEVELS.some(level => level.value === stored.languageLevel)
+        ? stored.languageLevel as Options['languageLevel']
+        : DEFAULT_OPTIONS.languageLevel,
+      translateTo: LANGUAGES.some(language => language.code === stored.translateTo)
+        ? stored.translateTo as Options['translateTo']
+        : DEFAULT_OPTIONS.translateTo,
+    },
+    enabled: config.enabled ?? true,
+  };
+}
+
 export const DEFAULT_WORKFLOWS: Workflow[] = [
   {
     name: 'Quick Fix',
     configs: [{
       id: 1,
       model: 'gemini-flash',
-      aiRole: 'General Assistant',
+      aiRoleId: 'editor',
       options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true },
       enabled: true,
     }],
@@ -141,7 +191,7 @@ export const DEFAULT_WORKFLOWS: Workflow[] = [
     configs: [{
       id: 1,
       model: 'gemini-flash',
-      aiRole: 'Professional Email Assistant',
+      aiRoleId: 'email_assistant',
       options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true, format: true, formality: 'Formal', tone: 'Polite' },
       enabled: true,
     }],
@@ -151,7 +201,7 @@ export const DEFAULT_WORKFLOWS: Workflow[] = [
     configs: [{
       id: 1,
       model: 'gemini-flash',
-      aiRole: 'Social Media Assistant',
+      aiRoleId: 'social_media_assistant',
       options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true, addEmojis: true, formality: 'Casual', tone: 'Engaging' },
       enabled: true,
     }],
@@ -174,13 +224,13 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     maxTextLength: 2000,
     maxContextLength: 3000,
     maxBatchSize: 10,
-    availableModels: ['gemini-flash', 'open-router-free', 'gemini-pro'],
+    availableModels: ['gemini-flash', 'open-router-free'],
   },
   premium: {
     maxTextLength: 5000,
     maxContextLength: 10000,
     maxBatchSize: 10,
-    availableModels: ['gemini-flash', 'open-router-free', 'gemini-pro', 'gpt-4'],
+    availableModels: ['gemini-flash', 'open-router-free'],
   },
 };
 

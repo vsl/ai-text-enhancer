@@ -18,6 +18,7 @@ describe('OpenRouterConnector', () => {
 
   afterEach(() => {
     jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   describe('sendRequest', () => {
@@ -177,7 +178,7 @@ describe('OpenRouterConnector', () => {
       expect(body.max_tokens).toBe(4096);
     });
 
-    it('should include JSON schema in request', async () => {
+    it('should require supported JSON mode from the provider', async () => {
       const mockResponse = {
         ok: true,
         status: 200,
@@ -204,22 +205,52 @@ describe('OpenRouterConnector', () => {
       const body = JSON.parse(fetchCall[1].body);
 
       expect(body.response_format).toEqual({
+        type: 'json_object',
+      });
+      expect(body.provider).toEqual({ require_parameters: true });
+    });
+
+    it('uses strict JSON schema only when model metadata enables it', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"text":"ok"}' } }] }),
+      });
+
+      await connector.sendRequest({
+        model: 'schema-model',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        structuredOutputMode: 'json-schema',
+      });
+
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).response_format).toEqual({
         type: 'json_schema',
         json_schema: {
           name: 'text_enhancement',
           strict: true,
           schema: {
             type: 'object',
-            properties: {
-              text: {
-                type: 'string'
-              }
-            },
+            properties: { text: { type: 'string' } },
             required: ['text'],
-            additionalProperties: false
-          }
-        }
+            additionalProperties: false,
+          },
+        },
       });
+    });
+
+    it('omits unevaluated temperature and preserves explicit zero', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"text":"ok"}' } }] }),
+      });
+
+      await connector.sendRequest({ model: 'test-model', systemPrompt: 'System', userPrompt: 'User' });
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).not.toHaveProperty('temperature');
+
+      await connector.sendRequest({ model: 'test-model', systemPrompt: 'System', userPrompt: 'User', temperature: 0 });
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body).temperature).toBe(0);
     });
 
     it('should handle missing usage metadata', async () => {
@@ -307,6 +338,36 @@ describe('OpenRouterConnector', () => {
         { role: 'system', content: 'System prompt here' },
         { role: 'user', content: 'User prompt here' }
       ]);
+    });
+
+    it('aborts the real fetch signal and clears its timer without logging prompts', async () => {
+      jest.useFakeTimers();
+      const infoSpy = jest.spyOn(console, 'info').mockImplementation();
+      let signal: AbortSignal | undefined;
+      (global.fetch as jest.Mock).mockImplementation((_url, init: RequestInit) => {
+        signal = init.signal as AbortSignal;
+        return new Promise((_resolve, reject) => {
+          signal?.addEventListener('abort', () => {
+            const error = new Error('aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+        });
+      });
+
+      const request = connector.sendRequest({
+        model: 'test-model',
+        systemPrompt: 'sensitive system prompt',
+        userPrompt: 'sensitive source text',
+        timeout: 50,
+      });
+      jest.advanceTimersByTime(50);
+
+      await expect(request).rejects.toThrow(LLMTimeoutError);
+      expect(signal?.aborted).toBe(true);
+      expect(jest.getTimerCount()).toBe(0);
+      expect(infoSpy).not.toHaveBeenCalled();
+      infoSpy.mockRestore();
     });
   });
 });

@@ -109,7 +109,7 @@ describe('WorkflowContext', () => {
 
         const newWorkflow = result.current.workflows.find(w => w.name === 'New Workflow');
         expect(newWorkflow?.configs[0].model).toBe(AVAILABLE_MODELS[0]);
-        expect(newWorkflow?.configs[0].aiRole).toBe('General Assistant');
+        expect(newWorkflow?.configs[0].aiRoleId).toBe('editor');
         expect(newWorkflow?.configs[0].enabled).toBe(true);
       });
 
@@ -243,7 +243,7 @@ describe('WorkflowContext', () => {
         const newConfig: AiConfig = {
           id: Date.now(),
           model: 'gemini-flash',
-          aiRole: 'General Assistant',
+          aiRoleId: 'editor',
           options: { ...DEFAULT_OPTIONS },
           enabled: true,
         };
@@ -276,8 +276,8 @@ describe('WorkflowContext', () => {
         const currentWorkflowName = result.current.selectedWorkflow;
         const newConfig: AiConfig = {
           id: 999,
-          model: 'local-debug-model',
-          aiRole: 'Summarizer Assistant',
+          model: 'open-router-free',
+          aiRoleId: 'summarizer',
           options: { ...DEFAULT_OPTIONS },
           enabled: true,
         };
@@ -373,7 +373,7 @@ describe('WorkflowContext', () => {
         const copiedConfig = result.current.configs[originalIndex + 1];
 
         expect(copiedConfig.model).toBe(originalConfig.model);
-        expect(copiedConfig.aiRole).toBe(originalConfig.aiRole);
+        expect(copiedConfig.aiRoleId).toBe(originalConfig.aiRoleId);
         expect(copiedConfig.id).not.toBe(originalConfig.id);
         expect(copiedConfig.enabled).toBe(true);
       });
@@ -385,7 +385,7 @@ describe('WorkflowContext', () => {
         const newConfig: AiConfig = {
           id: 999,
           model: 'open-router-free',
-          aiRole: 'Summarizer Assistant',
+          aiRoleId: 'summarizer',
           options: { ...DEFAULT_OPTIONS },
           enabled: true,
         };
@@ -404,7 +404,7 @@ describe('WorkflowContext', () => {
         const newIndex = result.current.configs.findIndex(c =>
           c.id !== originalConfig.id &&
           c.model === originalConfig.model &&
-          c.aiRole === originalConfig.aiRole
+          c.aiRoleId === originalConfig.aiRoleId
         );
 
         expect(newIndex).toBe(originalIndex + 1);
@@ -527,17 +527,17 @@ describe('WorkflowContext', () => {
       const { result } = renderHook(() => useWorkflow(), { wrapper });
 
       // Add two more configs to have 3 total
-      const config2 = {
+      const config2: AiConfig = {
         id: Date.now() + 1,
         model: 'gemini-flash',
-        aiRole: 'General Assistant',
+        aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
       };
-      const config3 = {
+      const config3: AiConfig = {
         id: Date.now() + 2,
         model: 'gemini-flash',
-        aiRole: 'General Assistant',
+        aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
       };
@@ -588,17 +588,17 @@ describe('WorkflowContext', () => {
       const { result } = renderHook(() => useWorkflow(), { wrapper });
 
       // Add two more configs
-      const config2 = {
+      const config2: AiConfig = {
         id: Date.now() + 1,
         model: 'gemini-flash',
-        aiRole: 'General Assistant',
+        aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
       };
-      const config3 = {
+      const config3: AiConfig = {
         id: Date.now() + 2,
         model: 'gemini-flash',
-        aiRole: 'General Assistant',
+        aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
       };
@@ -625,10 +625,10 @@ describe('WorkflowContext', () => {
       const { result } = renderHook(() => useWorkflow(), { wrapper });
 
       // Add one more config
-      const config2 = {
+      const config2: AiConfig = {
         id: Date.now() + 1,
         model: 'gemini-flash',
-        aiRole: 'General Assistant',
+        aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
       };

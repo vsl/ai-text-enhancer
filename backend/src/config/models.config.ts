@@ -23,6 +23,7 @@ export const MODELS: readonly ModelConfig[] = [
     id: 'gemini-flash',
     provider: 'gemini',
     providerModelId: 'gemini-2.5-flash',
+    structuredOutputMode: 'json-schema',
     allowedTiers: ['free', 'plus', 'premium'],
     displayName: 'Gemini 2.5 Flash',
     contextWindow: 1000000,
@@ -35,21 +36,11 @@ export const MODELS: readonly ModelConfig[] = [
     id: 'open-router-free',
     provider: 'openrouter',
     providerModelId: 'microsoft/mai-ds-r1:free',
+    // Pending catalog re-evaluation; use portable JSON mode until strict schema support is verified.
+    structuredOutputMode: 'json-object',
     allowedTiers: ['free', 'plus', 'premium'],
     displayName: 'Free Model (OpenRouter)',
-    contextWindow: 1000000,
-    costPer1kTokens: {
-      input: 0.00,
-      output: 0.00,
-    },
-  },
-  {
-    id: 'local-debug-model',
-    provider: 'lmstudio',
-    providerModelId: 'google/gemma-3-12b',
-    allowedTiers: ['free', 'plus', 'premium'],
-    displayName: 'Local Debug Model (LM Studio)',
-    contextWindow: 8192,
+    contextWindow: 163840,
     costPer1kTokens: {
       input: 0.00,
       output: 0.00,

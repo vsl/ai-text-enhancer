@@ -9,7 +9,7 @@ import { LoadingSpinner } from '@/components/features/LoadingSpinner';
 import { InfoTooltip } from '@/components/features/InfoTooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AiConfig, Result } from '@/lib/types';
-import { TOOLTIP_TEXTS } from '@/lib/constants';
+import { TOOLTIP_TEXTS, getAiRoleLabel } from '@/lib/constants';
 
 /**
  * Props for the AssistantCard component
@@ -65,7 +65,7 @@ export function AssistantCard({
               checked={config.enabled}
               onChange={() => onToggle(config.id)}
             />
-            <h3 className="text-base text-secondary m-0">{config.aiRole}</h3>
+            <h3 className="text-base text-secondary m-0">{getAiRoleLabel(config.aiRoleId)}</h3>
           </div>
           <small className="text-muted-foreground">{config.model}</small>
         </div>

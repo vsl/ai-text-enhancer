@@ -13,6 +13,7 @@ dist/
 # Testing
 coverage/
 .jest-cache/
+evaluation-results/
 
 # IDE
 .vscode/

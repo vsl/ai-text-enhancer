@@ -29,7 +29,7 @@ describe('ConfigEditorModal Integration Tests', () => {
   const sampleConfig: AiConfig = {
     id: 1,
     model: 'gemini-flash',
-    aiRole: 'General Assistant',
+    aiRoleId: 'editor',
     options: { ...DEFAULT_OPTIONS },
     enabled: true,
   };
@@ -112,7 +112,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(modelSelect.value).toBe('gemini-flash');
 
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i }) as HTMLSelectElement;
-      expect(aiRoleSelect.value).toBe('General Assistant');
+      expect(aiRoleSelect.value).toBe('editor');
     });
 
     it('should reset form when modal reopens with new data', () => {
@@ -129,7 +129,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       const newConfig: AiConfig = {
         ...sampleConfig,
         model: 'open-router-free',
-        aiRole: 'Summarizer Assistant',
+        aiRoleId: 'summarizer',
       };
 
       rerender(
@@ -156,7 +156,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(modelSelect.value).toBe('open-router-free');
 
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i }) as HTMLSelectElement;
-      expect(aiRoleSelect.value).toBe('Summarizer Assistant');
+      expect(aiRoleSelect.value).toBe('summarizer');
     });
   });
 
@@ -196,7 +196,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i });
       await user.selectOptions(aiRoleSelect, 'Professional Email Assistant');
 
-      expect((aiRoleSelect as HTMLSelectElement).value).toBe('Professional Email Assistant');
+      expect((aiRoleSelect as HTMLSelectElement).value).toBe('email_assistant');
     });
   });
 
@@ -622,7 +622,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       await user.selectOptions(modelSelect, 'open-router-free');
 
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i });
-      await user.selectOptions(aiRoleSelect, 'Summarizer Assistant');
+      await user.selectOptions(aiRoleSelect, 'summarizer');
 
       const formatCheckbox = screen.getByRole('checkbox', { name: /format/i });
       await user.click(formatCheckbox);
@@ -633,7 +633,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'open-router-free',
-          aiRole: 'Summarizer Assistant',
+          aiRoleId: 'summarizer',
           options: expect.objectContaining({
             format: true,
           }),
@@ -663,7 +663,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 1,
-          aiRole: 'General Assistant',
+          aiRoleId: 'editor',
           enabled: true,
         })
       );

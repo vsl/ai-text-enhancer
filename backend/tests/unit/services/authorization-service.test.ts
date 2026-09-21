@@ -63,7 +63,6 @@ describe('AuthorizationService', () => {
       
       expect(authzService.checkModelAccess(user, 'open-router-free').allowed).toBe(true);
       expect(authzService.checkModelAccess(user, 'gemini-flash').allowed).toBe(true);
-      expect(authzService.checkModelAccess(user, 'local-debug-model').allowed).toBe(true);
     });
 
     it.skip('should include model ID in error reason', () => {
@@ -122,7 +121,6 @@ describe('AuthorizationService', () => {
       expect(() => {
         authzService.requireModelAccess(user, 'open-router-free');
         authzService.requireModelAccess(user, 'gemini-flash');
-        authzService.requireModelAccess(user, 'local-debug-model');
       }).not.toThrow();
     });
   });
@@ -132,9 +130,8 @@ describe('AuthorizationService', () => {
       const user = createUser('free');
       const models = authzService.getAccessibleModels(user);
       
-      expect(models).toHaveLength(3);
+      expect(models).toHaveLength(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('local-debug-model');
       expect(models).toContain('gemini-flash');
     });
 
@@ -142,9 +139,8 @@ describe('AuthorizationService', () => {
       const user = createUser('plus');
       const models = authzService.getAccessibleModels(user);
       
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('local-debug-model');
       expect(models).toContain('gemini-flash');
     });
 
@@ -152,9 +148,8 @@ describe('AuthorizationService', () => {
       const user = createUser('premium');
       const models = authzService.getAccessibleModels(user);
       
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('local-debug-model');
       expect(models).toContain('gemini-flash');
     });
 

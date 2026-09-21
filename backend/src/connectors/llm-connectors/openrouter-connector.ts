@@ -6,6 +6,7 @@
 
 import type { LLMConnector, LLMRequestParams, LLMResponse } from '../../types/llm.types.ts';
 import { LLMError, LLMTimeoutError, LLMAuthenticationError } from '../../errors/llm-errors.ts';
+import { TEXT_OUTPUT_SCHEMA, TEXT_OUTPUT_SCHEMA_NAME } from '../../config/output-contract.config.ts';
 
 export class OpenRouterConnector implements LLMConnector {
   name = 'openrouter';
@@ -21,34 +22,31 @@ export class OpenRouterConnector implements LLMConnector {
     try {
       const url = 'https://openrouter.ai/api/v1/chat/completions';
 
+      const responseFormat = params.structuredOutputMode === 'json-schema'
+        ? {
+            type: 'json_schema',
+            json_schema: {
+              name: TEXT_OUTPUT_SCHEMA_NAME,
+              strict: true,
+              schema: TEXT_OUTPUT_SCHEMA,
+            },
+          }
+        : { type: 'json_object' };
+
       const body = {
         model: params.model,
         messages: [
           { role: 'system', content: params.systemPrompt },
           { role: 'user', content: params.userPrompt }
         ],
-        temperature: params.temperature || 0.7,
-        max_tokens: params.maxTokens || 2048,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "text_enhancement",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                text: {
-                  type: "string",
-                },
-              },
-              required: ["text"],
-              additionalProperties: false,
-            },
-          },
+        ...(params.temperature !== undefined && { temperature: params.temperature }),
+        max_tokens: params.maxTokens ?? 2048,
+        response_format: responseFormat,
+        provider: {
+          require_parameters: true,
         },
       };
 
-      console.info("OpenRouter request body:", JSON.stringify(body));
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -93,7 +91,7 @@ export class OpenRouterConnector implements LLMConnector {
           outputTokens: usage.completion_tokens || 0,
           totalTokens: usage.total_tokens || 0
         },
-        model: params.model,
+        model: data.model || params.model,
         provider: 'openrouter'
       };
 

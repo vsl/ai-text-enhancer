@@ -7,6 +7,7 @@
 export {};
 
 const BASE_URL = 'http://localhost:54321/functions/v1/enhance';
+const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
 
 async function testHealth() {
   console.log('\n🏥 Testing health endpoint...');
@@ -22,13 +23,14 @@ async function testHealth() {
 
 async function testEnhance() {
   console.log('\n✨ Testing enhance endpoint...');
+  if (!ACCESS_TOKEN) throw new Error('Set SUPABASE_ACCESS_TOKEN to run authenticated tests');
   
   const request = {
     assistants: [
       {
         id: 'task-1',
-        model: 'gemini-1.5-flash',
-        aiRoleId: 'grammar-corrector',
+        model: 'gemini-flash',
+        aiRoleId: 'editor',
         userText: 'This are wrong and have many eror.',
         options: {
           fixMistakes: true,
@@ -43,7 +45,7 @@ async function testEnhance() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer test-token-plus' // Mock token for plus tier
+        'Authorization': `Bearer ${ACCESS_TOKEN}`
       },
       body: JSON.stringify(request)
     });
@@ -58,13 +60,14 @@ async function testEnhance() {
 
 async function testBatch() {
   console.log('\n📚 Testing batch enhancement...');
+  if (!ACCESS_TOKEN) throw new Error('Set SUPABASE_ACCESS_TOKEN to run authenticated tests');
   
   const request = {
     assistants: [
       {
         id: 'task-1',
-        model: 'gemini-1.5-flash',
-        aiRoleId: 'grammar-corrector',
+        model: 'gemini-flash',
+        aiRoleId: 'editor',
         userText: 'This are wrong.',
         options: {
           fixMistakes: true
@@ -72,8 +75,8 @@ async function testBatch() {
       },
       {
         id: 'task-2',
-        model: 'gemini-1.5-flash',
-        aiRoleId: 'style-improver',
+        model: 'open-router-free',
+        aiRoleId: 'summarizer',
         userText: 'make it fancy',
         options: {
           improve: true,
@@ -88,7 +91,7 @@ async function testBatch() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer test-token-premium'
+        'Authorization': `Bearer ${ACCESS_TOKEN}`
       },
       body: JSON.stringify(request)
     });
@@ -126,7 +129,7 @@ async function testInvalidAuth() {
 console.log('🚀 Starting Edge Function tests...');
 await testHealth();
 await testInvalidAuth();
-// Uncomment when ready to test with real API keys:
+// Set SUPABASE_ACCESS_TOKEN and uncomment for authenticated requests:
 // await testEnhance();
 // await testBatch();
 console.log('\n✨ Tests complete!\n');

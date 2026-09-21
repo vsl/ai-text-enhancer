@@ -14,7 +14,6 @@ import type {
   PromptBuildRequest, 
   ConstructedPrompt 
 } from '../types/prompt.types.ts';
-import type { RoleConfig } from '../types/config.types.ts';
 import { getRoleById } from '../config/roles.config.ts';
 
 export class PromptBuilder {

@@ -95,7 +95,7 @@ describe('Configuration Loader', () => {
 
       const config = loadConfig();
 
-      expect(config.llmProviders).toHaveLength(3);
+      expect(config.llmProviders).toHaveLength(2);
       expect(config.models.length).toBeGreaterThan(0);
       expect(config.roles.length).toBe(4);
       expect(config.supabase.serviceRoleKey).toBe('test-supabase-key');
@@ -154,26 +154,7 @@ describe('Configuration Loader', () => {
       expect(() => loadConfig()).toThrow('MAX_BATCH_SIZE must be a positive number between 1 and 100');
     });
 
-    it('should use default LM Studio base URL when not specified', () => {
-      setupRequiredEnv();
-
-      const config = loadConfig();
-      const lmStudioProvider = config.llmProviders.find((p) => p.name === 'lmstudio');
-
-      expect(lmStudioProvider).toBeDefined();
-      expect(lmStudioProvider?.baseUrl).toBe('http://localhost:1234');
-    });
-
-    it('should use custom LM Studio base URL when specified', () => {
-      setupRequiredEnv({ LM_STUDIO_BASE_URL: 'http://custom:5678' });
-
-      const config = loadConfig();
-      const lmStudioProvider = config.llmProviders.find((p) => p.name === 'lmstudio');
-
-      expect(lmStudioProvider?.baseUrl).toBe('http://custom:5678');
-    });
-
-    it('should include all three providers', () => {
+    it('should include both production providers', () => {
       setupRequiredEnv();
 
       const config = loadConfig();
@@ -181,7 +162,7 @@ describe('Configuration Loader', () => {
 
       expect(providerNames).toContain('gemini');
       expect(providerNames).toContain('openrouter');
-      expect(providerNames).toContain('lmstudio');
+      expect(providerNames).toHaveLength(2);
     });
 
     it('should include rate limits for all tiers', () => {

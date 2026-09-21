@@ -22,6 +22,7 @@ describe('LMStudioConnector', () => {
 
   describe('sendRequest', () => {
     it('should send request successfully', async () => {
+      const infoSpy = jest.spyOn(console, 'info').mockImplementation();
       const mockResponse = {
         ok: true,
         status: 200,
@@ -55,6 +56,8 @@ describe('LMStudioConnector', () => {
       expect(result.usage.totalTokens).toBe(18);
       expect(result.provider).toBe('lmstudio');
       expect(result.model).toBe('local-model');
+      expect(infoSpy).not.toHaveBeenCalled();
+      infoSpy.mockRestore();
     });
 
     it('should use custom base URL', async () => {
@@ -228,6 +231,20 @@ describe('LMStudioConnector', () => {
 
       expect(body.temperature).toBe(0.5);
       expect(body.max_tokens).toBe(1024);
+    });
+
+    it('omits unevaluated temperature and preserves explicit zero', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"text":"ok"}' } }] }),
+      });
+
+      await connector.sendRequest({ model: 'test-model', systemPrompt: 'System', userPrompt: 'User' });
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).not.toHaveProperty('temperature');
+
+      await connector.sendRequest({ model: 'test-model', systemPrompt: 'System', userPrompt: 'User', temperature: 0 });
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body).temperature).toBe(0);
     });
 
     it('should include JSON schema in request', async () => {

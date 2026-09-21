@@ -8,7 +8,7 @@ describe('Copy Button Feedback', () => {
   const mockConfig: AiConfig = {
     id: 1,
     model: 'gemini-flash',
-    aiRole: 'General Assistant',
+    aiRoleId: 'editor',
     options: {
       improve: true,
       fixMistakes: true,
@@ -16,8 +16,8 @@ describe('Copy Button Feedback', () => {
       shorten: false,
       lengthen: false,
       addEmojis: false,
-      formality: 'Professional',
-      tone: 'Neutral',
+      formality: 'Formal',
+      tone: 'Confident',
       languageLevel: '',
       translateTo: '',
     },

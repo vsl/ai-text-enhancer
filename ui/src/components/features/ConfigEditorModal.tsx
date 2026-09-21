@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/features/InfoTooltip";
 import { useAuth } from "@/context/AuthContext";
-import { AiConfig } from "@/lib/types";
+import { AiConfig, AiRoleId } from "@/lib/types";
 import {
   AVAILABLE_MODELS,
   AVAILABLE_AI_ROLES,
@@ -24,6 +24,7 @@ import {
   LANGUAGE_LEVELS,
   LANGUAGES,
   TOOLTIP_TEXTS,
+  getAiRoleLabel,
 } from "@/lib/constants";
 
 /**
@@ -107,8 +108,10 @@ export function ConfigEditorModal({
 
     const { name, value, type } = e.target;
 
-    if (name === "model" || name === "aiRole") {
+    if (name === "model") {
       setEditedConfig({ ...editedConfig, [name]: value });
+    } else if (name === "aiRoleId") {
+      setEditedConfig({ ...editedConfig, aiRoleId: value as AiRoleId });
     } else {
       const newOptions = { ...editedConfig.options };
       
@@ -165,7 +168,7 @@ export function ConfigEditorModal({
         <SheetHeader className="px-8 pt-6 pb-4 border-b border-border flex-shrink-0">
           <SheetTitle id="editor-modal-title" className="text-xl font-semibold flex items-center gap-2">
             {mode === "edit"
-              ? `Editing: ${configData.aiRole}`
+              ? `Editing: ${getAiRoleLabel(configData.aiRoleId)}`
               : "Add New Assistant"}
           </SheetTitle>
           <SheetDescription id="editor-modal-description" className="sr-only">
@@ -212,21 +215,21 @@ export function ConfigEditorModal({
                 </div>
                 <div className="space-y-2">
                   <label
-                    htmlFor="aiRole"
+                    htmlFor="aiRoleId"
                     className="text-sm font-medium flex items-center gap-2"
                   >
                     AI Role <InfoTooltip text={TOOLTIP_TEXTS.aiRole} position="left" />
                   </label>
                   <select
-                    id="aiRole"
-                    name="aiRole"
-                    value={editedConfig.aiRole}
+                    id="aiRoleId"
+                    name="aiRoleId"
+                    value={editedConfig.aiRoleId}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
                   >
-                    {Object.keys(AVAILABLE_AI_ROLES).map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    {AVAILABLE_AI_ROLES.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.label}
                       </option>
                     ))}
                   </select>

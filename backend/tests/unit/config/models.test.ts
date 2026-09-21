@@ -6,8 +6,8 @@ import { MODELS, getModelById, getModelsByProvider, getModelsByTier } from '../.
 
 describe('Models Configuration', () => {
   describe('MODELS', () => {
-    it('should have exactly 3 models defined', () => {
-      expect(MODELS.length).toBe(3);
+    it('should have exactly 2 production models defined', () => {
+      expect(MODELS.length).toBe(2);
     });
 
     it('should have all required fields for each model', () => {
@@ -15,6 +15,7 @@ describe('Models Configuration', () => {
         expect(model.id).toBeDefined();
         expect(model.provider).toBeDefined();
         expect(model.providerModelId).toBeDefined();
+        expect(['json-schema', 'json-object']).toContain(model.structuredOutputMode);
         expect(model.allowedTiers).toBeDefined();
         expect(Array.isArray(model.allowedTiers)).toBe(true);
         expect(model.allowedTiers.length).toBeGreaterThan(0);
@@ -32,12 +33,11 @@ describe('Models Configuration', () => {
       expect(uniqueIds.size).toBe(ids.length);
     });
 
-    it('should have models from all three providers', () => {
+    it('should have models from both production providers', () => {
       const providers = new Set(MODELS.map((m) => m.provider));
       expect(providers.has('gemini')).toBe(true);
       expect(providers.has('openrouter')).toBe(true);
-      expect(providers.has('lmstudio')).toBe(true);
-      expect(providers.size).toBe(3);
+      expect(providers.size).toBe(2);
     });
 
     it('should include gemini-flash model', () => {
@@ -45,6 +45,7 @@ describe('Models Configuration', () => {
       expect(model).toBeDefined();
       expect(model?.provider).toBe('gemini');
       expect(model?.providerModelId).toBe('gemini-2.5-flash');
+      expect(model?.structuredOutputMode).toBe('json-schema');
       expect(model?.allowedTiers).toContain('free');
     });
 
@@ -52,15 +53,9 @@ describe('Models Configuration', () => {
       const model = MODELS.find((m) => m.id === 'open-router-free');
       expect(model).toBeDefined();
       expect(model?.provider).toBe('openrouter');
+      expect(model?.structuredOutputMode).toBe('json-object');
       expect(model?.allowedTiers).toContain('free');
-    });
-
-    it('should include local-debug-model', () => {
-      const model = MODELS.find((m) => m.id === 'local-debug-model');
-      expect(model).toBeDefined();
-      expect(model?.provider).toBe('lmstudio');
-      expect(model?.providerModelId).toBe('google/gemma-3-12b');
-      expect(model?.allowedTiers).toContain('free');
+      expect(model?.contextWindow).toBe(163840);
     });
   });
 
@@ -82,10 +77,9 @@ describe('Models Configuration', () => {
       expect(model?.provider).toBe('openrouter');
     });
 
-    it('should return correct model for local-debug-model', () => {
+    it('should not expose the local debug model', () => {
       const model = getModelById('local-debug-model');
-      expect(model).not.toBeNull();
-      expect(model?.provider).toBe('lmstudio');
+      expect(model).toBeNull();
     });
   });
 
@@ -104,11 +98,9 @@ describe('Models Configuration', () => {
       expect(models[0].id).toBe('open-router-free');
     });
 
-    it('should return lmstudio model', () => {
+    it('should not expose lmstudio models', () => {
       const models = getModelsByProvider('lmstudio');
-      expect(models.length).toBe(1);
-      expect(models.every((m) => m.provider === 'lmstudio')).toBe(true);
-      expect(models[0].id).toBe('local-debug-model');
+      expect(models).toHaveLength(0);
     });
 
     it('should return empty array for non-existent provider', () => {
@@ -120,27 +112,25 @@ describe('Models Configuration', () => {
   describe('getModelsByTier', () => {
     it('should return all models accessible to free tier', () => {
       const models = getModelsByTier('free');
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(2);
       expect(models.every((m) => m.allowedTiers.includes('free'))).toBe(true);
       expect(models.some((m) => m.id === 'open-router-free')).toBe(true);
-      expect(models.some((m) => m.id === 'local-debug-model')).toBe(true);
       expect(models.some((m) => m.id === 'gemini-flash')).toBe(true);
     });
 
     it('should return all models accessible to plus tier', () => {
       const models = getModelsByTier('plus');
       
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(2);
       expect(models.every((m) => m.allowedTiers.includes('plus'))).toBe(true);
       expect(models.some((m) => m.id === 'gemini-flash')).toBe(true);
       expect(models.some((m) => m.id === 'open-router-free')).toBe(true);
-      expect(models.some((m) => m.id === 'local-debug-model')).toBe(true);
     });
 
     it('should return all models accessible to premium tier', () => {
       const models = getModelsByTier('premium');
       
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(2);
       expect(models.every((m) => m.allowedTiers.includes('premium'))).toBe(true);
       expect(models.length).toBe(MODELS.length);
     });
@@ -151,9 +141,9 @@ describe('Models Configuration', () => {
       const premiumModels = getModelsByTier('premium');
 
       // All current models are accessible to all tiers
-      expect(freeModels.length).toBe(3);
-      expect(plusModels.length).toBe(3);
-      expect(premiumModels.length).toBe(3);
+      expect(freeModels.length).toBe(2);
+      expect(plusModels.length).toBe(2);
+      expect(premiumModels.length).toBe(2);
     });
   });
 });

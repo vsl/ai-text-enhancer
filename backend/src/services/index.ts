@@ -6,7 +6,7 @@
  */
 
 export { PromptBuilder } from './prompt-builder.ts';
-export { PromptTemplates } from './prompt-templates.ts';
+export { PROMPT_VERSION, PromptTemplates } from './prompt-templates.ts';
 export { AuthService } from './auth-service.ts';
 export { AuthorizationService } from './authorization-service.ts';
 export { ModelTierMapper } from './model-tier-mapper.ts';

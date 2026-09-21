@@ -29,7 +29,7 @@ test.describe('Assistant Configuration', () => {
     await page.locator('select[name="model"]').selectOption('open-router-free');
     
     // Select AI Role
-    await page.locator('select[name="aiRole"]').selectOption('Summarizer Assistant');
+    await page.locator('select[name="aiRoleId"]').selectOption('summarizer');
     
     // Check some action options
     await page.locator('input[name="improve"]').check();
@@ -299,7 +299,7 @@ test.describe('Assistant Configuration', () => {
   test('should persist assistant configurations across page reloads', async ({ page }) => {
     // Add a new assistant with specific config
     await page.getByTestId('add-assistant-button').click();
-    await page.locator('select[name="aiRole"]').selectOption('Social Media Assistant');
+    await page.locator('select[name="aiRoleId"]').selectOption('social_media_assistant');
     await page.locator('input[name="improve"]').check();
     await page.getByRole('button', { name: 'Save' }).click();
     

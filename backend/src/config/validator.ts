@@ -82,6 +82,12 @@ export function validateConfig(config: SystemConfig): void {
           message: `Model "${model.id}" references unknown provider "${model.provider}"`,
         });
       }
+      if (model.structuredOutputMode !== 'json-schema' && model.structuredOutputMode !== 'json-object') {
+        errors.push({
+          field: `models.${model.id}.structuredOutputMode`,
+          message: `Model "${model.id}" has unsupported structured output mode`,
+        });
+      }
     }
   }
 

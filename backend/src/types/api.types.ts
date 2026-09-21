@@ -1,3 +1,10 @@
+import type {
+  Formality,
+  Language,
+  LanguageLevel,
+  Tone,
+} from '../config/transformation-options.config.ts';
+
 /**
  * API Request/Response Types
  * 
@@ -38,12 +45,12 @@ export interface TransformationOptions {
   lengthen?: boolean;           // Add detail and depth
   
   // Style Controls
-  formality?: 'Casual' | 'Neutral' | 'Formal';
-  tone?: string;                // Custom tone (e.g., 'witty', 'professional', 'urgent')
-  languageLevel?: 'default' | 'simple' | 'intermediate' | 'advanced' | 'fluent' | 'native';
+  formality?: Formality;
+  tone?: Tone;
+  languageLevel?: LanguageLevel;
   
   // Special Transformations
-  translateTo?: string;         // Language code (e.g., 'es-ES', 'ja-JP', 'fr-FR')
+  translateTo?: Language;
   addEmojis?: boolean;          // Add relevant emojis
 }
 

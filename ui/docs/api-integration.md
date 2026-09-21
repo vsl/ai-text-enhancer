@@ -198,13 +198,7 @@ POST /functions/v1/enhance
 | `email_assistant` | Professional Email Assistant | Email composition and formatting |
 | `social_media_assistant` | Social Media Assistant | Social media posts and marketing copy |
 
-**Role mapping** (from display name to ID in `WorkflowContext.tsx:271-276`):
-```typescript
-'General Assistant' → 'editor'
-'Summarizer Assistant' → 'summarizer'
-'Professional Email Assistant' → 'email_assistant'
-'Social Media Assistant' → 'social_media_assistant'
-```
+Workflow configurations store role IDs directly. Legacy localStorage display names are migrated to these four IDs; an unknown legacy value becomes `editor`.
 
 ### Enhancement Options
 
@@ -231,15 +225,15 @@ All options are optional. If none provided, AI uses role's default behavior.
 ```typescript
 {
   formality: string;       // 'Casual' | 'Neutral' | 'Formal'
-  tone: string;            // Custom tone (e.g., 'professional', 'witty', 'urgent')
-  languageLevel: string;   // '' | 'simple' | 'intermediate' | 'advanced' | 'fluent' | 'native'
+  tone: 'Confident' | 'Empathetic' | 'Cheerful' | 'Witty' | 'Direct' | 'Engaging' | 'Polite' | 'Sincere' | 'Disappointed' | 'Apologetic' | 'Pessimistic' | 'Worried';
+  languageLevel: 'default' | 'simple' | 'intermediate' | 'advanced' | 'fluent' | 'native';
 }
 ```
 
 **Special transformations:**
 ```typescript
 {
-  translateTo: string;     // ISO language code (e.g., 'es', 'fr', 'de', 'ja')
+  translateTo: string;     // ar|zh|en|fr|de|hi|it|ja|ko|pt|ru|es|uk|vi
   addEmojis: boolean;      // Add relevant emojis to text
 }
 ```
@@ -249,23 +243,21 @@ All options are optional. If none provided, AI uses role's default behavior.
 | Model ID | Name | Tiers | Speed | Quality |
 |----------|------|-------|-------|---------|
 | `gemini-flash` | Gemini 2.5 Flash | Free, Plus, Premium | Very Fast | Good |
-| `gemini-pro` | Gemini 1.5 Pro | Plus, Premium | Moderate | Excellent |
-| `open-router-free` | Open Router Free | Free | Fast | Good |
-| `gpt-4` | GPT-4 | Premium | Slower | Best |
+| `open-router-free` | Open Router Free | Free, Plus, Premium | Fast | Good |
 
 ### Tier Limits
 
 | Tier | Max User Text | Max Context | Batch Size | Models |
 |------|---------------|-------------|------------|---------|
 | **Free** | 500 chars | 800 chars | 3 | gemini-flash, open-router-free |
-| **Plus** | 2000 chars | 3000 chars | 10 | + gemini-pro |
-| **Premium** | 5000 chars | 10000 chars | 10 | + gpt-4 |
+| **Plus** | 2000 chars | 3000 chars | 10 | gemini-flash, open-router-free |
+| **Premium** | 5000 chars | 10000 chars | 10 | gemini-flash, open-router-free |
 
 **Note:** Unauthenticated users are treated as free tier.
 
 ### Response Format
 
-**Always returns HTTP 200** even with partial failures. Check each result's `status` field.
+Valid batches return HTTP 200 even with per-assistant provider failures. Invalid JSON or configuration returns HTTP 400 with `error.code = "INVALID_REQUEST"` before any provider call.
 
 **Success response:**
 ```json
@@ -295,8 +287,7 @@ All options are optional. If none provided, AI uses role's default behavior.
       "id": "task-2",
       "status": "error",
       "error": {
-        "code": "MODEL_ACCESS_DENIED",
-        "message": "User tier 'free' does not have access to model 'gemini-pro'"
+        "code": "TASK_TIMEOUT"
       }
     }
   ]
@@ -525,7 +516,7 @@ const response = await fetch(`${apiUrl}/enhance`, {
         model: 'gemini-flash',
         aiRoleId: 'email_assistant',
         userText: 'We are launching a new product next month.',
-        options: { formality: 'Formal', tone: 'professional' }
+        options: { formality: 'Formal', tone: 'Polite' }
       },
       {
         id: 'spanish',
@@ -558,7 +549,7 @@ const response = await fetch(`${apiUrl}/enhance`, {
   body: JSON.stringify({
     assistants: [{
       id: 'email',
-      model: 'gemini-pro',
+      model: 'open-router-free',
       aiRoleId: 'email_assistant',
       userText: 'cant make it sorry',
       contextText: 'Meeting invitation from John about Q4 budget review on Friday at 2pm',
@@ -566,7 +557,7 @@ const response = await fetch(`${apiUrl}/enhance`, {
         improve: true,
         lengthen: true,
         formality: 'Formal',
-        tone: 'polite and professional'
+        tone: 'Polite'
       }
     }]
   })

@@ -15,6 +15,13 @@ export class OrchestrationError extends Error {
   }
 }
 
+export class InvalidRequestError extends OrchestrationError {
+  constructor(message: string) {
+    super(message, 'INVALID_REQUEST');
+    this.name = 'InvalidRequestError';
+  }
+}
+
 /**
  * Error when batch size exceeds maximum
  */

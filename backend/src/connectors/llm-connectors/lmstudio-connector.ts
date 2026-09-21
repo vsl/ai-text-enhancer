@@ -7,6 +7,7 @@
 
 import type { LLMConnector, LLMRequestParams, LLMResponse } from '../../types/llm.types.ts';
 import { LLMError, LLMTimeoutError } from '../../errors/llm-errors.ts';
+import { TEXT_OUTPUT_SCHEMA, TEXT_OUTPUT_SCHEMA_NAME } from '../../config/output-contract.config.ts';
 
 export class LMStudioConnector implements LLMConnector {
   name = 'lmstudio';
@@ -28,28 +29,18 @@ export class LMStudioConnector implements LLMConnector {
           { role: 'system', content: params.systemPrompt },
           { role: 'user', content: params.userPrompt }
         ],
-        temperature: params.temperature || 0.7,
-        max_tokens: params.maxTokens || 2048,
+        ...(params.temperature !== undefined && { temperature: params.temperature }),
+        max_tokens: params.maxTokens ?? 2048,
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "text_enhancement",
+            name: TEXT_OUTPUT_SCHEMA_NAME,
             strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                text: {
-                  type: "string",
-                },
-              },
-              required: ["text"],
-              additionalProperties: false,
-            },
+            schema: TEXT_OUTPUT_SCHEMA,
           },
         },
       };
 
-      console.info("LMStudio request body:", JSON.stringify(body));
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -87,7 +78,7 @@ export class LMStudioConnector implements LLMConnector {
           outputTokens: usage.completion_tokens || 0,
           totalTokens: usage.total_tokens || 0
         },
-        model: params.model,
+        model: data.model || params.model,
         provider: 'lmstudio'
       };
 

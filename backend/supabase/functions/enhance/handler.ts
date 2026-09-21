@@ -5,7 +5,6 @@
 
 import type { BatchOrchestrator } from '../../../src/services/batch-orchestrator.ts';
 import type { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
-import type { BatchRequest } from '../../../src/types/api.types.ts';
 import type { SystemConfig } from '../../../src/types/config.types.ts';
 import {
   AuthenticationError,
@@ -13,7 +12,10 @@ import {
 } from '../../../src/errors/auth-errors.ts';
 import { QuotaError } from '../../../src/errors/quota-errors.ts';
 import { LLMError } from '../../../src/errors/llm-errors.ts';
-import { OrchestrationError } from '../../../src/errors/orchestration-errors.ts';
+import {
+  InvalidRequestError,
+  OrchestrationError,
+} from '../../../src/errors/orchestration-errors.ts';
 
 interface Services {
   orchestrator: BatchOrchestrator;
@@ -72,7 +74,7 @@ async function handleEnhance(
   corsHeaders: Record<string, string>
 ): Promise<Response> {
   // Parse request
-  const body = await req.json() as BatchRequest;
+  const body: unknown = await req.json();
   const headers = Object.fromEntries(req.headers.entries());
 
   // Authenticate
@@ -103,6 +105,14 @@ function handleError(
     }
     return { error: errorObj };
   };
+
+  if (error instanceof InvalidRequestError) {
+    return jsonResponse(
+      { error: { code: error.code, message: error.message } },
+      400,
+      corsHeaders
+    );
+  }
 
   // Authentication errors (401)
   if (error instanceof AuthenticationError) {
@@ -140,20 +150,19 @@ function handleError(
     );
   }
 
-  // Orchestration errors (400/500)
+  // Orchestration errors (400)
   if (error instanceof OrchestrationError) {
-    const status = error.code.includes('EXCEEDED') || error.code.includes('EMPTY') ? 400 : 500;
     return jsonResponse(
       buildErrorResponse(error.code, error.message),
-      status,
+      400,
       corsHeaders
     );
   }
 
   // JSON parse errors (400)
-  if (error instanceof SyntaxError) {
+  if (error instanceof SyntaxError || (error as Error)?.name === 'SyntaxError') {
     return jsonResponse(
-      buildErrorResponse('INVALID_JSON', 'Request body is not valid JSON'),
+      { error: { code: 'INVALID_REQUEST', message: 'Request body is not valid JSON' } },
       400,
       corsHeaders
     );

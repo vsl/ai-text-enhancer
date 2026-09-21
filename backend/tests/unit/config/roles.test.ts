@@ -31,14 +31,14 @@ describe('Roles Configuration', () => {
       const role = ROLES.find((r) => r.id === 'editor');
       expect(role).toBeDefined();
       expect(role?.name).toBe('Editor');
-      expect(role?.systemPrompt).toContain('text editor');
+      expect(role?.systemPrompt).toContain('professional editor');
     });
 
     it('should include summarizer role', () => {
       const role = ROLES.find((r) => r.id === 'summarizer');
       expect(role).toBeDefined();
       expect(role?.name).toBe('Summarizer');
-      expect(role?.systemPrompt).toContain('summarizer');
+      expect(role?.systemPrompt).toContain('summarizer and analyst');
     });
 
     it('should include social_media_assistant role', () => {
@@ -55,10 +55,17 @@ describe('Roles Configuration', () => {
       expect(role?.systemPrompt).toContain('email');
     });
 
-    it('should have system prompts that describe role focus', () => {
-      ROLES.forEach((role) => {
-        expect(role.systemPrompt.toLowerCase()).toContain('focus');
-      });
+    it.each<[string, string[]]>([
+      ['editor', ['meticulous professional editor', 'Correct grammar', 'Make proportionate edits', 'Quality standard:']],
+      ['summarizer', ['expert summarizer and analyst', 'Preserve important names, figures, dates', 'facts, opinions, proposals', 'Quality standard:']],
+      ['social_media_assistant', ['expert social media copywriter', 'compelling hook', 'Do not introduce emojis', 'Quality standard:']],
+      ['email_assistant', ['expert email writer', 'Always include a specific "Subject:" line', 'reference context', 'Quality standard:']],
+    ])('should define distinct expertise and quality criteria for %s', (roleId, expectedPhrases) => {
+      const role = getRoleById(roleId);
+      expect(role).not.toBeNull();
+      expectedPhrases.forEach((phrase) => expect(role?.systemPrompt).toContain(phrase));
+      expect(role?.systemPrompt).toContain('Primary task:');
+      expect(role?.systemPrompt).not.toContain('Return only valid JSON');
     });
 
     it('should have at least one allowed model for each role', () => {
@@ -121,11 +128,11 @@ describe('Roles Configuration', () => {
       // Editor should allow all configured models
       expect(isModelAllowedForRole('editor', 'gemini-flash')).toBe(true);
       expect(isModelAllowedForRole('editor', 'open-router-free')).toBe(true);
-      expect(isModelAllowedForRole('editor', 'local-debug-model')).toBe(true);
+      expect(isModelAllowedForRole('editor', 'local-debug-model')).toBe(false);
     });
 
     it('should allow all models for all roles (simplified config)', () => {
-      const allModelIds = ['gemini-flash', 'open-router-free', 'local-debug-model'];
+      const allModelIds = ['gemini-flash', 'open-router-free'];
       
       allModelIds.forEach((modelId) => {
         const translator = getRoleById('translator');

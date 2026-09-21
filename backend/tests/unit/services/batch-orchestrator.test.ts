@@ -12,12 +12,8 @@
 import { BatchOrchestrator } from '../../../src/services/batch-orchestrator.ts';
 import { QuotaService } from '../../../src/services/quota-service.ts';
 import { AuthorizationService } from '../../../src/services/authorization-service.ts';
-import {
-  BatchSizeError,
-  EmptyBatchError,
-  DuplicateTaskIdError,
-  TaskTimeoutError
-} from '../../../src/errors/orchestration-errors.ts';
+import { InvalidRequestError } from '../../../src/errors/orchestration-errors.ts';
+import { LLMTimeoutError } from '../../../src/errors/llm-errors.ts';
 import type { UserProfile } from '../../../src/types/auth.types.ts';
 import type { BatchRequest, AssistantConfiguration } from '../../../src/types/api.types.ts';
 import type { LLMProviderConfig } from '../../../src/types/config.types.ts';
@@ -150,7 +146,7 @@ describe('BatchOrchestrator', () => {
 
       await expect(
         orchestrator.processBatch(user, request)
-      ).rejects.toThrow(EmptyBatchError);
+      ).rejects.toThrow(InvalidRequestError);
     });
 
     it('should return partial success when batch size exceeds tier limit', async () => {
@@ -207,7 +203,7 @@ describe('BatchOrchestrator', () => {
 
       await expect(
         orchestrator.processBatch(user, request)
-      ).rejects.toThrow(DuplicateTaskIdError);
+      ).rejects.toThrow(InvalidRequestError);
     });
 
     it('should accept valid batch (1-10 assistants)', async () => {
@@ -328,7 +324,7 @@ describe('BatchOrchestrator', () => {
 
       await expect(
         orchestrator.processBatch(user, request)
-      ).rejects.toThrow('Unknown model: unknown-model');
+      ).rejects.toThrow('model is not supported');
     });
   });
 
@@ -617,6 +613,37 @@ describe('BatchOrchestrator', () => {
           code: expect.any(String)
         }
       });
+    });
+
+    it.each(['not json', '{"value":"missing text"}', '{"text":""}', '{"text":"ok","extra":true}'])('rejects malformed structured output', async (text) => {
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue({
+        sendRequest: jest.fn().mockResolvedValue({
+          text,
+          usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+          model: 'gemini-2.5-flash',
+          provider: 'gemini',
+        }),
+      });
+
+      const response = await orchestrator.processBatch(user, {
+        assistants: [{ id: 'bad-json', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test', options: {} }],
+      });
+
+      expect(response.results[0]).toMatchObject({ status: 'error', error: { code: 'LLM_ERROR' } });
+    });
+
+    it('maps connector cancellation to TASK_TIMEOUT', async () => {
+      const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
+      LLMConnectorFactory.getConnector = jest.fn().mockReturnValue({
+        sendRequest: jest.fn().mockRejectedValue(new LLMTimeoutError('gemini', 30)),
+      });
+
+      const response = await orchestrator.processBatch(user, {
+        assistants: [{ id: 'timeout', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test', options: {} }],
+      });
+
+      expect(response.results[0]).toMatchObject({ status: 'error', error: { code: 'TASK_TIMEOUT' } });
     });
   });
 

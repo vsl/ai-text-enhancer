@@ -72,6 +72,13 @@ describe('Configuration Validator', () => {
       expect(() => validateConfig(config)).toThrow('references unknown provider');
     });
 
+    it('should reject unsupported structured output modes', () => {
+      const config = loadConfig();
+      config.models[0].structuredOutputMode = 'unsupported' as never;
+
+      expect(() => validateConfig(config)).toThrow('unsupported structured output mode');
+    });
+
     it('should throw error when non-lmstudio provider missing API key', () => {
       const config = loadConfig();
       config.llmProviders.find((p) => p.name === 'gemini')!.apiKey = '';

@@ -4,10 +4,13 @@
  * Platform-agnostic type definitions for LLM integration.
  */
 
+import type { StructuredOutputMode } from './config.types.ts';
+
 export interface LLMRequestParams {
   model: string;
   systemPrompt: string;
   userPrompt: string;
+  structuredOutputMode?: StructuredOutputMode;
   temperature?: number;
   maxTokens?: number;
   timeout?: number;

@@ -44,6 +44,24 @@ npm test -- src/services/batch-orchestrator.test.ts
 npm test -- --testNamePattern="should validate batch structure"
 ```
 
+### Prompt/model evaluations
+
+Run committed prompt cases against the configured production models:
+
+```bash
+npm run eval:prompts
+```
+
+Evaluate one or more candidate provider model IDs without exposing them in the UI:
+
+```bash
+npm run eval:prompts -- \
+  --model=gemini:gemini-2.5-flash#json-schema \
+  --model=openrouter:microsoft/mai-ds-r1:free#json-object
+```
+
+The command reads `GEMINI_API_KEY` and `OPENROUTER_API_KEY`, preflights catalog availability and supported parameters, and never substitutes another model. Missing keys and unavailable models are recorded as skipped. JSON reports are written to the gitignored `evaluation-results/` directory for deterministic checks and human review; live evaluations are not run in CI.
+
 ### Quick Manual Test
 
 ```bash

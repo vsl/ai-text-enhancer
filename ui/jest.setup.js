@@ -1,6 +1,10 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 
+process.env.NEXT_PUBLIC_APP_SUPABASE_URL ||= 'https://example.supabase.co';
+process.env.NEXT_PUBLIC_APP_SUPABASE_ANON_KEY ||= 'test-anon-key';
+process.env.NEXT_PUBLIC_API_BASE_URL ||= 'https://example.supabase.co/functions/v1';
+
 // Polyfill for fetch (not available in Jest/JSDOM Node environment)
 if (typeof global.fetch === 'undefined') {
   global.fetch = jest.fn();

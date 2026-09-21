@@ -13,7 +13,7 @@ describe('DropdownMenu Integration', () => {
   const mockConfig: AiConfig = {
     id: 1,
     model: 'gemini-flash',
-    aiRole: 'General Assistant',
+    aiRoleId: 'editor',
     options: {
       improve: true,
       fixMistakes: true,
@@ -21,8 +21,8 @@ describe('DropdownMenu Integration', () => {
       shorten: false,
       lengthen: false,
       addEmojis: false,
-      formality: 'Professional',
-      tone: 'Neutral',
+      formality: 'Formal',
+      tone: 'Confident',
       languageLevel: '',
       translateTo: '',
     },

@@ -22,6 +22,7 @@ describe('GeminiConnector', () => {
 
   describe('sendRequest', () => {
     it('should send request successfully', async () => {
+      const infoSpy = jest.spyOn(console, 'info').mockImplementation();
       const mockResponse = {
         ok: true,
         status: 200,
@@ -55,6 +56,8 @@ describe('GeminiConnector', () => {
       expect(result.usage.totalTokens).toBe(15);
       expect(result.provider).toBe('gemini');
       expect(result.model).toBe('gemini-1.5-flash');
+      expect(infoSpy).not.toHaveBeenCalled();
+      infoSpy.mockRestore();
     });
 
     it('should handle authentication error (401)', async () => {
@@ -211,8 +214,23 @@ describe('GeminiConnector', () => {
             type: 'string'
           }
         },
-        required: ['text']
+        required: ['text'],
+        additionalProperties: false,
       });
+    });
+
+    it('omits unevaluated temperature and preserves explicit zero', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ candidates: [{ content: { parts: [{ text: '{"text":"ok"}' }] } }] }),
+      });
+
+      await connector.sendRequest({ model: 'test-model', systemPrompt: 'System', userPrompt: 'User' });
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).generationConfig).not.toHaveProperty('temperature');
+
+      await connector.sendRequest({ model: 'test-model', systemPrompt: 'System', userPrompt: 'User', temperature: 0 });
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body).generationConfig.temperature).toBe(0);
     });
 
     it('should handle missing usage metadata', async () => {

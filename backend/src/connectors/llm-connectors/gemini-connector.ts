@@ -7,6 +7,7 @@
 
 import type { LLMConnector, LLMRequestParams, LLMResponse } from '../../types/llm.types.ts';
 import { LLMError, LLMTimeoutError, LLMAuthenticationError } from '../../errors/llm-errors.ts';
+import { TEXT_OUTPUT_SCHEMA } from '../../config/output-contract.config.ts';
 
 export class GeminiConnector implements LLMConnector {
   name = 'gemini';
@@ -40,21 +41,12 @@ export class GeminiConnector implements LLMConnector {
           }
         ],
         generationConfig: {
-          temperature: params.temperature || 0.7,
-          maxOutputTokens: params.maxTokens || 2048,
+          ...(params.temperature !== undefined && { temperature: params.temperature }),
+          maxOutputTokens: params.maxTokens ?? 2048,
           responseMimeType: "application/json",
-          responseSchema: {
-            type: "object",
-            properties: {
-              text: {
-                type: "string",
-              },
-            },
-            required: ["text"],
-          },
+          responseSchema: TEXT_OUTPUT_SCHEMA,
         }
       };
-      console.info("Gemini request body:", JSON.stringify(body));
       // Make request using native fetch
       const response = await fetch(url, {
         method: 'POST',
@@ -99,7 +91,7 @@ export class GeminiConnector implements LLMConnector {
           outputTokens: usage.candidatesTokenCount || 0,
           totalTokens: usage.totalTokenCount || 0
         },
-        model: params.model,
+        model: data.modelVersion || params.model,
         provider: 'gemini'
       };
 

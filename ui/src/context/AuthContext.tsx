@@ -5,6 +5,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { UserProfile, TierLimits } from '@/lib/types';
 import { TIER_LIMITS } from '@/lib/constants';
+import { API_BASE_URL } from '@/lib/runtime-config';
 
 interface AuthContextType {
   user: User | null;
@@ -42,8 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Call /me endpoint with Bearer token
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:54321/functions/v1';
-      const response = await fetch(`${apiBaseUrl}/me`, {
+      const response = await fetch(`${API_BASE_URL}/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

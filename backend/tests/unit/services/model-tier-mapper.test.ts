@@ -41,9 +41,6 @@ describe('ModelTierMapper', () => {
           ModelTierMapper.canAccessModel('free', 'open-router-free')
         ).toBe(true);
         expect(
-          ModelTierMapper.canAccessModel('free', 'local-debug-model')
-        ).toBe(true);
-        expect(
           ModelTierMapper.canAccessModel('free', 'gemini-flash')
         ).toBe(true);
       });
@@ -67,9 +64,6 @@ describe('ModelTierMapper', () => {
         expect(
           ModelTierMapper.canAccessModel('plus', 'open-router-free')
         ).toBe(true);
-        expect(
-          ModelTierMapper.canAccessModel('plus', 'local-debug-model')
-        ).toBe(true);
       });
 
       it('should allow access to plus models', () => {
@@ -89,9 +83,6 @@ describe('ModelTierMapper', () => {
         expect(
           ModelTierMapper.canAccessModel('premium', 'open-router-free')
         ).toBe(true);
-        expect(
-          ModelTierMapper.canAccessModel('premium', 'local-debug-model')
-        ).toBe(true);
       });
 
       it('should allow access to plus models', () => {
@@ -101,7 +92,7 @@ describe('ModelTierMapper', () => {
       });
 
       it('should allow access to all models', () => {
-        const allModelIds = ['gemini-flash', 'open-router-free', 'local-debug-model'];
+        const allModelIds = ['gemini-flash', 'open-router-free'];
         allModelIds.forEach(modelId => {
           expect(
             ModelTierMapper.canAccessModel('premium', modelId)
@@ -120,25 +111,22 @@ describe('ModelTierMapper', () => {
   describe('getAccessibleModels', () => {
     it('should return only free models for free users', () => {
       const models = ModelTierMapper.getAccessibleModels('free');
-      expect(models).toHaveLength(3);
+      expect(models).toHaveLength(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('local-debug-model');
       expect(models).toContain('gemini-flash');
     });
 
     it('should return free + plus models for plus users', () => {
       const models = ModelTierMapper.getAccessibleModels('plus');
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('local-debug-model');
       expect(models).toContain('gemini-flash');
     });
 
     it('should return all models for premium users', () => {
       const models = ModelTierMapper.getAccessibleModels('premium');
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('local-debug-model');
       expect(models).toContain('gemini-flash');
     });
 
@@ -157,9 +145,9 @@ describe('ModelTierMapper', () => {
       const premiumModels = ModelTierMapper.getAccessibleModels('premium');
       
       // Since all models allow all tiers, counts should be equal
-      expect(freeModels.length).toBe(3);
-      expect(plusModels.length).toBe(3);
-      expect(premiumModels.length).toBe(3);
+      expect(freeModels.length).toBe(2);
+      expect(plusModels.length).toBe(2);
+      expect(premiumModels.length).toBe(2);
       
       // All models should be accessible to all tiers in current config
       expect(freeModels).toContain('gemini-flash');
@@ -172,9 +160,9 @@ describe('ModelTierMapper', () => {
       const plusCount = ModelTierMapper.getAccessibleModels('plus').length;
       const premiumCount = ModelTierMapper.getAccessibleModels('premium').length;
       
-      expect(freeCount).toBe(3);
-      expect(plusCount).toBe(3);
-      expect(premiumCount).toBe(3);
+      expect(freeCount).toBe(2);
+      expect(plusCount).toBe(2);
+      expect(premiumCount).toBe(2);
     });
   });
 });

@@ -67,12 +67,6 @@ export function loadConfig(): SystemConfig {
       apiKey: openrouterApiKey!,
       models: getModelsByProvider('openrouter'),
     },
-    {
-      name: 'lmstudio',
-      apiKey: '', // LM Studio doesn't require API key
-      baseUrl: process.env.LM_STUDIO_BASE_URL || 'http://localhost:1234',
-      models: getModelsByProvider('lmstudio'),
-    },
   ];
 
   // 4. Parse optional configuration values

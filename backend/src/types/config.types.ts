@@ -58,6 +58,8 @@ export interface LLMProviderConfig {
   models: ModelConfig[];
 }
 
+export type StructuredOutputMode = 'json-schema' | 'json-object';
+
 /**
  * Model configuration
  */
@@ -70,6 +72,9 @@ export interface ModelConfig {
   
   /** Provider-specific model identifier */
   providerModelId: string;
+
+  /** Structured-output feature verified for this provider/model pair */
+  structuredOutputMode: StructuredOutputMode;
   
   /** User tiers that can access this model */
   allowedTiers: ('free' | 'plus' | 'premium')[];

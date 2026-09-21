@@ -13,11 +13,13 @@ export interface Options {
   shorten: boolean;
   lengthen: boolean;
   addEmojis: boolean;
-  formality: string;
-  tone: string;
-  languageLevel: string;
-  translateTo: string;
+  formality: 'Casual' | 'Neutral' | 'Formal';
+  tone: 'Confident' | 'Empathetic' | 'Cheerful' | 'Witty' | 'Direct' | 'Engaging' | 'Polite' | 'Sincere' | 'Disappointed' | 'Apologetic' | 'Pessimistic' | 'Worried';
+  languageLevel: '' | 'simple' | 'intermediate' | 'advanced' | 'fluent' | 'native';
+  translateTo: '' | 'ar' | 'zh' | 'en' | 'fr' | 'de' | 'hi' | 'it' | 'ja' | 'ko' | 'pt' | 'ru' | 'es' | 'uk' | 'vi';
 }
+
+export type AiRoleId = 'editor' | 'summarizer' | 'social_media_assistant' | 'email_assistant';
 
 /**
  * AI Assistant Configuration
@@ -25,7 +27,7 @@ export interface Options {
 export interface AiConfig {
   id: number;
   model: string;
-  aiRole: string;
+  aiRoleId: AiRoleId;
   options: Options;
   enabled: boolean;
 }

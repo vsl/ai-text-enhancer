@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { TOKEN_PACKAGES, TIER_LIMITS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Check, Sparkles, Zap, Crown, AlertCircle, Gift } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/runtime-config';
 
 export default function PricingPage() {
   const { user, profile, isAnonymous, getAuthToken, loading } = useAuth();
@@ -27,8 +28,7 @@ export default function PricingPage() {
       const token = await getAuthToken();
 
       // Create checkout session
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:54321/functions/v1';
-      const response = await fetch(`${apiBaseUrl}/create-checkout`, {
+      const response = await fetch(`${API_BASE_URL}/create-checkout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
