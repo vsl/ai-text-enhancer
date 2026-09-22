@@ -16,6 +16,7 @@ import {
   InvalidRequestError,
   OrchestrationError,
 } from '../../../src/errors/orchestration-errors.ts';
+import { getFunctionPath } from '../../../src/utils/function-path.ts';
 
 interface Services {
   orchestrator: BatchOrchestrator;
@@ -42,14 +43,15 @@ export async function handleRequest(
   try {
     const url = new URL(req.url);
     const method = req.method;
+    const pathname = getFunctionPath(url.pathname, 'enhance');
 
     // Route: GET /health or GET /
-    if (method === 'GET' && (url.pathname === '/health' || url.pathname === '/')) {
+    if (method === 'GET' && (pathname === '/health' || pathname === '/')) {
       return jsonResponse({ status: 'ok', service: 'ai-text-enhancer' }, 200, corsHeaders);
     }
 
-    // Route: POST /enhance (main endpoint)
-    if (method === 'POST' && url.pathname === '/enhance') {
+    // Route: POST / (main endpoint)
+    if (method === 'POST' && pathname === '/') {
       return await handleEnhance(req, services, corsHeaders);
     }
 

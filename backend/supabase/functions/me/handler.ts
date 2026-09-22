@@ -6,6 +6,7 @@
 import type { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AuthenticationError } from '../../../src/errors/auth-errors.ts';
+import { getFunctionPath } from '../../../src/utils/function-path.ts';
 
 interface Services {
   authMiddleware: AuthMiddleware;
@@ -29,7 +30,7 @@ export async function handleRequest(
 
   try {
     const url = new URL(req.url);
-    const pathname = url.pathname.replace(/^\/me/, '') || '/';
+    const pathname = getFunctionPath(url.pathname, 'me');
 
     // Health check endpoint
     if (pathname === '/health') {

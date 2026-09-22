@@ -8,6 +8,7 @@ import { AuthenticationError } from '../../../src/errors/auth-errors.ts';
 import { AdminServiceError } from '../../../src/services/admin.service.ts';
 import { UserRepositoryError } from '../../../src/repositories/user.repository.ts';
 import { QuotaRepositoryError } from '../../../src/repositories/quota.repository.ts';
+import { getFunctionPath } from '../../../src/utils/function-path.ts';
 
 interface Services {
   adminService: AdminService;
@@ -32,8 +33,7 @@ export async function handleRequest(
     const url = new URL(req.url);
     const method = req.method;
 
-    // Remove the function name prefix from pathname (/admin/bootstrap -> /bootstrap)
-    const pathname = url.pathname.replace(/^\/admin/, '') || '/';
+    const pathname = getFunctionPath(url.pathname, 'admin');
 
     // Route: POST /bootstrap
     if (method === 'POST' && pathname === '/bootstrap') {

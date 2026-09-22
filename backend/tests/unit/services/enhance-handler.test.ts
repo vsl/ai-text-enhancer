@@ -21,10 +21,20 @@ function services(processBatch: jest.Mock) {
 }
 
 describe('enhance handler validation errors', () => {
+  it('serves the hosted health endpoint', async () => {
+    const response = await handleRequest(
+      new Request('https://example.supabase.co/functions/v1/enhance/health'),
+      services(jest.fn())
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: 'ok', service: 'ai-text-enhancer' });
+  });
+
   it('returns a safe typed 400 for invalid configuration', async () => {
     const processBatch = jest.fn().mockRejectedValue(new InvalidRequestError('assistants[0].tone is not supported'));
     const response = await handleRequest(
-      new Request('http://localhost/enhance', { method: 'POST', body: JSON.stringify({ assistants: [{}] }) }),
+      new Request('https://example.supabase.co/functions/v1/enhance', { method: 'POST', body: JSON.stringify({ assistants: [{}] }) }),
       services(processBatch)
     );
 
