@@ -94,12 +94,12 @@ describe('QuotaMiddleware', () => {
         dailyLimit: 1_000_000
       });
 
-      await quotaMiddleware.postUpdate(user, 2000, 'gemini-flash');
+      await quotaMiddleware.postUpdate(user, 2000, 'open-router-free');
 
       expect(mockReportUsage).toHaveBeenCalledWith(
         'user-123',
         2000,
-        'gemini-flash'
+        'open-router-free'
       );
     });
 
@@ -111,7 +111,7 @@ describe('QuotaMiddleware', () => {
       });
 
       // Should not throw
-      await expect(quotaMiddleware.postUpdate(user, 2000, 'gemini-flash'))
+      await expect(quotaMiddleware.postUpdate(user, 2000, 'open-router-free'))
         .resolves
         .toBeUndefined();
     });

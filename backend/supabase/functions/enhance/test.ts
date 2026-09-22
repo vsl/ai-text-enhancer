@@ -29,7 +29,7 @@ async function testEnhance() {
     assistants: [
       {
         id: 'task-1',
-        model: 'gemini-flash',
+        model: 'open-router-free',
         aiRoleId: 'editor',
         userText: 'This are wrong and have many eror.',
         options: {
@@ -66,7 +66,7 @@ async function testBatch() {
     assistants: [
       {
         id: 'task-1',
-        model: 'gemini-flash',
+        model: 'open-router-free',
         aiRoleId: 'editor',
         userText: 'This are wrong.',
         options: {

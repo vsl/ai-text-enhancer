@@ -22,7 +22,7 @@ describe('ConfigEditorModal Integration Tests', () => {
 
   const sampleConfig: AiConfig = {
     id: 1,
-    model: 'gemini-flash',
+    model: 'open-router-free',
     aiRoleId: 'editor',
     options: { ...DEFAULT_OPTIONS },
     enabled: true,
@@ -103,7 +103,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       );
 
       const modelSelect = screen.getByRole('combobox', { name: /model/i }) as HTMLSelectElement;
-      expect(modelSelect.value).toBe('gemini-flash');
+      expect(modelSelect.value).toBe('open-router-free');
 
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i }) as HTMLSelectElement;
       expect(aiRoleSelect.value).toBe('editor');
@@ -169,9 +169,9 @@ describe('ConfigEditorModal Integration Tests', () => {
       );
 
       const modelSelect = screen.getByRole('combobox', { name: /model/i });
-      await user.selectOptions(modelSelect, 'open-router-free');
+      await user.selectOptions(modelSelect, 'openai-gpt-5-nano');
 
-      expect((modelSelect as HTMLSelectElement).value).toBe('open-router-free');
+      expect((modelSelect as HTMLSelectElement).value).toBe('openai-gpt-5-nano');
     });
 
     it('should change AI Role selection', async () => {
@@ -475,7 +475,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       );
 
       const modelSelect = screen.getByRole('combobox', { name: /model/i });
-      await user.selectOptions(modelSelect, 'open-router-free');
+      await user.selectOptions(modelSelect, 'openai-gpt-5-nano');
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       expect(saveButton).not.toBeDisabled();
@@ -515,7 +515,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(saveButton).toBeDisabled();
 
       const modelSelect = screen.getByRole('combobox', { name: /model/i });
-      await user.selectOptions(modelSelect, 'open-router-free');
+      await user.selectOptions(modelSelect, 'openai-gpt-5-nano');
 
       expect(saveButton).not.toBeDisabled();
     });
@@ -562,11 +562,11 @@ describe('ConfigEditorModal Integration Tests', () => {
       const modelSelect = screen.getByRole('combobox', { name: /model/i });
 
       // Change value
-      await user.selectOptions(modelSelect, 'open-router-free');
+      await user.selectOptions(modelSelect, 'openai-gpt-5-nano');
       expect(saveButton).not.toBeDisabled();
 
       // Revert value
-      await user.selectOptions(modelSelect, 'gemini-flash');
+      await user.selectOptions(modelSelect, 'open-router-free');
       expect(saveButton).toBeDisabled();
     });
   });

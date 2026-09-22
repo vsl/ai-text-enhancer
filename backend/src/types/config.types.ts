@@ -176,9 +176,6 @@ export interface TierLimits {
  * Environment variables interface
  */
 export interface EnvironmentConfig {
-  /** Google Gemini API key */
-  GEMINI_API_KEY: string;
-
   /** OpenRouter API key */
   OPENROUTER_API_KEY: string;
 

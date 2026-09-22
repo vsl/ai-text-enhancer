@@ -18,7 +18,7 @@ function validRequest() {
   return {
     assistants: [{
       id: '1',
-      model: 'gemini-flash',
+      model: 'open-router-free',
       aiRoleId: 'editor',
       userText: 'Please improve this text.',
       contextText: 'Reference only.',
@@ -80,7 +80,7 @@ describe('validateBatchRequest', () => {
       id: 'editor',
       name: 'Editor',
       systemPrompt: 'Edit text',
-      allowedModels: ['gemini-flash'],
+      allowedModels: ['openai-gpt-5-nano'],
     });
     const request = validRequest();
     request.assistants[0].model = 'open-router-free';
