@@ -74,9 +74,9 @@ describe('BatchOrchestrator', () => {
     const { getRoleById } = require('../../../src/config/roles.config.ts');
 
     getModelById.mockImplementation((id: string) => {
-      if (id === 'gemini-flash') {
+      if (id === 'open-router-free') {
         return {
-          id: 'gemini-flash',
+          id: 'open-router-free',
           provider: 'gemini',
           providerModelId: 'gemini-2.5-flash',
           tier: 'plus',
@@ -94,7 +94,7 @@ describe('BatchOrchestrator', () => {
           id: 'grammar-corrector',
           name: 'Grammar Corrector',
           systemPrompt: 'You are a grammar correction expert.',
-          allowedModels: ['gemini-flash']
+          allowedModels: ['open-router-free']
         };
       }
       return null;
@@ -113,7 +113,7 @@ describe('BatchOrchestrator', () => {
           outputTokens: 20,
           totalTokens: 30
         },
-        model: 'gemini-flash',
+        model: 'open-router-free',
         provider: 'gemini'
       })
     };
@@ -153,7 +153,7 @@ describe('BatchOrchestrator', () => {
       const request: BatchRequest = {
         assistants: Array(11).fill(null).map((_, i) => ({
           id: `test-${i}`,
-          model: 'gemini-flash',
+          model: 'open-router-free',
           aiRoleId: 'grammar-corrector',
           userText: 'test',
           options: { improve: true }
@@ -186,14 +186,14 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'duplicate',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test 1',
             options: { improve: true }
           },
           {
             id: 'duplicate',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test 2',
             options: { improve: true }
@@ -211,7 +211,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test text',
             options: { improve: true }
@@ -235,7 +235,7 @@ describe('BatchOrchestrator', () => {
       const request: BatchRequest = {
         assistants: Array(5).fill(null).map((_, i) => ({
           id: `task-${i}`,
-          model: 'gemini-flash',
+          model: 'open-router-free',
           aiRoleId: 'grammar-corrector',
           userText: 'test',
           options: { improve: true }
@@ -273,9 +273,9 @@ describe('BatchOrchestrator', () => {
 
       const request: BatchRequest = {
         assistants: [
-          { id: 'a', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test 1', options: { improve: true } },
-          { id: 'b', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test 2', options: { improve: true } },
-          { id: 'c', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test 3', options: { improve: true } }
+          { id: 'a', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 1', options: { improve: true } },
+          { id: 'b', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 2', options: { improve: true } },
+          { id: 'c', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 3', options: { improve: true } }
         ]
       };
 
@@ -293,7 +293,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: { improve: true }
@@ -305,7 +305,7 @@ describe('BatchOrchestrator', () => {
 
       expect(authzService.requireModelAccess).toHaveBeenCalledWith(
         user,
-        'gemini-flash'
+        'open-router-free'
       );
     });
 
@@ -334,21 +334,21 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'text 1',
             options: { improve: true }
           },
           {
             id: 'test-2',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'text 2',
             options: { improve: true }
           },
           {
             id: 'test-3',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'text 3',
             options: { improve: true }
@@ -367,9 +367,9 @@ describe('BatchOrchestrator', () => {
     it('should maintain result order matching input order', async () => {
       const request: BatchRequest = {
         assistants: [
-          { id: 'a', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't1', options: {} },
-          { id: 'b', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't2', options: {} },
-          { id: 'c', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't3', options: {} }
+          { id: 'a', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't1', options: {} },
+          { id: 'b', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't2', options: {} },
+          { id: 'c', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't3', options: {} }
         ]
       };
 
@@ -396,7 +396,7 @@ describe('BatchOrchestrator', () => {
           return Promise.resolve({
             text: '{"text": "Enhanced"}',
             usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
-            model: 'gemini-flash',
+            model: 'open-router-free',
             provider: 'gemini'
           });
         })
@@ -406,9 +406,9 @@ describe('BatchOrchestrator', () => {
 
       const request: BatchRequest = {
         assistants: [
-          { id: 'test-1', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't1', options: {} },
-          { id: 'test-2', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't2', options: {} },
-          { id: 'test-3', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't3', options: {} }
+          { id: 'test-1', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't1', options: {} },
+          { id: 'test-2', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't2', options: {} },
+          { id: 'test-3', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't3', options: {} }
         ]
       };
 
@@ -434,8 +434,8 @@ describe('BatchOrchestrator', () => {
 
       const request: BatchRequest = {
         assistants: [
-          { id: 'test-1', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} },
-          { id: 'test-2', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} }
+          { id: 'test-1', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't', options: {} },
+          { id: 'test-2', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't', options: {} }
         ]
       };
 
@@ -453,7 +453,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test text',
             options: { improve: true }
@@ -474,7 +474,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: { improve: true }
@@ -500,7 +500,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: { improve: true }
@@ -531,7 +531,7 @@ describe('BatchOrchestrator', () => {
           return Promise.resolve({
             text: '{"text": "Success"}',
             usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
-            model: 'gemini-flash',
+            model: 'open-router-free',
             provider: 'gemini'
           });
         })
@@ -541,8 +541,8 @@ describe('BatchOrchestrator', () => {
 
       const request: BatchRequest = {
         assistants: [
-          { id: 'fail', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} },
-          { id: 'success', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 't', options: {} }
+          { id: 'fail', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't', options: {} },
+          { id: 'success', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 't', options: {} }
         ]
       };
 
@@ -563,7 +563,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: { improve: true }
@@ -596,7 +596,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: {}
@@ -627,7 +627,7 @@ describe('BatchOrchestrator', () => {
       });
 
       const response = await orchestrator.processBatch(user, {
-        assistants: [{ id: 'bad-json', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test', options: {} }],
+        assistants: [{ id: 'bad-json', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test', options: {} }],
       });
 
       expect(response.results[0]).toMatchObject({ status: 'error', error: { code: 'LLM_ERROR' } });
@@ -640,7 +640,7 @@ describe('BatchOrchestrator', () => {
       });
 
       const response = await orchestrator.processBatch(user, {
-        assistants: [{ id: 'timeout', model: 'gemini-flash', aiRoleId: 'grammar-corrector', userText: 'test', options: {} }],
+        assistants: [{ id: 'timeout', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test', options: {} }],
       });
 
       expect(response.results[0]).toMatchObject({ status: 'error', error: { code: 'TASK_TIMEOUT' } });
@@ -664,7 +664,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: {}
@@ -706,7 +706,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: {}
@@ -739,7 +739,7 @@ describe('BatchOrchestrator', () => {
         assistants: [
           {
             id: 'test-1',
-            model: 'gemini-flash',
+            model: 'open-router-free',
             aiRoleId: 'grammar-corrector',
             userText: 'test',
             options: {}

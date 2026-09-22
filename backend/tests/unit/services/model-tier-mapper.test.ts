@@ -14,8 +14,8 @@ describe('ModelTierMapper', () => {
       expect(tiers).toContain('premium');
     });
 
-    it('should return allowed tiers for gemini-flash', () => {
-      const tiers = ModelTierMapper.getAllowedTiers('gemini-flash');
+    it('should return allowed tiers for open-router-free', () => {
+      const tiers = ModelTierMapper.getAllowedTiers('open-router-free');
       expect(tiers).toContain('free');
       expect(tiers).toContain('plus');
       expect(tiers).toContain('premium');
@@ -27,8 +27,8 @@ describe('ModelTierMapper', () => {
     });
 
     it('should return array copy not reference', () => {
-      const tiers1 = ModelTierMapper.getAllowedTiers('gemini-flash');
-      const tiers2 = ModelTierMapper.getAllowedTiers('gemini-flash');
+      const tiers1 = ModelTierMapper.getAllowedTiers('open-router-free');
+      const tiers2 = ModelTierMapper.getAllowedTiers('open-router-free');
       expect(tiers1).not.toBe(tiers2); // Different array instances
       expect(tiers1).toEqual(tiers2); // But same content
     });
@@ -41,14 +41,14 @@ describe('ModelTierMapper', () => {
           ModelTierMapper.canAccessModel('free', 'open-router-free')
         ).toBe(true);
         expect(
-          ModelTierMapper.canAccessModel('free', 'gemini-flash')
+          ModelTierMapper.canAccessModel('free', 'open-router-free')
         ).toBe(true);
       });
 
       it.skip('should deny access to plus models', () => {
         // All models are currently free tier
         expect(
-          ModelTierMapper.canAccessModel('free', 'gemini-flash')
+          ModelTierMapper.canAccessModel('free', 'open-router-free')
         ).toBe(false);
       });
 
@@ -68,7 +68,7 @@ describe('ModelTierMapper', () => {
 
       it('should allow access to plus models', () => {
         expect(
-          ModelTierMapper.canAccessModel('plus', 'gemini-flash')
+          ModelTierMapper.canAccessModel('plus', 'open-router-free')
         ).toBe(true);
       });
 
@@ -87,12 +87,12 @@ describe('ModelTierMapper', () => {
 
       it('should allow access to plus models', () => {
         expect(
-          ModelTierMapper.canAccessModel('premium', 'gemini-flash')
+          ModelTierMapper.canAccessModel('premium', 'open-router-free')
         ).toBe(true);
       });
 
       it('should allow access to all models', () => {
-        const allModelIds = ['gemini-flash', 'open-router-free'];
+        const allModelIds = ['open-router-free', 'open-router-free'];
         allModelIds.forEach(modelId => {
           expect(
             ModelTierMapper.canAccessModel('premium', modelId)
@@ -113,21 +113,21 @@ describe('ModelTierMapper', () => {
       const models = ModelTierMapper.getAccessibleModels('free');
       expect(models).toHaveLength(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('gemini-flash');
+      expect(models).toContain('open-router-free');
     });
 
     it('should return free + plus models for plus users', () => {
       const models = ModelTierMapper.getAccessibleModels('plus');
       expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('gemini-flash');
+      expect(models).toContain('open-router-free');
     });
 
     it('should return all models for premium users', () => {
       const models = ModelTierMapper.getAccessibleModels('premium');
       expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('gemini-flash');
+      expect(models).toContain('open-router-free');
     });
 
     it('should return sorted accessible models consistently', () => {
@@ -150,9 +150,9 @@ describe('ModelTierMapper', () => {
       expect(premiumModels.length).toBe(2);
       
       // All models should be accessible to all tiers in current config
-      expect(freeModels).toContain('gemini-flash');
-      expect(plusModels).toContain('gemini-flash');
-      expect(premiumModels).toContain('gemini-flash');
+      expect(freeModels).toContain('open-router-free');
+      expect(plusModels).toContain('open-router-free');
+      expect(premiumModels).toContain('open-router-free');
     });
 
     it('should maintain correct tier level counts', () => {

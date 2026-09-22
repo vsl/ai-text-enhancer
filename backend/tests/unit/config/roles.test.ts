@@ -114,7 +114,7 @@ describe('Roles Configuration', () => {
     });
 
     it('should return false for non-existent role', () => {
-      expect(isModelAllowedForRole('non-existent-role', 'gemini-flash')).toBe(false);
+      expect(isModelAllowedForRole('non-existent-role', 'open-router-free')).toBe(false);
     });
 
     it('should return false for non-existent model', () => {
@@ -126,13 +126,13 @@ describe('Roles Configuration', () => {
       expect(role).not.toBeNull();
       
       // Editor should allow all configured models
-      expect(isModelAllowedForRole('editor', 'gemini-flash')).toBe(true);
       expect(isModelAllowedForRole('editor', 'open-router-free')).toBe(true);
+      expect(isModelAllowedForRole('editor', 'openai-gpt-5-nano')).toBe(true);
       expect(isModelAllowedForRole('editor', 'local-debug-model')).toBe(false);
     });
 
     it('should allow all models for all roles (simplified config)', () => {
-      const allModelIds = ['gemini-flash', 'open-router-free'];
+      const allModelIds = ['open-router-free', 'openai-gpt-5-nano'];
       
       allModelIds.forEach((modelId) => {
         const translator = getRoleById('translator');

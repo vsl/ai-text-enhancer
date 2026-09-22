@@ -78,7 +78,7 @@ describe('Configuration Validator', () => {
 
     it('should throw error when non-lmstudio provider missing API key', () => {
       const config = loadConfig();
-      config.llmProviders.find((p) => p.name === 'gemini')!.apiKey = '';
+      config.llmProviders.find((p) => p.name === 'openrouter')!.apiKey = '';
 
       expect(() => validateConfig(config)).toThrow('missing required API key');
     });

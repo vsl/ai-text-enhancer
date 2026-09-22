@@ -11,7 +11,6 @@ describe('Configuration Loader', () => {
   // Helper to set up required env vars
   const setupRequiredEnv = (overrides: Record<string, string> = {}) => {
     const defaults = {
-      GEMINI_API_KEY: 'test-gemini-key',
       OPENROUTER_API_KEY: 'test-openrouter-key',
       SUPABASE_URL: 'http://localhost:54321',
       APP_SUPABASE_SERVICE_ROLE_KEY: 'test-supabase-key',
@@ -25,7 +24,6 @@ describe('Configuration Loader', () => {
     process.env = { ...originalEnv };
 
     // Clear all config-related env vars
-    delete process.env.GEMINI_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.SUPABASE_URL;
     delete process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
@@ -45,16 +43,7 @@ describe('Configuration Loader', () => {
   });
 
   describe('loadConfig', () => {
-    it('should throw error when GEMINI_API_KEY is missing', () => {
-      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-      process.env.APP_SUPABASE_SERVICE_ROLE_KEY = 'test-supabase-key';
-      process.env.APP_SUPABASE_JWT_SECRET = 'test-jwt-secret';
-
-      expect(() => loadConfig()).toThrow('GEMINI_API_KEY');
-    });
-
     it('should throw error when OPENROUTER_API_KEY is missing', () => {
-      process.env.GEMINI_API_KEY = 'test-gemini-key';
       process.env.SUPABASE_URL = 'http://localhost:54321';
       process.env.APP_SUPABASE_SERVICE_ROLE_KEY = 'test-supabase-key';
       process.env.APP_SUPABASE_JWT_SECRET = 'test-jwt-secret';
@@ -63,7 +52,6 @@ describe('Configuration Loader', () => {
     });
 
     it('should throw error when APP_SUPABASE_SERVICE_ROLE_KEY is missing', () => {
-      process.env.GEMINI_API_KEY = 'test-gemini-key';
       process.env.SUPABASE_URL = 'http://localhost:54321';
       process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
       process.env.APP_SUPABASE_JWT_SECRET = 'test-jwt-secret';
@@ -72,7 +60,6 @@ describe('Configuration Loader', () => {
     });
 
     it('should throw error when APP_SUPABASE_JWT_SECRET is missing', () => {
-      process.env.GEMINI_API_KEY = 'test-gemini-key';
       process.env.SUPABASE_URL = 'http://localhost:54321';
       process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
       process.env.APP_SUPABASE_SERVICE_ROLE_KEY = 'test-supabase-key';
@@ -81,7 +68,6 @@ describe('Configuration Loader', () => {
     });
 
     it('should throw error when multiple required variables are missing', () => {
-      process.env.GEMINI_API_KEY = 'test-gemini-key';
       process.env.SUPABASE_URL = 'http://localhost:54321';
 
       expect(() => loadConfig()).toThrow('OPENROUTER_API_KEY');
@@ -92,7 +78,7 @@ describe('Configuration Loader', () => {
 
       const config = loadConfig();
 
-      expect(config.llmProviders).toHaveLength(2);
+      expect(config.llmProviders).toHaveLength(1);
       expect(config.models.length).toBeGreaterThan(0);
       expect(config.roles.length).toBe(4);
       expect(config.supabase.serviceRoleKey).toBe('test-supabase-key');
@@ -151,15 +137,14 @@ describe('Configuration Loader', () => {
       expect(() => loadConfig()).toThrow('MAX_BATCH_SIZE must be a positive number between 1 and 100');
     });
 
-    it('should include both production providers', () => {
+    it('should include the OpenRouter provider', () => {
       setupRequiredEnv();
 
       const config = loadConfig();
       const providerNames = config.llmProviders.map((p) => p.name);
 
-      expect(providerNames).toContain('gemini');
       expect(providerNames).toContain('openrouter');
-      expect(providerNames).toHaveLength(2);
+      expect(providerNames).toHaveLength(1);
     });
 
     it('should include rate limits for all tiers', () => {
@@ -228,7 +213,6 @@ describe('Configuration Loader', () => {
 
   describe('hasRequiredEnvVars', () => {
     it('should return false when any required variable is missing', () => {
-      process.env.GEMINI_API_KEY = 'test-gemini-key';
       process.env.SUPABASE_URL = 'http://localhost:54321';
       process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
       // Missing APP_SUPABASE_SERVICE_ROLE_KEY and APP_SUPABASE_JWT_SECRET

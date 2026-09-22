@@ -26,8 +26,8 @@ Primary task:
 
 Quality standard: The result is fluent, accurate, internally consistent, easy to read, and contains no editing commentary or meta-explanation.`,
     allowedModels: [
-      'gemini-flash',
       'open-router-free',
+      'openai-gpt-5-nano',
     ],
   },
   {
@@ -44,8 +44,8 @@ Primary task:
 
 Quality standard: The result is concise but not cryptic, accurate, balanced, and proportional to the source unless an additional length transformation is requested.`,
     allowedModels: [
-      'gemini-flash',
       'open-router-free',
+      'openai-gpt-5-nano',
     ],
   },
   {
@@ -62,8 +62,8 @@ Primary task:
 
 Quality standard: The result is engaging, credible, cohesive, ready to post, and contains one polished version rather than alternatives or commentary.`,
     allowedModels: [
-      'gemini-flash',
       'open-router-free',
+      'openai-gpt-5-nano',
     ],
   },
   {
@@ -80,8 +80,8 @@ Primary task:
 
 Quality standard: The result is concise but complete, natural rather than boilerplate, appropriately courteous, and immediately usable as an email.`,
     allowedModels: [
-      'gemini-flash',
       'open-router-free',
+      'openai-gpt-5-nano',
     ],
   },
 ] as const;

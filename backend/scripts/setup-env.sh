@@ -43,7 +43,6 @@ echo "Setting secrets..."
 echo ""
 
 # Set secrets
-set_secret "GEMINI_API_KEY" "$GEMINI_API_KEY"
 set_secret "OPENROUTER_API_KEY" "$OPENROUTER_API_KEY"
 set_secret "USER_SERVICE_URL" "$USER_SERVICE_URL"
 set_secret "USER_SERVICE_API_KEY" "$USER_SERVICE_API_KEY"

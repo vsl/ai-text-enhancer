@@ -60,7 +60,7 @@ function TextAIAssistantsContent() {
 
     const newConfiguration: AiConfig = {
       id: Date.now(),
-      model: 'gemini-flash',
+      model: 'open-router-free',
       aiRoleId: 'editor',
       options: { ...DEFAULT_OPTIONS },
       enabled: true,

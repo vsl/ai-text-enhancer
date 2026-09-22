@@ -12,38 +12,36 @@ import type { UserTier } from '../types/auth.types.ts';
 /**
  * All available models with tier access control
  * 
- * NOTE: For open-router-free model, check latest free model at:
- * https://openrouter.ai/models?fmt=cards&input_modalities=text&max_price=0&order=top-weekly
+ * OpenRouter's free router selects a currently available free model.
  */
 export const MODELS: readonly ModelConfig[] = [
   // ========================================
-  // FREE TIER MODELS
+  // OpenRouter models
   // ========================================
   {
-    id: 'gemini-flash',
-    provider: 'gemini',
-    providerModelId: 'gemini-2.5-flash',
+    id: 'open-router-free',
+    provider: 'openrouter',
+    providerModelId: 'openrouter/free',
     structuredOutputMode: 'json-schema',
     allowedTiers: ['free', 'plus', 'premium'],
-    displayName: 'Gemini 2.5 Flash',
-    contextWindow: 1000000,
+    displayName: 'OpenRouter Free',
+    contextWindow: 200000,
     costPer1kTokens: {
       input: 0.00,
       output: 0.00,
     },
   },
   {
-    id: 'open-router-free',
+    id: 'openai-gpt-5-nano',
     provider: 'openrouter',
-    providerModelId: 'microsoft/mai-ds-r1:free',
-    // Pending catalog re-evaluation; use portable JSON mode until strict schema support is verified.
-    structuredOutputMode: 'json-object',
+    providerModelId: 'openai/gpt-5-nano',
+    structuredOutputMode: 'json-schema',
     allowedTiers: ['free', 'plus', 'premium'],
-    displayName: 'Free Model (OpenRouter)',
-    contextWindow: 163840,
+    displayName: 'GPT-5 Nano',
+    contextWindow: 400000,
     costPer1kTokens: {
-      input: 0.00,
-      output: 0.00,
+      input: 0.00005,
+      output: 0.0004,
     },
   },
 ] as const;

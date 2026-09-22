@@ -37,7 +37,7 @@ describe('AuthorizationService', () => {
     it.skip('should deny free user access to plus models', () => {
       // All models are currently free tier
       const user = createUser('free');
-      const result = authzService.checkModelAccess(user, 'gemini-flash');
+      const result = authzService.checkModelAccess(user, 'open-router-free');
       
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('requires plus tier');
@@ -53,7 +53,7 @@ describe('AuthorizationService', () => {
 
     it('should allow plus user to access plus models', () => {
       const user = createUser('plus');
-      const result = authzService.checkModelAccess(user, 'gemini-flash');
+      const result = authzService.checkModelAccess(user, 'open-router-free');
       
       expect(result.allowed).toBe(true);
     });
@@ -62,15 +62,15 @@ describe('AuthorizationService', () => {
       const user = createUser('premium');
       
       expect(authzService.checkModelAccess(user, 'open-router-free').allowed).toBe(true);
-      expect(authzService.checkModelAccess(user, 'gemini-flash').allowed).toBe(true);
+      expect(authzService.checkModelAccess(user, 'open-router-free').allowed).toBe(true);
     });
 
     it.skip('should include model ID in error reason', () => {
       // All models are currently free tier
       const user = createUser('free');
-      const result = authzService.checkModelAccess(user, 'gemini-flash');
+      const result = authzService.checkModelAccess(user, 'open-router-free');
       
-      expect(result.reason).toContain('gemini-flash');
+      expect(result.reason).toContain('open-router-free');
     });
   });
 
@@ -79,7 +79,7 @@ describe('AuthorizationService', () => {
       const user = createUser('plus');
       
       expect(() => {
-        authzService.requireModelAccess(user, 'gemini-flash');
+        authzService.requireModelAccess(user, 'open-router-free');
       }).not.toThrow();
     });
 
@@ -88,7 +88,7 @@ describe('AuthorizationService', () => {
       const user = createUser('free');
       
       expect(() => {
-        authzService.requireModelAccess(user, 'gemini-flash');
+        authzService.requireModelAccess(user, 'open-router-free');
       }).toThrow(InsufficientTierError);
     });
 
@@ -97,7 +97,7 @@ describe('AuthorizationService', () => {
       const user = createUser('free');
       
       try {
-        authzService.requireModelAccess(user, 'gemini-flash');
+        authzService.requireModelAccess(user, 'open-router-free');
         fail('Should have thrown InsufficientTierError');
       } catch (error) {
         expect(error).toBeInstanceOf(InsufficientTierError);
@@ -111,7 +111,7 @@ describe('AuthorizationService', () => {
       const user = createUser('free');
       
       expect(() => {
-        authzService.requireModelAccess(user, 'gemini-flash');
+        authzService.requireModelAccess(user, 'open-router-free');
       }).toThrow(InsufficientTierError);
     });
 
@@ -120,7 +120,7 @@ describe('AuthorizationService', () => {
       
       expect(() => {
         authzService.requireModelAccess(user, 'open-router-free');
-        authzService.requireModelAccess(user, 'gemini-flash');
+        authzService.requireModelAccess(user, 'open-router-free');
       }).not.toThrow();
     });
   });
@@ -132,7 +132,7 @@ describe('AuthorizationService', () => {
       
       expect(models).toHaveLength(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('gemini-flash');
+      expect(models).toContain('open-router-free');
     });
 
     it('should return free + plus models for plus users', () => {
@@ -141,7 +141,7 @@ describe('AuthorizationService', () => {
       
       expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('gemini-flash');
+      expect(models).toContain('open-router-free');
     });
 
     it('should return all models for premium users', () => {
@@ -150,7 +150,7 @@ describe('AuthorizationService', () => {
       
       expect(models.length).toBe(2);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('gemini-flash');
+      expect(models).toContain('open-router-free');
     });
 
     it('should return empty array for user with invalid tier', () => {

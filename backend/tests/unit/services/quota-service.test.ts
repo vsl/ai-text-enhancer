@@ -160,7 +160,7 @@ describe('QuotaService', () => {
     it('should deduct tokens successfully via repository', async () => {
       mockQuotaRepository.deductTokens.mockResolvedValue(true);
 
-      const result = await quotaService.reportUsage('user-123', 2000, 'gemini-flash');
+      const result = await quotaService.reportUsage('user-123', 2000, 'open-router-free');
 
       expect(result).toBe(true);
       expect(mockQuotaRepository.deductTokens).toHaveBeenCalledWith('user-123', 2000);
@@ -170,7 +170,7 @@ describe('QuotaService', () => {
       mockQuotaRepository.deductTokens.mockResolvedValue(true);
 
       const result1 = await quotaService.reportUsage('user-123', 5000, 'gpt-4');
-      const result2 = await quotaService.reportUsage('user-456', 100, 'gemini-flash');
+      const result2 = await quotaService.reportUsage('user-456', 100, 'open-router-free');
 
       expect(result1).toBe(true);
       expect(result2).toBe(true);
@@ -184,7 +184,7 @@ describe('QuotaService', () => {
       );
 
       await expect(
-        quotaService.reportUsage('user-123', 1000, 'gemini-flash')
+        quotaService.reportUsage('user-123', 1000, 'open-router-free')
       ).rejects.toThrow(InsufficientQuotaError);
     });
 
@@ -192,7 +192,7 @@ describe('QuotaService', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       mockQuotaRepository.deductTokens.mockRejectedValue(new Error('Database error'));
 
-      const result = await quotaService.reportUsage('user-123', 1000, 'gemini-flash');
+      const result = await quotaService.reportUsage('user-123', 1000, 'open-router-free');
 
       expect(result).toBe(false);
       expect(consoleErrorSpy).toHaveBeenCalled();

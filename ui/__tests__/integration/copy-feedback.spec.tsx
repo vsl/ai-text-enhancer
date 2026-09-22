@@ -7,7 +7,7 @@ import { AiConfig, Result } from '@/lib/types';
 describe('Copy Button Feedback', () => {
   const mockConfig: AiConfig = {
     id: 1,
-    model: 'gemini-flash',
+    model: 'open-router-free',
     aiRoleId: 'editor',
     options: {
       improve: true,

@@ -48,7 +48,8 @@ describe('UI/backend configuration parity', () => {
       'languageLevel',
       'translateTo',
     ]).toEqual(TRANSFORMATION_OPTION_KEYS);
-    expect(MODELS.find(model => model.id === 'open-router-free')?.contextWindow).toBe(163840);
+    expect(MODELS.find(model => model.id === 'open-router-free')?.contextWindow).toBe(200000);
+    expect(MODELS.find(model => model.id === 'openai-gpt-5-nano')?.contextWindow).toBe(400000);
   });
 
   it('migrates legacy roles and retired models safely', () => {
@@ -65,7 +66,7 @@ describe('UI/backend configuration parity', () => {
         surprise: true,
       } as never,
     })).toEqual(expect.objectContaining({
-      model: 'gemini-flash',
+      model: 'open-router-free',
       aiRoleId: 'summarizer',
       options: expect.objectContaining({
         shorten: true,
@@ -76,7 +77,7 @@ describe('UI/backend configuration parity', () => {
     }));
 
     expect(normalizeAiConfig({ id: 2, aiRole: 'Unknown role' })).toEqual(
-      expect.objectContaining({ model: 'gemini-flash', aiRoleId: 'editor' })
+      expect.objectContaining({ model: 'open-router-free', aiRoleId: 'editor' })
     );
   });
 });

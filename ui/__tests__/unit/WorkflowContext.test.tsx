@@ -13,7 +13,7 @@ jest.mock('../../src/context/AuthContext', () => ({
       maxTextLength: 500,
       maxContextLength: 800,
       maxBatchSize: 3,
-      availableModels: ['gemini-flash', 'open-router-free'],
+      availableModels: ['open-router-free', 'open-router-free'],
     },
     getAuthToken: mockFunctions.mockGetAuthToken,
     resetSession: mockFunctions.mockResetSession,
@@ -234,7 +234,7 @@ describe('WorkflowContext', () => {
 
         const newConfig: AiConfig = {
           id: Date.now(),
-          model: 'gemini-flash',
+          model: 'open-router-free',
           aiRoleId: 'editor',
           options: { ...DEFAULT_OPTIONS },
           enabled: true,
@@ -532,14 +532,14 @@ describe('WorkflowContext', () => {
       // Add two more configs to have 3 total
       const config2: AiConfig = {
         id: Date.now() + 1,
-        model: 'gemini-flash',
+        model: 'open-router-free',
         aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
       };
       const config3: AiConfig = {
         id: Date.now() + 2,
-        model: 'gemini-flash',
+        model: 'open-router-free',
         aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
@@ -593,14 +593,14 @@ describe('WorkflowContext', () => {
       // Add two more configs
       const config2: AiConfig = {
         id: Date.now() + 1,
-        model: 'gemini-flash',
+        model: 'open-router-free',
         aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
       };
       const config3: AiConfig = {
         id: Date.now() + 2,
-        model: 'gemini-flash',
+        model: 'open-router-free',
         aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,
@@ -630,7 +630,7 @@ describe('WorkflowContext', () => {
       // Add one more config
       const config2: AiConfig = {
         id: Date.now() + 1,
-        model: 'gemini-flash',
+        model: 'open-router-free',
         aiRoleId: 'editor',
         options: { ...DEFAULT_OPTIONS },
         enabled: true,

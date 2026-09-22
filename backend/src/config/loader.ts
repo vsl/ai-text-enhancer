@@ -17,7 +17,6 @@ import { ROLES } from './roles.config.ts';
  */
 export function loadConfig(): SystemConfig {
   // 1. Read environment variables
-  const geminiApiKey = process.env.GEMINI_API_KEY;
   const openrouterApiKey = process.env.OPENROUTER_API_KEY;
 
   // Supabase configuration (using APP_ prefix to avoid Edge Functions restriction)
@@ -30,7 +29,6 @@ export function loadConfig(): SystemConfig {
 
   // 2. Validate required variables
   const missingVars: string[] = [];
-  if (!geminiApiKey) missingVars.push('GEMINI_API_KEY');
   if (!openrouterApiKey) missingVars.push('OPENROUTER_API_KEY');
   if (!supabaseUrl) missingVars.push('SUPABASE_URL');
   if (!supabaseServiceRoleKey) missingVars.push('APP_SUPABASE_SERVICE_ROLE_KEY');
@@ -45,11 +43,6 @@ export function loadConfig(): SystemConfig {
 
   // 3. Build provider configurations
   const llmProviders: LLMProviderConfig[] = [
-    {
-      name: 'gemini',
-      apiKey: geminiApiKey!,
-      models: getModelsByProvider('gemini'),
-    },
     {
       name: 'openrouter',
       apiKey: openrouterApiKey!,
@@ -145,7 +138,6 @@ export function getEnvVar(key: string): string | undefined {
  */
 export function hasRequiredEnvVars(): boolean {
   const required = [
-    'GEMINI_API_KEY',
     'OPENROUTER_API_KEY',
     'SUPABASE_URL',
     'APP_SUPABASE_SERVICE_ROLE_KEY',

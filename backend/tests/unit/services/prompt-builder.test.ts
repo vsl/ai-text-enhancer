@@ -8,7 +8,7 @@ describe('PromptBuilder', () => {
   it.each(ROLES)('keeps the $id primary task when options are empty', (role) => {
     const prompt = builder.buildPrompt({
       id: role.id,
-      model: 'gemini-flash',
+      model: 'open-router-free',
       aiRoleId: role.id,
       userText: 'Source',
       options: {},
@@ -21,7 +21,7 @@ describe('PromptBuilder', () => {
   it('keeps email completion inherent without the format option', () => {
     const prompt = builder.buildPrompt({
       id: 'email',
-      model: 'gemini-flash',
+      model: 'open-router-free',
       aiRoleId: 'email_assistant',
       userText: 'Ask Dana for the report',
       options: { format: false },
@@ -48,7 +48,7 @@ describe('PromptBuilder', () => {
   it('builds all requested option deltas', () => {
     const config: AssistantConfiguration = {
       id: 'all',
-      model: 'gemini-flash',
+      model: 'open-router-free',
       aiRoleId: 'editor',
       userText: 'Source',
       contextText: 'Reference',
@@ -79,7 +79,7 @@ describe('PromptBuilder', () => {
 
   it('rejects unknown and incompatible roles', () => {
     expect(() => builder.buildPrompt({
-      id: 'bad-role', model: 'gemini-flash', aiRoleId: 'missing', userText: 'Text', options: {},
+      id: 'bad-role', model: 'open-router-free', aiRoleId: 'missing', userText: 'Text', options: {},
     })).toThrow('Unknown AI role');
     expect(() => builder.buildPrompt({
       id: 'bad-model', model: 'missing', aiRoleId: 'editor', userText: 'Text', options: {},
