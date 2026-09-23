@@ -226,14 +226,14 @@ describe('BatchOrchestrator', () => {
       expect(response.results[0].status).toBe('success');
     });
 
-    it('should handle free tier batch limit with partial success (max 3)', async () => {
+    it('should handle free tier batch limit with partial success (max 6)', async () => {
       const freeUser: UserProfile = {
         ...user,
         tier: 'free'
       };
 
       const request: BatchRequest = {
-        assistants: Array(5).fill(null).map((_, i) => ({
+        assistants: Array(8).fill(null).map((_, i) => ({
           id: `task-${i}`,
           model: 'open-router-free',
           aiRoleId: 'grammar-corrector',
@@ -242,20 +242,20 @@ describe('BatchOrchestrator', () => {
         }))
       };
 
-      // Free tier has max 3 assistants
+      // Free tier has max 6 assistants
       const response = await orchestrator.processBatch(freeUser, request);
       
-      // Should return 5 results total
-      expect(response.results).toHaveLength(5);
+      // Should return 8 results total
+      expect(response.results).toHaveLength(8);
       
-      // First 3 should be processed successfully
-      for (let i = 0; i < 3; i++) {
+      // First 6 should be processed successfully
+      for (let i = 0; i < 6; i++) {
         expect(response.results[i].id).toBe(`task-${i}`);
         expect(response.results[i].status).toBe('success');
       }
       
       // Last 2 should have TIER_BATCH_SIZE_EXCEEDED error
-      for (let i = 3; i < 5; i++) {
+      for (let i = 6; i < 8; i++) {
         const result = response.results[i];
         expect(result.id).toBe(`task-${i}`);
         expect(result.status).toBe('error');
@@ -275,14 +275,17 @@ describe('BatchOrchestrator', () => {
         assistants: [
           { id: 'a', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 1', options: { improve: true } },
           { id: 'b', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 2', options: { improve: true } },
-          { id: 'c', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 3', options: { improve: true } }
+          { id: 'c', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 3', options: { improve: true } },
+          { id: 'd', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 4', options: { improve: true } },
+          { id: 'e', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 5', options: { improve: true } },
+          { id: 'f', model: 'open-router-free', aiRoleId: 'grammar-corrector', userText: 'test 6', options: { improve: true } }
         ]
       };
 
-      // Free tier allows exactly 3 assistants
+      // Free tier allows exactly 6 assistants
       const response = await orchestrator.processBatch(freeUser, request);
       
-      expect(response.results).toHaveLength(3);
+      expect(response.results).toHaveLength(6);
       expect(response.results.every(r => r.status === 'success')).toBe(true);
     });
   });

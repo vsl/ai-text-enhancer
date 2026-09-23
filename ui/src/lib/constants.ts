@@ -217,7 +217,7 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
   free: {
     maxTextLength: 500,
     maxContextLength: 800,
-    maxBatchSize: 3,
+    maxBatchSize: 6,
     availableModels: ['open-router-free', 'openai-gpt-5-nano'],
   },
   plus: {
