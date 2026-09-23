@@ -128,11 +128,12 @@ describe('Roles Configuration', () => {
       // Editor should allow all configured models
       expect(isModelAllowedForRole('editor', 'open-router-free')).toBe(true);
       expect(isModelAllowedForRole('editor', 'openai-gpt-5-nano')).toBe(true);
+      expect(isModelAllowedForRole('editor', 'qwen-qwen3-30b-a3b-instruct-2507')).toBe(true);
       expect(isModelAllowedForRole('editor', 'local-debug-model')).toBe(false);
     });
 
     it('should allow all models for all roles (simplified config)', () => {
-      const allModelIds = ['open-router-free', 'openai-gpt-5-nano'];
+      const allModelIds = ['open-router-free', 'openai-gpt-5-nano', 'qwen-qwen3-30b-a3b-instruct-2507'];
       
       allModelIds.forEach((modelId) => {
         const translator = getRoleById('translator');

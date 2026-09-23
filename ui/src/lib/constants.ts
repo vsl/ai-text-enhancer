@@ -4,7 +4,7 @@
 
 import { AiConfig, AiRoleId, Options, Workflow, Language, LanguageLevel, Tier, TierLimits } from './types';
 
-export const AVAILABLE_MODELS = ['open-router-free', 'openai-gpt-5-nano'] as const;
+export const AVAILABLE_MODELS = ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'] as const;
 
 export const AVAILABLE_AI_ROLES: readonly { id: AiRoleId; label: string }[] = [
   { id: 'editor', label: 'General Assistant' },
@@ -180,7 +180,7 @@ export const DEFAULT_WORKFLOWS: Workflow[] = [
     name: 'Quick Fix',
     configs: [{
       id: 1,
-      model: 'open-router-free',
+      model: 'openai-gpt-5-nano',
       aiRoleId: 'editor',
       options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true },
       enabled: true,
@@ -190,7 +190,7 @@ export const DEFAULT_WORKFLOWS: Workflow[] = [
     name: 'Formal Email',
     configs: [{
       id: 1,
-      model: 'open-router-free',
+      model: 'openai-gpt-5-nano',
       aiRoleId: 'email_assistant',
       options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true, format: true, formality: 'Formal', tone: 'Polite' },
       enabled: true,
@@ -200,7 +200,7 @@ export const DEFAULT_WORKFLOWS: Workflow[] = [
     name: 'Social Media Blast',
     configs: [{
       id: 1,
-      model: 'open-router-free',
+      model: 'openai-gpt-5-nano',
       aiRoleId: 'social_media_assistant',
       options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true, addEmojis: true, formality: 'Casual', tone: 'Engaging' },
       enabled: true,
@@ -218,19 +218,19 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     maxTextLength: 500,
     maxContextLength: 800,
     maxBatchSize: 3,
-    availableModels: ['open-router-free', 'openai-gpt-5-nano'],
+    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'],
   },
   plus: {
     maxTextLength: 2000,
     maxContextLength: 3000,
     maxBatchSize: 10,
-    availableModels: ['open-router-free', 'openai-gpt-5-nano'],
+    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'],
   },
   premium: {
     maxTextLength: 5000,
     maxContextLength: 10000,
     maxBatchSize: 10,
-    availableModels: ['open-router-free', 'openai-gpt-5-nano'],
+    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'],
   },
 };
 

@@ -40,6 +40,7 @@ export class OpenRouterConnector implements LLMConnector {
           { role: 'user', content: params.userPrompt }
         ],
         ...(params.temperature !== undefined && { temperature: params.temperature }),
+        ...(params.serviceTier && { service_tier: params.serviceTier }),
         max_tokens: params.maxTokens ?? 2048,
         response_format: responseFormat,
         provider: {

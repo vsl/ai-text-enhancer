@@ -28,6 +28,7 @@ Quality standard: The result is fluent, accurate, internally consistent, easy to
     allowedModels: [
       'open-router-free',
       'openai-gpt-5-nano',
+      'qwen-qwen3-30b-a3b-instruct-2507',
     ],
   },
   {
@@ -46,6 +47,7 @@ Quality standard: The result is concise but not cryptic, accurate, balanced, and
     allowedModels: [
       'open-router-free',
       'openai-gpt-5-nano',
+      'qwen-qwen3-30b-a3b-instruct-2507',
     ],
   },
   {
@@ -64,6 +66,7 @@ Quality standard: The result is engaging, credible, cohesive, ready to post, and
     allowedModels: [
       'open-router-free',
       'openai-gpt-5-nano',
+      'qwen-qwen3-30b-a3b-instruct-2507',
     ],
   },
   {
@@ -82,6 +85,7 @@ Quality standard: The result is concise but complete, natural rather than boiler
     allowedModels: [
       'open-router-free',
       'openai-gpt-5-nano',
+      'qwen-qwen3-30b-a3b-instruct-2507',
     ],
   },
 ] as const;

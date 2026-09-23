@@ -31,6 +31,7 @@ describe('BatchOrchestrator', () => {
   let authzService: jest.Mocked<AuthorizationService>;
   let user: UserProfile;
   let providers: LLMProviderConfig[];
+  let sendRequest: jest.Mock;
 
   beforeEach(() => {
     // Create mock services
@@ -103,19 +104,20 @@ describe('BatchOrchestrator', () => {
     // Mock LLM connector factory
     const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
     
+    sendRequest = jest.fn().mockResolvedValue({
+      text: '{"text": "Enhanced text"}',
+      usage: {
+        inputTokens: 10,
+        outputTokens: 20,
+        totalTokens: 30
+      },
+      model: 'open-router-free',
+      provider: 'gemini'
+    });
     const mockConnector = {
       name: 'gemini',
       supportsStreaming: false,
-      sendRequest: jest.fn().mockResolvedValue({
-        text: '{"text": "Enhanced text"}',
-        usage: {
-          inputTokens: 10,
-          outputTokens: 20,
-          totalTokens: 30
-        },
-        model: 'open-router-free',
-        provider: 'gemini'
-      })
+      sendRequest,
     };
 
     LLMConnectorFactory.createAll = jest.fn().mockReturnValue(
@@ -139,6 +141,42 @@ describe('BatchOrchestrator', () => {
   });
 
   describe('Validation', () => {
+    it('forwards GPT-5 Nano flex tier to its connector', async () => {
+      const { getModelById } = require('../../../src/config/models.config.ts');
+      const { getRoleById } = require('../../../src/config/roles.config.ts');
+      getModelById.mockReturnValue({
+        id: 'openai-gpt-5-nano',
+        provider: 'openrouter',
+        providerModelId: 'openai/gpt-5-nano',
+        structuredOutputMode: 'json-schema',
+        serviceTier: 'flex',
+        displayName: 'GPT-5 Nano',
+        contextWindow: 400000,
+        costPer1kTokens: { input: 0, output: 0 },
+      });
+      getRoleById.mockReturnValue({
+        id: 'grammar-corrector',
+        name: 'Grammar Corrector',
+        systemPrompt: 'You are a grammar correction expert.',
+        allowedModels: ['openai-gpt-5-nano'],
+      });
+
+      await orchestrator.processBatch(user, {
+        assistants: [{
+          id: 'gpt',
+          model: 'openai-gpt-5-nano',
+          aiRoleId: 'grammar-corrector',
+          userText: 'test',
+          options: { improve: true },
+        }],
+      });
+
+      expect(sendRequest).toHaveBeenCalledWith(expect.objectContaining({
+        model: 'openai/gpt-5-nano',
+        serviceTier: 'flex',
+      }));
+    });
+
     it('should reject empty batch', async () => {
       const request: BatchRequest = {
         assistants: []

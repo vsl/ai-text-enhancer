@@ -256,6 +256,7 @@ export class BatchOrchestrator {
         systemPrompt,
         userPrompt,
         structuredOutputMode: model.structuredOutputMode,
+        serviceTier: model.serviceTier,
         maxTokens: 2000,
         timeout: this.taskTimeoutMs
       });

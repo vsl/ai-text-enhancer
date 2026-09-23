@@ -691,8 +691,9 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 
 | Model ID | Display Name | Provider | Access Tiers | Context Window |
 |----------|--------------|----------|--------------|----------------|
-| `gemini-flash` | Gemini 2.5 Flash | Google Gemini | Free, Plus, Premium | 1,000,000 |
-| `open-router-free` | Free Model (OpenRouter) | OpenRouter | Free, Plus, Premium | 163,840 |
+| `openai-gpt-5-nano` | GPT-5 Nano | OpenRouter | Free, Plus, Premium | 400,000 |
+| `open-router-free` | OpenRouter Free | OpenRouter | Free, Plus, Premium | 200,000 |
+| `qwen-qwen3-30b-a3b-instruct-2507` | Qwen3 30B A3B Instruct 2507 | OpenRouter | Free, Plus, Premium | 262,144 |
 
 **Note:** Models are configured in `src/config/models.config.ts`. The LM Studio connector remains available for direct local connector tests but is not an API model.
 
@@ -702,10 +703,10 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 
 | Role ID | Name | Description | Allowed Models |
 |---------|------|-------------|----------------|
-| `editor` | Editor | Edits clarity, correctness, readability, and flow | Both production models |
-| `summarizer` | Summarizer | Condenses text while preserving key information | Both production models |
-| `social_media_assistant` | Social Media Assistant | Creates engaging, shareable social media content | Both production models |
-| `email_assistant` | Email Assistant | Writes complete, ready-to-send emails | Both production models |
+| `editor` | Editor | Edits clarity, correctness, readability, and flow | All production models |
+| `summarizer` | Summarizer | Condenses text while preserving key information | All production models |
+| `social_media_assistant` | Social Media Assistant | Creates engaging, shareable social media content | All production models |
+| `email_assistant` | Email Assistant | Writes complete, ready-to-send emails | All production models |
 
 **Note:** Roles are configured in `src/config/roles.config.ts`.
 

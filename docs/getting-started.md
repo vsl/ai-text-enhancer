@@ -51,10 +51,10 @@ variable, source code, or a committed file.
 This is a server-side usage key for OpenRouter's chat-completions API. Do not
 use an OpenRouter management key.
 
-The default model is `openrouter/free`, which routes to a free model that
-supports the requested features. The second model is `openai/gpt-5-nano`, a
-paid OpenRouter model. Both are available to every user tier, so set a spend
-limit that includes GPT-5 Nano usage.
+The default model is `openai/gpt-5-nano`, sent through OpenRouter with its
+`flex` service tier to trade latency for a lower price. The alternatives are
+`openrouter/free` and `qwen/qwen3-30b-a3b-instruct-2507`. All three are
+available to every user tier, so set a spend limit that includes their usage.
 
 ## 2. Create the Supabase organization and two projects
 
