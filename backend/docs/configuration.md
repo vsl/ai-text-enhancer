@@ -134,6 +134,14 @@ npm run dev
 - **Required:** No
 - **Where used:** `src/services/batch-orchestrator.ts` for validation
 
+**LOG_LEVEL**
+- **Purpose:** Set to `debug` to log complete OpenRouter request and response payloads with a correlation ID
+- **Default:** Unset (payload logging disabled)
+- **Required:** No
+- **Security:** Debug logs contain user prompts, context, and generated text. Enable only while diagnosing an issue and never log the authorization header or API key.
+- **Local:** Add `LOG_LEVEL=debug` to `.env.local`
+- **Supabase Edge Functions:** Run `supabase secrets set LOG_LEVEL=debug`; set it to another value when finished
+
 ---
 
 ## Configuration Modules

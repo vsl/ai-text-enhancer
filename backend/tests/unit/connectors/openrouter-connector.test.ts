@@ -13,12 +13,14 @@ describe('OpenRouterConnector', () => {
 
   beforeEach(() => {
     connector = new OpenRouterConnector('test-api-key');
+    delete process.env.LOG_LEVEL;
     jest.clearAllMocks();
   });
 
   afterEach(() => {
     jest.clearAllTimers();
     jest.useRealTimers();
+    delete process.env.LOG_LEVEL;
   });
 
   describe('sendRequest', () => {
@@ -355,6 +357,53 @@ describe('OpenRouterConnector', () => {
         { role: 'system', content: 'System prompt here' },
         { role: 'user', content: 'User prompt here' }
       ]);
+    });
+
+    it('logs correlated OpenRouter request and response payloads only at debug level', async () => {
+      const responseBody = {
+        id: 'generation-id',
+        model: 'selected/free-model',
+        choices: [{ finish_reason: 'length', message: { content: '' } }],
+        usage: { completion_tokens: 2000 },
+      };
+      const debugSpy = jest.spyOn(console, 'debug').mockImplementation();
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        clone: () => ({ text: async () => JSON.stringify(responseBody) }),
+        json: async () => responseBody,
+      });
+
+      await connector.sendRequest({
+        model: 'openrouter/free',
+        systemPrompt: 'System prompt',
+        userPrompt: 'User prompt',
+      });
+      expect(debugSpy).not.toHaveBeenCalled();
+
+      process.env.LOG_LEVEL = 'debug';
+      await connector.sendRequest({
+        model: 'openrouter/free',
+        systemPrompt: 'System prompt',
+        userPrompt: 'User prompt',
+      });
+
+      const requestLog = JSON.parse(debugSpy.mock.calls[0][1]);
+      const responseLog = JSON.parse(debugSpy.mock.calls[1][1]);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(requestLog).toMatchObject({
+        method: 'POST',
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        body: { model: 'openrouter/free' },
+      });
+      expect(requestLog).not.toHaveProperty('headers');
+      expect(responseLog).toEqual({
+        requestId: requestLog.requestId,
+        status: 200,
+        body: JSON.stringify(responseBody),
+      });
+      debugSpy.mockRestore();
     });
 
     it('aborts the real fetch signal and clears its timer without logging prompts', async () => {
