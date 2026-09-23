@@ -30,6 +30,8 @@ describe('Configuration Loader', () => {
     delete process.env.LM_STUDIO_BASE_URL;
     delete process.env.LLM_TIMEOUT_MS;
     delete process.env.MAX_BATCH_SIZE;
+    delete process.env.JEV_MODEL_ID;
+    delete process.env.JEV_TIMEOUT_MS;
     delete process.env.STRIPE_SECRET_KEY;
     delete process.env.STRIPE_WEBHOOK_SECRET;
     delete process.env.STRIPE_PUBLISHABLE_KEY;
@@ -102,6 +104,20 @@ describe('Configuration Loader', () => {
 
       const config = loadConfig();
       expect(config.maxBatchSize).toBe(10);
+    });
+
+    it('loads safe Jev defaults and optional overrides', () => {
+      setupRequiredEnv();
+      expect(loadConfig().jev).toEqual({ modelId: 'typesafe/jev-1.13', timeoutMs: 5000 });
+
+      process.env.JEV_MODEL_ID = 'typesafe/jev-custom';
+      process.env.JEV_TIMEOUT_MS = '8000';
+      expect(loadConfig().jev).toEqual({ modelId: 'typesafe/jev-custom', timeoutMs: 8000 });
+    });
+
+    it('rejects an invalid Jev timeout', () => {
+      setupRequiredEnv({ JEV_TIMEOUT_MS: 'invalid' });
+      expect(() => loadConfig()).toThrow('JEV_TIMEOUT_MS must be a positive number');
     });
 
     it('should use custom max batch size when specified', () => {

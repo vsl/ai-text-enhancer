@@ -438,6 +438,55 @@ describe('WorkflowContext', () => {
       expect(typeof result.current.handleCancel).toBe('function');
     });
 
+    it('stores Jev selection, clears it before the next run, and accepts older responses', async () => {
+      let resolveSecond: ((value: unknown) => void) | undefined;
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            results: [{ id: '1', status: 'success', enhancedText: 'First', total_tokens: 1 }],
+            selection: {
+              status: 'success', judge: 'jev', model: 'typesafe/jev-1.13',
+              selectedResultId: '1', confidence: 1, probabilities: { '1': 1 },
+            },
+          }),
+        })
+        .mockImplementationOnce(() => new Promise(resolve => { resolveSecond = resolve; }));
+      const { result } = renderHook(() => useWorkflow(), { wrapper });
+      act(() => result.current.setInputText('Test input'));
+
+      await act(async () => result.current.handleGenerate());
+      expect(result.current.selection?.status).toBe('success');
+
+      let secondRun: Promise<void>;
+      act(() => { secondRun = result.current.handleGenerate(); });
+      expect(result.current.selection).toBeUndefined();
+      await waitFor(() => expect(resolveSecond).toBeDefined());
+      resolveSecond!({ ok: true, json: async () => ({ results: [] }) });
+      await act(async () => secondRun!);
+      expect(result.current.selection).toBeUndefined();
+    });
+
+    it('clears Jev selection when assistant configuration changes', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{ id: '1', status: 'success', enhancedText: 'First', total_tokens: 1 }],
+          selection: {
+            status: 'success', judge: 'jev', model: 'typesafe/jev-1.13',
+            selectedResultId: '1', confidence: 1, probabilities: { '1': 1 },
+          },
+        }),
+      });
+      const { result } = renderHook(() => useWorkflow(), { wrapper });
+      act(() => result.current.setInputText('Test input'));
+      await act(async () => result.current.handleGenerate());
+      expect(result.current.selection?.status).toBe('success');
+
+      act(() => result.current.handleToggleAssistant(1));
+      expect(result.current.selection).toBeUndefined();
+    });
+
     it('replaces the anonymous session after a 401', async () => {
       const consoleError = jest.spyOn(console, 'error').mockImplementation();
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 401 });

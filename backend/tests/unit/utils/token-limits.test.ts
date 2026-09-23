@@ -11,6 +11,7 @@ import {
 import type { SystemConfig } from '../../../src/types/config.types.ts';
 
 const mockConfig: SystemConfig = {
+  jev: { modelId: 'typesafe/jev-1.13', timeoutMs: 5000 },
   llmProviders: [],
   supabase: {
     url: 'http://localhost:54321',

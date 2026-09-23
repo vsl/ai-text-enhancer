@@ -141,6 +141,12 @@ describe('Configuration Validator', () => {
       expect(() => validateConfig(config)).toThrow('Max batch size too high');
     });
 
+    it('rejects invalid Jev configuration', () => {
+      const config = loadConfig();
+      config.jev = { modelId: '', timeoutMs: 0 };
+      expect(() => validateConfig(config)).toThrow('Jev model ID is required');
+    });
+
     it('should throw error when Supabase service role key is missing', () => {
       const config = loadConfig();
       config.supabase.serviceRoleKey = '';

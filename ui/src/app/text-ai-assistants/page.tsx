@@ -23,6 +23,7 @@ function TextAIAssistantsContent() {
     selectedWorkflow,
     configs,
     results,
+    selection,
     isGenerating,
     inputText,
     contextText,
@@ -366,6 +367,12 @@ function TextAIAssistantsContent() {
                   onCopyResult={copyToClipboard}
                   onImproveVersion={handleImproveThisVersion}
                   copiedId={copiedId}
+                  jevSelection={
+                    selection?.status === 'success' &&
+                    selection.selectedResultId === config.id.toString()
+                      ? selection
+                      : undefined
+                  }
                 />
               ))}
 

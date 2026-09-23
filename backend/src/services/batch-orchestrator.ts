@@ -13,6 +13,7 @@ import type {
   BatchResponse,
   AssistantConfiguration,
   BatchResult,
+  BatchSelection,
   SuccessResult,
   ErrorResult
 } from '../types/api.types.ts';
@@ -30,6 +31,7 @@ import { LLMError, LLMTimeoutError } from '../errors/llm-errors.ts';
 import { parseTextOutput } from '../config/output-contract.config.ts';
 import { validateBatchRequest } from './request-validator.ts';
 import { addTraceMetadata, traceRun } from '../observability/tracing.ts';
+import type { ResultSelector } from './jev-result-selector.ts';
 
 export class BatchOrchestrator {
   private promptBuilder: PromptBuilder;
@@ -38,13 +40,15 @@ export class BatchOrchestrator {
   private authzService: AuthorizationService;
   private readonly taskTimeoutMs: number;
   private readonly exposeErrorDetails: boolean;
+  private readonly resultSelector?: ResultSelector;
 
   constructor(
     providers: LLMProviderConfig[],
     quotaService: QuotaService,
     authzService: AuthorizationService,
     taskTimeoutMs: number = 30000,
-    exposeErrorDetails: boolean = false
+    exposeErrorDetails: boolean = false,
+    resultSelector?: ResultSelector,
   ) {
     this.promptBuilder = new PromptBuilder();
     this.connectors = LLMConnectorFactory.createAll(providers);
@@ -52,6 +56,7 @@ export class BatchOrchestrator {
     this.authzService = authzService;
     this.taskTimeoutMs = taskTimeoutMs;
     this.exposeErrorDetails = exposeErrorDetails;
+    this.resultSelector = resultSelector;
   }
 
   /**
@@ -90,7 +95,7 @@ export class BatchOrchestrator {
     // 4. If no processable assistants, return early with all errors
     if (processable.length === 0) {
       const results: BatchResult[] = exceededResults.map(r => this.toApiResult(r));
-      return { results };
+      return { results, selection: { status: 'skipped', reason: 'NOT_ENOUGH_VALID_RESULTS' } };
     }
 
     // 5. Estimate total token usage (rough estimate for pre-flight check)
@@ -133,8 +138,32 @@ export class BatchOrchestrator {
     ];
     
     const results: BatchResult[] = allResults.map(r => this.toApiResult(r));
+    const validResults = results.filter((result): result is SuccessResult =>
+      result.status === 'success' && result.enhancedText.trim().length > 0
+    );
+    const selection = await this.selectResult(request, validResults, requestId);
 
-    return { results };
+    return { results, selection };
+  }
+
+  private async selectResult(
+    request: BatchRequest,
+    validResults: SuccessResult[],
+    requestId: string,
+  ): Promise<BatchSelection> {
+    if (validResults.length < 2) {
+      return { status: 'skipped', reason: 'NOT_ENOUGH_VALID_RESULTS' };
+    }
+    if (!this.resultSelector) {
+      return { status: 'unavailable', reason: 'JUDGE_FAILED' };
+    }
+
+    try {
+      return await this.resultSelector.select(request, validResults, requestId);
+    } catch (error) {
+      console.error(`[ORCHESTRATOR][${requestId}] Jev selection failed:`, conciseError(error));
+      return { status: 'unavailable', reason: 'JUDGE_FAILED' };
+    }
   }
 
   /**

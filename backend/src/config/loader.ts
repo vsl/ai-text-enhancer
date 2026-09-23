@@ -51,6 +51,7 @@ export function loadConfig(): SystemConfig {
   // 4. Parse optional configuration values
   const timeout = parseInt(process.env.LLM_TIMEOUT_MS || '30000', 10);
   const maxBatchSize = parseInt(process.env.MAX_BATCH_SIZE || '10', 10);
+  const jevTimeoutMs = parseInt(process.env.JEV_TIMEOUT_MS || '5000', 10);
   const exposeErrorDetails = process.env.EXPOSE_ERROR_DETAILS === 'true';
 
   // 5. Validate parsed values
@@ -59,6 +60,9 @@ export function loadConfig(): SystemConfig {
   }
   if (isNaN(maxBatchSize) || maxBatchSize <= 0 || maxBatchSize > 100) {
     throw new Error('MAX_BATCH_SIZE must be a positive number between 1 and 100');
+  }
+  if (isNaN(jevTimeoutMs) || jevTimeoutMs <= 0) {
+    throw new Error('JEV_TIMEOUT_MS must be a positive number');
   }
 
   // 6. Return complete configuration
@@ -92,6 +96,10 @@ export function loadConfig(): SystemConfig {
     timeout,
     maxBatchSize,
     exposeErrorDetails,
+    jev: {
+      modelId: process.env.JEV_MODEL_ID || 'typesafe/jev-1.13',
+      timeoutMs: jevTimeoutMs,
+    },
     // Return deep copies to prevent mutation of original config
     models: MODELS.map((m) => ({ ...m, costPer1kTokens: { ...m.costPer1kTokens } })),
     roles: ROLES.map((r) => ({ ...r, allowedModels: [...r.allowedModels] })),
