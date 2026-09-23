@@ -28,6 +28,7 @@ describe('UI/backend configuration parity', () => {
     expect([...AVAILABLE_MODELS].sort()).toEqual(MODELS.map(model => model.id).sort());
     expect(AVAILABLE_MODELS[0]).toBe('openai-gpt-5-nano');
     expect(DEFAULT_WORKFLOWS.every(workflow => workflow.configs.every(config => config.model === 'openai-gpt-5-nano'))).toBe(true);
+    expect(TIER_LIMITS.free).toMatchObject({ maxTextLength: 1000, maxContextLength: 2500 });
     expect(AVAILABLE_AI_ROLES.map(role => role.id).sort()).toEqual(ROLES.map(role => role.id).sort());
 
     for (const tier of ['free', 'plus', 'premium'] as const) {

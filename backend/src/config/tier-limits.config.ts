@@ -34,7 +34,7 @@ export interface TierLimits {
  *
  * FREE TIER:
  * - Suitable for casual users and testing
- * - Small messages (500 chars user text, 800 chars context)
+ * - Small messages (1000 chars user text, 2500 chars context)
  * - Limited batch size (6 assistants)
  *
  * PLUS TIER:
@@ -49,8 +49,8 @@ export interface TierLimits {
  */
 export const TIER_LIMITS: Record<UserTier, TierLimits> = {
   free: {
-    maxUserTextLength: 500,
-    maxContextTextLength: 800,
+    maxUserTextLength: 1000,
+    maxContextTextLength: 2500,
     maxBatchSize: 6,
   },
   plus: {

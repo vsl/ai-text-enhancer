@@ -215,8 +215,8 @@ export const DEFAULT_WORKFLOW_NAMES = DEFAULT_WORKFLOWS.map(w => w.name);
  */
 export const TIER_LIMITS: Record<Tier, TierLimits> = {
   free: {
-    maxTextLength: 500,
-    maxContextLength: 800,
+    maxTextLength: 1000,
+    maxContextLength: 2500,
     maxBatchSize: 6,
     availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'],
   },
