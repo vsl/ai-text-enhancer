@@ -4,6 +4,7 @@ import {
   type PromptEvaluationCase,
 } from '../../../src/evaluation/prompt-evaluator.ts';
 import type { LLMConnector } from '../../../src/types/llm.types.ts';
+import { ROLES } from '../../../src/config/roles.config.ts';
 
 const evaluationCase: PromptEvaluationCase = {
   id: 'facts',
@@ -77,12 +78,14 @@ describe('prompt evaluator', () => {
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
           promptVersion: 'prompt-v2',
+          promptRevision: 'prompt-v2/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
         }],
       }],
     });
+    expect(report.candidates[0].cases[0].promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(report.candidates[0].cases[0].deterministicChecks.every((check) => check.passed)).toBe(true);
     expect(sendRequest).toHaveBeenCalledWith(expect.objectContaining({
       structuredOutputMode: 'json-schema',
@@ -137,7 +140,44 @@ describe('prompt evaluator', () => {
       tokenUsage: { totalTokens: 0 },
       modelRevision: 'candidate-revision',
       deterministicChecks: [{ check: 'valid-json-text-contract', passed: false }],
-      error: 'LLM response is missing a string text field',
+      error: 'LLM response does not match the output schema',
+    });
+  });
+
+  it('propagates each role revision and fingerprint for no-options cases', async () => {
+    const connector = {
+      name: 'gemini',
+      supportsStreaming: false,
+      sendRequest: jest.fn().mockResolvedValue({
+        text: '{"text":"ok"}',
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        model: 'revision',
+        provider: 'gemini',
+      }),
+    } as LLMConnector;
+    const report = await runPromptEvaluation({
+      candidates: [{ provider: 'gemini', model: 'candidate', structuredOutputMode: 'json-schema' }],
+      cases: ROLES.map(role => ({
+        id: role.id,
+        roleId: role.id,
+        language: 'en',
+        userText: 'Source',
+        options: {},
+        checks: [],
+      })),
+      apiKeys: { gemini: 'key' },
+      connectors: { gemini: connector },
+      fetchImpl: jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ supportedGenerationMethods: ['generateContent'] }),
+      }) as unknown as typeof fetch,
+    });
+
+    expect(report.candidates[0].cases).toHaveLength(ROLES.length);
+    report.candidates[0].cases.forEach((result, index) => {
+      expect(result.promptRevision).toBe(`prompt-v2/${ROLES[index].id}@v1`);
+      expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });
 });

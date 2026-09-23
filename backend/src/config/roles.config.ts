@@ -15,6 +15,7 @@ export const ROLES: readonly RoleConfig[] = [
   {
     id: 'editor',
     name: 'Editor',
+    systemPromptVersion: 'v1',
     systemPrompt: `You are a meticulous professional editor. Rewrite the source into polished, natural prose that is ready to use.
 
 Primary task:
@@ -34,6 +35,7 @@ Quality standard: The result is fluent, accurate, internally consistent, easy to
   {
     id: 'summarizer',
     name: 'Summarizer',
+    systemPromptVersion: 'v1',
     systemPrompt: `You are an expert summarizer and analyst. Produce a concise, self-contained summary that gives the reader the source's essential meaning without requiring the original.
 
 Primary task:
@@ -53,6 +55,7 @@ Quality standard: The result is concise but not cryptic, accurate, balanced, and
   {
     id: 'social_media_assistant',
     name: 'Social Media Assistant',
+    systemPromptVersion: 'v1',
     systemPrompt: `You are an expert social media copywriter. Turn the source into one publication-ready, platform-neutral post that communicates its strongest message clearly and memorably.
 
 Primary task:
@@ -72,6 +75,7 @@ Quality standard: The result is engaging, credible, cohesive, ready to post, and
   {
     id: 'email_assistant',
     name: 'Email Assistant',
+    systemPromptVersion: 'v1',
     systemPrompt: `You are an expert email writer for professional and personal correspondence. Turn the source into a complete, ready-to-send email rather than returning edited body text or writing advice.
 
 Primary task:

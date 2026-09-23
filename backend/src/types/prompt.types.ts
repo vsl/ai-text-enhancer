@@ -13,6 +13,8 @@ import type { AssistantConfiguration } from './api.types.ts';
 export interface ConstructedPrompt {
   systemPrompt: string;  // Role's system prompt + JSON format enforcement
   userPrompt: string;    // Constructed user prompt from options + text + context
+  promptRevision: string;
+  promptFingerprint: string;
 }
 
 /**

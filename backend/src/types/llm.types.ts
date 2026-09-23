@@ -8,6 +8,8 @@ import type { StructuredOutputMode } from './config.types.ts';
 
 export interface LLMRequestParams {
   model: string;
+  requestedPublicModel?: string;
+  requestId?: string;
   systemPrompt: string;
   userPrompt: string;
   structuredOutputMode?: StructuredOutputMode;
@@ -23,9 +25,27 @@ export interface LLMResponse {
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
+    reasoningTokens?: number;
+    cachedTokens?: number;
+    cost?: number;
+    isByok?: boolean;
   };
   model: string;
   provider: string;
+  diagnostics: LLMProviderDiagnostics;
+}
+
+export interface LLMProviderDiagnostics {
+  generationId?: string;
+  httpStatus: number;
+  requestedPublicModel?: string;
+  providerModel: string;
+  resolvedModel?: string;
+  resolvedProvider?: string;
+  finishReason?: string;
+  nativeFinishReason?: string;
+  providerError?: unknown;
+  latencyMs: number;
 }
 
 export interface LLMConnector {

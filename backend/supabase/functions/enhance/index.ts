@@ -14,6 +14,7 @@ import { BatchOrchestrator } from '../../../src/services/batch-orchestrator.ts';
 import { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
 import { QuotaService } from '../../../src/services/quota-service.ts';
 import { AuthorizationService } from '../../../src/services/authorization-service.ts';
+import { flushTraces } from '../../../src/observability/tracing.ts';
 
 // Load configuration once at startup
 const config = loadConfig();
@@ -36,5 +37,7 @@ const authMiddleware = new AuthMiddleware(supabase);
 
 // Start HTTP server using Deno.serve (no import needed)
 Deno.serve(async (req: Request) => {
-  return await handleRequest(req, { orchestrator, authMiddleware, config });
+  const response = await handleRequest(req, { orchestrator, authMiddleware, config });
+  EdgeRuntime.waitUntil(flushTraces());
+  return response;
 });

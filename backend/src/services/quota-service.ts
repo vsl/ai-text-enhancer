@@ -82,7 +82,8 @@ export class QuotaService {
   async reportUsage(
     userId: string,
     tokensUsed: number,
-    model: string
+    model: string,
+    requestId?: string,
   ): Promise<boolean> {
     try {
       // Deduct tokens from database using atomic operation
@@ -90,7 +91,7 @@ export class QuotaService {
 
       if (success) {
         console.log(
-          `[QUOTA] Deducted ${tokensUsed} tokens from user ${userId} (model: ${model})`
+          `[QUOTA]${requestId ? `[${requestId}]` : ''} Deducted ${tokensUsed} tokens from user ${userId} (model: ${model})`
         );
       }
 
@@ -105,7 +106,7 @@ export class QuotaService {
       }
 
       // Log other errors but don't crash
-      console.error('[QUOTA] Failed to report usage:', error);
+      console.error(`[QUOTA]${requestId ? `[${requestId}]` : ''} Failed to report usage:`, error);
       return false;
     }
   }

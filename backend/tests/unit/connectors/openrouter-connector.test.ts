@@ -130,6 +130,67 @@ describe('OpenRouterConnector', () => {
       ).rejects.toThrow('No response from model');
     });
 
+    it.each([
+      [401, {}, 'PROVIDER_AUTH_ERROR'],
+      [429, { error: { message: 'slow down' } }, 'PROVIDER_RATE_LIMIT'],
+      [500, { error: { message: 'broken' } }, 'PROVIDER_HTTP_ERROR'],
+      [200, { choices: [{ error: { message: 'upstream failed' } }] }, 'PROVIDER_RESPONSE_ERROR'],
+      [200, { choices: [] }, 'MISSING_CHOICE'],
+    ])('classifies HTTP %s provider response as %s', async (status, body, code) => {
+      (global.fetch as jest.Mock).mockResolvedValue(new Response(JSON.stringify(body), { status }));
+      await expect(connector.sendRequest({
+        model: 'test-model', systemPrompt: 'System', userPrompt: 'User',
+      })).rejects.toMatchObject({ code });
+    });
+
+    it('classifies malformed provider JSON and network failures', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce(new Response('{', { status: 200 }));
+      await expect(connector.sendRequest({
+        model: 'test-model', systemPrompt: 'System', userPrompt: 'User',
+      })).rejects.toMatchObject({ code: 'INVALID_PROVIDER_RESPONSE' });
+
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new TypeError('network unavailable'));
+      await expect(connector.sendRequest({
+        model: 'test-model', systemPrompt: 'System', userPrompt: 'User',
+      })).rejects.toMatchObject({ code: 'PROVIDER_NETWORK_ERROR' });
+    });
+
+    it('retains routing, finish, usage, cost, and BYOK diagnostics', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(new Response(JSON.stringify({
+        id: 'gen-1',
+        model: 'resolved/model',
+        provider: 'Resolved Provider',
+        choices: [{ finish_reason: 'stop', native_finish_reason: 'stop', message: { content: '{"text":"ok"}' } }],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 5,
+          total_tokens: 15,
+          prompt_tokens_details: { cached_tokens: 3 },
+          completion_tokens_details: { reasoning_tokens: 2 },
+          cost: 0.001,
+          is_byok: true,
+        },
+      }), { status: 200 }));
+
+      const response = await connector.sendRequest({
+        model: 'provider/model', requestedPublicModel: 'public-model', systemPrompt: 'System', userPrompt: 'User',
+      });
+      expect(response).toMatchObject({
+        provider: 'Resolved Provider',
+        model: 'resolved/model',
+        usage: { reasoningTokens: 2, cachedTokens: 3, cost: 0.001, isByok: true },
+        diagnostics: {
+          generationId: 'gen-1',
+          requestedPublicModel: 'public-model',
+          providerModel: 'provider/model',
+          resolvedModel: 'resolved/model',
+          resolvedProvider: 'Resolved Provider',
+          finishReason: 'stop',
+          nativeFinishReason: 'stop',
+        },
+      });
+    });
+
     it('should handle timeout when AbortController aborts', async () => {
       // Simulate an aborted fetch
       const abortError = new Error('The operation was aborted');
@@ -210,6 +271,7 @@ describe('OpenRouterConnector', () => {
         type: 'json_object',
       });
       expect(body.provider).toEqual({ require_parameters: true });
+      expect(body.reasoning).toEqual({ enabled: false });
     });
 
     it('uses strict JSON schema only when model metadata enables it', async () => {

@@ -37,5 +37,8 @@
     "supabase": "2.101.0",
     "ts-jest": "^29.4.5",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "langsmith": "0.10.5"
   }
 }

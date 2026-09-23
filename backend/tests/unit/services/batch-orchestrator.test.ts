@@ -528,7 +528,8 @@ describe('BatchOrchestrator', () => {
       expect(quotaService.reportUsage).toHaveBeenCalledWith(
         user.userId,
         expect.any(Number),
-        'batch'
+        'batch',
+        expect.any(String),
       );
     });
 
@@ -593,7 +594,8 @@ describe('BatchOrchestrator', () => {
       expect(quotaService.reportUsage).toHaveBeenCalledWith(
         user.userId,
         30,
-        'batch'
+        'batch',
+        expect.any(String),
       );
     });
   });

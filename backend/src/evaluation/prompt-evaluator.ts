@@ -4,6 +4,7 @@ import { PromptTemplates, PROMPT_VERSION } from '../services/prompt-templates.ts
 import type { TransformationOptions } from '../types/api.types.ts';
 import type { StructuredOutputMode } from '../types/config.types.ts';
 import type { LLMConnector } from '../types/llm.types.ts';
+import { buildPromptRevision, fingerprintPrompt } from '../services/prompt-builder.ts';
 
 export type EvaluationProvider = 'gemini' | 'openrouter';
 
@@ -54,6 +55,8 @@ export interface PromptEvaluationReport {
       roleId: string;
       language: string;
       promptVersion: string;
+      promptRevision: string;
+      promptFingerprint: string;
       rawResponse: string | null;
       output: string | null;
       latencyMs: number;
@@ -189,14 +192,19 @@ export async function runPromptEvaluation(params: {
         let modelRevision: string | null = null;
         let error: string | null = null;
         let deterministicChecks: Array<{ check: string; passed: boolean }> = [];
+        let promptRevision = PROMPT_VERSION;
+        let promptFingerprint = '';
 
         try {
           const role = getRoleById(evaluationCase.roleId);
           if (!role) throw new Error(`Unknown evaluation role: ${evaluationCase.roleId}`);
+          const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt);
+          promptRevision = buildPromptRevision(role.id, role.systemPromptVersion);
+          promptFingerprint = await fingerprintPrompt(systemPrompt);
 
           const response = await connector.sendRequest({
             model: candidate.model,
-            systemPrompt: PromptTemplates.buildSystemPrompt(role.systemPrompt),
+            systemPrompt,
             userPrompt: PromptTemplates.buildUserPrompt({
               options: evaluationCase.options,
               userText: evaluationCase.userText,
@@ -224,6 +232,8 @@ export async function runPromptEvaluation(params: {
           roleId: evaluationCase.roleId,
           language: evaluationCase.language,
           promptVersion: PROMPT_VERSION,
+          promptRevision,
+          promptFingerprint,
           rawResponse,
           output,
           latencyMs: Math.max(0, now() - startedAt),
