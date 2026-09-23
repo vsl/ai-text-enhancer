@@ -13,6 +13,9 @@ import type { UserTier } from '../types/auth.types.ts';
  * Configuration for tier-specific limits
  */
 export interface TierLimits {
+  /** Maximum generated tokens for each assistant call */
+  maxTokensPerRequest: number;
+
   /**
    * Maximum length of user text (main message) in characters
    */
@@ -49,16 +52,19 @@ export interface TierLimits {
  */
 export const TIER_LIMITS: Record<UserTier, TierLimits> = {
   free: {
+    maxTokensPerRequest: 3500,
     maxUserTextLength: 1000,
     maxContextTextLength: 2500,
     maxBatchSize: 6,
   },
   plus: {
+    maxTokensPerRequest: 4096,
     maxUserTextLength: 2000,
     maxContextTextLength: 3000,
     maxBatchSize: 10,
   },
   premium: {
+    maxTokensPerRequest: 8192,
     maxUserTextLength: 5000,
     maxContextTextLength: 10000,
     maxBatchSize: 10,

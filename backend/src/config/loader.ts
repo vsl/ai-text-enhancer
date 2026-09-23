@@ -9,6 +9,7 @@
 import type { SystemConfig, LLMProviderConfig, PaymentConfig } from '../types/config.types.ts';
 import { MODELS, getModelsByProvider } from './models.config.ts';
 import { ROLES } from './roles.config.ts';
+import { TIER_LIMITS } from './tier-limits.config.ts';
 
 /**
  * Load complete system configuration
@@ -77,19 +78,19 @@ export function loadConfig(): SystemConfig {
       free: {
         requestsPerDay: 100,
         requestsPerHour: 20,
-        maxTokensPerRequest: 2048,     // 2K tokens per request
+        maxTokensPerRequest: TIER_LIMITS.free.maxTokensPerRequest,
         maxTokensPerDay: 50000,         // 50K tokens per day
       },
       plus: {
         requestsPerDay: 1000,
         requestsPerHour: 100,
-        maxTokensPerRequest: 4096,      // 4K tokens per request
+        maxTokensPerRequest: TIER_LIMITS.plus.maxTokensPerRequest,
         maxTokensPerDay: 500000,        // 500K tokens per day
       },
       premium: {
         requestsPerDay: 10000,
         requestsPerHour: 1000,
-        maxTokensPerRequest: 8192,      // 8K tokens per request
+        maxTokensPerRequest: TIER_LIMITS.premium.maxTokensPerRequest,
         maxTokensPerDay: 5000000,       // 5M tokens per day
       },
     },

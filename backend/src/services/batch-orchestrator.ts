@@ -275,7 +275,7 @@ export class BatchOrchestrator {
           transformations: assistant.options,
           requestedPublicModel: assistant.model,
         },
-        operation: () => this.runAssistantTask(assistant, requestId),
+        operation: () => this.runAssistantTask(assistant, user, requestId),
       });
     } catch (error) {
       if (error instanceof LLMTimeoutError) {
@@ -304,6 +304,7 @@ export class BatchOrchestrator {
 
   private async runAssistantTask(
     assistant: AssistantConfiguration,
+    user: UserProfile,
     requestId: string,
   ): Promise<AssistantProcessingResult> {
       // 1. Get model and role configurations
@@ -344,7 +345,7 @@ export class BatchOrchestrator {
         userPrompt,
         structuredOutputMode: model.structuredOutputMode,
         serviceTier: model.serviceTier,
-        maxTokens: 2000,
+        maxTokens: getLimitsForTier(user.tier).maxTokensPerRequest,
         timeout: this.taskTimeoutMs
       });
 

@@ -142,6 +142,7 @@ describe('BatchOrchestrator', () => {
 
   describe('Validation', () => {
     it('forwards GPT-5 Nano flex tier to its connector', async () => {
+      user.tier = 'free';
       const { getModelById } = require('../../../src/config/models.config.ts');
       const { getRoleById } = require('../../../src/config/roles.config.ts');
       getModelById.mockReturnValue({
@@ -174,6 +175,7 @@ describe('BatchOrchestrator', () => {
       expect(sendRequest).toHaveBeenCalledWith(expect.objectContaining({
         model: 'openai/gpt-5-nano',
         serviceTier: 'flex',
+        maxTokens: 3500,
       }));
     });
 
