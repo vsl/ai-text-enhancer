@@ -28,11 +28,10 @@ jest.mock('../../../src/repositories/user.repository.ts', () => {
 // Mock AuthService
 jest.mock('../../../src/services/auth-service.ts', () => {
   return {
-    AuthService: jest.fn().mockImplementation((supabase, jwtSecret) => {
+    AuthService: jest.fn().mockImplementation((supabase) => {
       const mockService = {
         validateToken: jest.fn(),
         supabase,
-        jwtSecret,
       };
       (mockService as any).__mockInstance = mockService;
       return mockService;
@@ -55,10 +54,7 @@ describe('AuthMiddleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    authMiddleware = new AuthMiddleware(
-      mockSupabaseClient as any,
-      'test-jwt-secret-with-at-least-32-chars-long'
-    );
+    authMiddleware = new AuthMiddleware(mockSupabaseClient as any);
     mockAuthService = (authMiddleware as any).authService;
   });
 

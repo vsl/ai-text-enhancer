@@ -17,8 +17,8 @@ export interface AuthenticatedRequest {
 export class AuthMiddleware {
   private authService: AuthService;
 
-  constructor(supabase: SupabaseClient, jwtSecret: string) {
-    this.authService = new AuthService(supabase, jwtSecret);
+  constructor(supabase: SupabaseClient) {
+    this.authService = new AuthService(supabase);
   }
 
   /**

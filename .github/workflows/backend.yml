@@ -50,7 +50,6 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ github.event_name == 'pull_request' && secrets.STAGING_SUPABASE_PROJECT_ID || secrets.PRODUCTION_SUPABASE_PROJECT_ID }}
       SUPABASE_DB_PASSWORD: ${{ github.event_name == 'pull_request' && secrets.STAGING_SUPABASE_DB_PASSWORD || secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      APP_SUPABASE_JWT_SECRET: ${{ github.event_name == 'pull_request' && secrets.STAGING_APP_SUPABASE_JWT_SECRET || secrets.PRODUCTION_APP_SUPABASE_JWT_SECRET }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_APP_SUPABASE_SERVICE_ROLE_KEY || secrets.PRODUCTION_APP_SUPABASE_SERVICE_ROLE_KEY }}
       BOOTSTRAP_SECRET_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_BOOTSTRAP_SECRET_KEY || secrets.PRODUCTION_BOOTSTRAP_SECRET_KEY }}
       LLM_TIMEOUT_MS: ${{ secrets.LLM_TIMEOUT_MS || '30000' }}
@@ -67,7 +66,6 @@ jobs:
         run: |
           supabase secrets set \
             OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-            APP_SUPABASE_JWT_SECRET="$APP_SUPABASE_JWT_SECRET" \
             APP_SUPABASE_SERVICE_ROLE_KEY="$APP_SUPABASE_SERVICE_ROLE_KEY" \
             BOOTSTRAP_SECRET_KEY="$BOOTSTRAP_SECRET_KEY" \
             LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \

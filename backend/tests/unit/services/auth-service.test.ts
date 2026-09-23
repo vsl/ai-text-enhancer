@@ -7,21 +7,10 @@ import { AuthService } from '../../../src/services/auth-service.ts';
 import { UserNotFoundError, UserBlockedError } from '../../../src/errors/auth-errors.ts';
 import { TestEnv } from '../helpers/test-env.ts';
 
-// Mock jose module for ESM compatibility in Jest
-jest.mock('npm:jose@5', () => ({
-  jwtVerify: jest.fn(),
-  SignJWT: jest.fn().mockImplementation(() => ({
-    setProtectedHeader: jest.fn().mockReturnThis(),
-    sign: jest.fn(),
-  })),
-}));
-
-// Import after mocking
-const { jwtVerify } = require('npm:jose@5');
-
 // Mock Supabase client
 const mockSupabaseClient = {
   auth: {
+    getClaims: jest.fn(),
     getUser: jest.fn(),
   },
   from: jest.fn(),
@@ -39,7 +28,6 @@ jest.mock('../../../src/repositories/user.repository.ts', () => {
 describe('AuthService', () => {
   let authService: AuthService;
   let mockUserRepository: any;
-  const TEST_JWT_SECRET = 'test-jwt-secret-with-at-least-32-chars-long';
 
   beforeAll(() => {
     TestEnv.setup();
@@ -52,15 +40,14 @@ describe('AuthService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    authService = new AuthService(mockSupabaseClient as any, TEST_JWT_SECRET);
+    authService = new AuthService(mockSupabaseClient as any);
     mockUserRepository = (authService as any).userRepository;
   });
 
   describe('validateToken', () => {
     it('should validate token and return user profile for free tier user', async () => {
-      // Mock jwtVerify to return valid payload
-      (jwtVerify as jest.Mock).mockResolvedValue({
-        payload: { sub: 'user-123' },
+      mockSupabaseClient.auth.getClaims.mockResolvedValue({
+        data: { claims: { sub: 'user-123' } }, error: null,
       });
 
       // Mock user repository response
@@ -89,8 +76,8 @@ describe('AuthService', () => {
     });
 
     it('should validate token for plus tier user', async () => {
-      (jwtVerify as jest.Mock).mockResolvedValue({
-        payload: { sub: 'user-456' },
+      mockSupabaseClient.auth.getClaims.mockResolvedValue({
+        data: { claims: { sub: 'user-456' } }, error: null,
       });
 
       mockUserRepository.getUserById.mockResolvedValue({
@@ -114,8 +101,8 @@ describe('AuthService', () => {
     });
 
     it('should validate token for premium tier user', async () => {
-      (jwtVerify as jest.Mock).mockResolvedValue({
-        payload: { sub: 'user-789' },
+      mockSupabaseClient.auth.getClaims.mockResolvedValue({
+        data: { claims: { sub: 'user-789' } }, error: null,
       });
 
       mockUserRepository.getUserById.mockResolvedValue({
@@ -138,7 +125,7 @@ describe('AuthService', () => {
     });
 
     it('should handle invalid token (malformed JWT)', async () => {
-      (jwtVerify as jest.Mock).mockRejectedValue(new Error('Invalid JWT'));
+      mockSupabaseClient.auth.getClaims.mockRejectedValue(new Error('Invalid JWT'));
 
       const result = await authService.validateToken('invalid-token');
 
@@ -147,7 +134,7 @@ describe('AuthService', () => {
     });
 
     it('should handle empty token', async () => {
-      (jwtVerify as jest.Mock).mockRejectedValue(new Error('Empty token'));
+      mockSupabaseClient.auth.getClaims.mockRejectedValue(new Error('Empty token'));
 
       const result = await authService.validateToken('');
 
@@ -156,7 +143,7 @@ describe('AuthService', () => {
     });
 
     it('should handle token with wrong signature', async () => {
-      (jwtVerify as jest.Mock).mockRejectedValue(new Error('signature verification failed'));
+      mockSupabaseClient.auth.getClaims.mockRejectedValue(new Error('signature verification failed'));
 
       const result = await authService.validateToken('mock-jwt-token');
 
@@ -165,8 +152,8 @@ describe('AuthService', () => {
     });
 
     it('should handle token without sub claim', async () => {
-      (jwtVerify as jest.Mock).mockResolvedValue({
-        payload: { userId: 'user-123' }, // Wrong claim (userId instead of sub)
+      mockSupabaseClient.auth.getClaims.mockResolvedValue({
+        data: { claims: { userId: 'user-123' } }, error: null,
       });
 
       const result = await authService.validateToken('mock-jwt-token');
@@ -176,8 +163,8 @@ describe('AuthService', () => {
     });
 
     it('should throw UserNotFoundError when user does not exist', async () => {
-      (jwtVerify as jest.Mock).mockResolvedValue({
-        payload: { sub: 'nonexistent-user' },
+      mockSupabaseClient.auth.getClaims.mockResolvedValue({
+        data: { claims: { sub: 'nonexistent-user' } }, error: null,
       });
 
       mockUserRepository.getUserById.mockRejectedValue(
@@ -188,8 +175,8 @@ describe('AuthService', () => {
     });
 
     it('should throw UserBlockedError when user is blocked', async () => {
-      (jwtVerify as jest.Mock).mockResolvedValue({
-        payload: { sub: 'blocked-user' },
+      mockSupabaseClient.auth.getClaims.mockResolvedValue({
+        data: { claims: { sub: 'blocked-user' } }, error: null,
       });
 
       mockUserRepository.getUserById.mockResolvedValue({
@@ -207,8 +194,8 @@ describe('AuthService', () => {
     });
 
     it('should provide complete user data structure', async () => {
-      (jwtVerify as jest.Mock).mockResolvedValue({
-        payload: { sub: 'user-complete' },
+      mockSupabaseClient.auth.getClaims.mockResolvedValue({
+        data: { claims: { sub: 'user-complete' } }, error: null,
       });
 
       mockUserRepository.getUserById.mockResolvedValue({

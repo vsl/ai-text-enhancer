@@ -16,7 +16,6 @@ describe('Configuration Validator', () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     process.env.SUPABASE_URL = 'http://localhost:54321';
     process.env.APP_SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
-    process.env.APP_SUPABASE_JWT_SECRET = 'test-jwt-secret-with-at-least-32-chars-long';
     process.env.BOOTSTRAP_SECRET_KEY = 'test-bootstrap-secret';
   });
 
@@ -147,13 +146,6 @@ describe('Configuration Validator', () => {
       config.supabase.serviceRoleKey = '';
 
       expect(() => validateConfig(config)).toThrow('Supabase service role key is required');
-    });
-
-    it('should throw error when Supabase JWT secret is missing', () => {
-      const config = loadConfig();
-      config.supabase.jwtSecret = '';
-
-      expect(() => validateConfig(config)).toThrow('Supabase JWT secret is required');
     });
 
     it('should throw error when rate limits are missing', () => {

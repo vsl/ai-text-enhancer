@@ -116,8 +116,6 @@ export interface SupabaseConfig {
   /** Supabase service role key (for server-side operations) */
   serviceRoleKey: string;
 
-  /** Supabase JWT secret (for token validation) */
-  jwtSecret: string;
 }
 
 /**
@@ -184,9 +182,6 @@ export interface EnvironmentConfig {
 
   /** Supabase service role key */
   APP_SUPABASE_SERVICE_ROLE_KEY: string;
-  /** Supabase JWT secret */
-  APP_SUPABASE_JWT_SECRET: string;
-
   /** Optional: Bootstrap secret key for admin user creation */
   BOOTSTRAP_SECRET_KEY?: string;
 

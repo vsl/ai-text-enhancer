@@ -22,7 +22,6 @@ export function loadConfig(): SystemConfig {
   // Supabase configuration (using APP_ prefix to avoid Edge Functions restriction)
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceRoleKey = process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseJwtSecret = process.env.APP_SUPABASE_JWT_SECRET;
 
   // Optional bootstrap secret for admin user creation
   const bootstrapSecretKey = process.env.BOOTSTRAP_SECRET_KEY;
@@ -32,7 +31,6 @@ export function loadConfig(): SystemConfig {
   if (!openrouterApiKey) missingVars.push('OPENROUTER_API_KEY');
   if (!supabaseUrl) missingVars.push('SUPABASE_URL');
   if (!supabaseServiceRoleKey) missingVars.push('APP_SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseJwtSecret) missingVars.push('APP_SUPABASE_JWT_SECRET');
   if (missingVars.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missingVars.join(', ')}. ` +
@@ -69,7 +67,6 @@ export function loadConfig(): SystemConfig {
     supabase: {
       url: supabaseUrl!,
       serviceRoleKey: supabaseServiceRoleKey!,
-      jwtSecret: supabaseJwtSecret!,
     },
     bootstrapSecretKey: bootstrapSecretKey,
     rateLimits: {
@@ -141,7 +138,6 @@ export function hasRequiredEnvVars(): boolean {
     'OPENROUTER_API_KEY',
     'SUPABASE_URL',
     'APP_SUPABASE_SERVICE_ROLE_KEY',
-    'APP_SUPABASE_JWT_SECRET',
   ];
 
   return required.every((key) => !!process.env[key]);

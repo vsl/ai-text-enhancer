@@ -85,16 +85,12 @@ in a password manager:
 | Project URL | **Connect** (top bar), or `https://<project-ref>.supabase.co` | Cloudflare UI variable |
 | Default publishable key | **Settings > API Keys > Publishable and secret API keys** | Cloudflare UI variable only |
 | Secret key (preferred) or legacy service-role key | **Settings > API Keys** | `*_APP_SUPABASE_SERVICE_ROLE_KEY` |
-| Legacy JWT secret | **Settings > JWT Keys > Legacy JWT Secret > Reveal** | `*_APP_SUPABASE_JWT_SECRET` |
 
 For a newly created project, copy the `default` publishable key and the
-`default` secret key from **Publishable and secret API keys**. Keep the legacy
-JWT secret available too: the backend currently verifies user sessions with
-that symmetric secret. A notice that the secret has been migrated to JWT
-Signing Keys is expected; click **Reveal** on the Legacy JWT Secret tab. Do
-not rotate or revoke it, or switch the project to asymmetric JWT signing,
-until the backend is changed to verify the project's JWKS. A publishable key
-may be exposed in the browser; the other values must not be.
+`default` secret key from **Publishable and secret API keys**. The backend
+verifies user sessions through Supabase Auth, which supports the current
+asymmetric JWT signing keys through the project's JWKS. A publishable key may
+be exposed in the browser; the secret key must not be.
 
 For **each** project, open **Authentication > Sign In / Providers** and:
 
@@ -144,12 +140,10 @@ organization secrets instead, restrict each secret to this repository.
 | `MAX_BATCH_SIZE` | Optional; use `10` or omit it for the default |
 | `STAGING_SUPABASE_PROJECT_ID` | Staging project ref |
 | `STAGING_SUPABASE_DB_PASSWORD` | Staging database password |
-| `STAGING_APP_SUPABASE_JWT_SECRET` | Staging legacy JWT secret |
 | `STAGING_APP_SUPABASE_SERVICE_ROLE_KEY` | Staging secret/service-role key |
 | `STAGING_BOOTSTRAP_SECRET_KEY` | Unique random staging bootstrap secret |
 | `PRODUCTION_SUPABASE_PROJECT_ID` | Production project ref |
 | `PRODUCTION_SUPABASE_DB_PASSWORD` | Production database password |
-| `PRODUCTION_APP_SUPABASE_JWT_SECRET` | Production legacy JWT secret |
 | `PRODUCTION_APP_SUPABASE_SERVICE_ROLE_KEY` | Production secret/service-role key |
 | `PRODUCTION_BOOTSTRAP_SECRET_KEY` | Different random production bootstrap secret |
 
@@ -180,7 +174,6 @@ SUPABASE_ACCESS_TOKEN='sbp_...'
 SUPABASE_PROJECT_ID='staging-project-ref'
 SUPABASE_DB_PASSWORD='staging-database-password'
 OPENROUTER_API_KEY='sk-or-v1-...'
-APP_SUPABASE_JWT_SECRET='staging-legacy-jwt-secret'
 APP_SUPABASE_SERVICE_ROLE_KEY='sb_secret_...'
 BOOTSTRAP_SECRET_KEY='staging-random-bootstrap-secret'
 LLM_TIMEOUT_MS='30000'
@@ -199,7 +192,6 @@ set +a
 supabase link --project-ref "$SUPABASE_PROJECT_ID"
 supabase secrets set \
   OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-  APP_SUPABASE_JWT_SECRET="$APP_SUPABASE_JWT_SECRET" \
   APP_SUPABASE_SERVICE_ROLE_KEY="$APP_SUPABASE_SERVICE_ROLE_KEY" \
   BOOTSTRAP_SECRET_KEY="$BOOTSTRAP_SECRET_KEY" \
   LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
@@ -266,7 +258,7 @@ must be public-safe values.
 | `NEXT_PUBLIC_APP_SUPABASE_ANON_KEY` | Production publishable key | Staging publishable key |
 | `NEXT_PUBLIC_API_BASE_URL` | `https://<production-ref>.supabase.co/functions/v1` | `https://<staging-ref>.supabase.co/functions/v1` |
 
-Do not add provider keys, a service-role key, JWT secret, database password,
+Do not add provider keys, a service-role key, database password,
 or `SUPABASE_ACCESS_TOKEN` to Cloudflare. Cloudflare creates preview URLs for
 same-repository pull requests; a UI-only preview uses the shared staging API.
 
@@ -306,8 +298,7 @@ Use branches and pull requests; never push directly to `main`. A backend PR
 updates the one shared staging project. When rotating a provider, Supabase, or
 bootstrap secret, update GitHub first, then deploy a backend PR so the
 workflow synchronizes it. For a Cloudflare build value, update the relevant
-Production or Preview variable and trigger a UI deployment. Rotate the legacy
-JWT secret only as a planned application migration.
+Production or Preview variable and trigger a UI deployment.
 
 Useful current documentation: [Supabase CLI](https://supabase.com/docs/reference/cli/introduction),
 [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys),
