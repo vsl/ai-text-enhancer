@@ -425,13 +425,11 @@ describe('BatchOrchestrator', () => {
       // Mock connector to fail on second call
       const { LLMConnectorFactory } = require('../../../src/connectors/llm-connectors/factory.ts');
       
-      let callCount = 0;
       const mockConnector = {
         name: 'gemini',
         supportsStreaming: false,
-        sendRequest: jest.fn().mockImplementation(() => {
-          callCount++;
-          if (callCount === 2) {
+        sendRequest: jest.fn().mockImplementation((params) => {
+          if (params.userPrompt.includes('t2')) {
             return Promise.reject(new Error('API Error'));
           }
           return Promise.resolve({
@@ -687,6 +685,99 @@ describe('BatchOrchestrator', () => {
       });
 
       expect(response.results[0]).toMatchObject({ status: 'error', error: { code: 'TASK_TIMEOUT' } });
+    });
+  });
+
+  describe('Jev result selection', () => {
+    const buildRequest = (count: number): BatchRequest => ({
+      assistants: Array.from({ length: count }, (_, index) => ({
+        id: `result-${index + 1}`,
+        model: 'open-router-free',
+        aiRoleId: 'grammar-corrector',
+        userText: 'source',
+        options: {},
+      })),
+    });
+
+    const createSelectorOrchestrator = (select: jest.Mock) => new BatchOrchestrator(
+      providers,
+      quotaService,
+      authzService,
+      30000,
+      false,
+      { select },
+    );
+
+    const successfulSelection = {
+      status: 'success' as const,
+      judge: 'jev' as const,
+      model: 'typesafe/jev-1.13',
+      selectedResultId: 'result-1',
+      confidence: 0.8,
+      probabilities: { 'result-1': 0.8, 'result-2': 0.2 },
+    };
+
+    it('calls Jev exactly once with all six successful results', async () => {
+      const select = jest.fn().mockResolvedValue(successfulSelection);
+      const response = await createSelectorOrchestrator(select).processBatch(user, buildRequest(6), 'request-1');
+
+      expect(select).toHaveBeenCalledTimes(1);
+      expect(select.mock.calls[0][1].map((result: { id: string }) => result.id)).toEqual([
+        'result-1', 'result-2', 'result-3', 'result-4', 'result-5', 'result-6',
+      ]);
+      expect(response.selection).toEqual(successfulSelection);
+      expect(response.results).toHaveLength(6);
+    });
+
+    it('calls Jev for exactly two valid results', async () => {
+      const select = jest.fn().mockResolvedValue(successfulSelection);
+      await createSelectorOrchestrator(select).processBatch(user, buildRequest(2));
+      expect(select).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends only successful non-empty results to Jev', async () => {
+      sendRequest
+        .mockResolvedValueOnce({ text: '{"text":"First"}', usage: { totalTokens: 10 } })
+        .mockRejectedValueOnce(new Error('provider failed'))
+        .mockResolvedValueOnce({ text: '{"text":"Third"}', usage: { totalTokens: 20 } });
+      const select = jest.fn().mockResolvedValue(successfulSelection);
+
+      const response = await createSelectorOrchestrator(select).processBatch(user, buildRequest(3));
+
+      expect(select.mock.calls[0][1].map((result: { id: string }) => result.id)).toEqual(['result-1', 'result-3']);
+      expect(response.results.map(result => result.status)).toEqual(['success', 'error', 'success']);
+      expect(quotaService.reportUsage).toHaveBeenCalledWith(user.userId, 30, 'batch', expect.any(String));
+    });
+
+    it.each([1, 0])('skips Jev when %i results are valid', async (validCount) => {
+      sendRequest.mockImplementation(() => validCount
+        ? Promise.resolve({ text: '{"text":"Only"}', usage: { totalTokens: 10 } })
+        : Promise.reject(new Error('provider failed'))
+      );
+      const select = jest.fn();
+      const response = await createSelectorOrchestrator(select).processBatch(user, buildRequest(1));
+
+      expect(select).not.toHaveBeenCalled();
+      expect(response.selection).toEqual({ status: 'skipped', reason: 'NOT_ENOUGH_VALID_RESULTS' });
+    });
+
+    it('preserves generated results when Jev fails', async () => {
+      const select = jest.fn().mockRejectedValue(new Error('Jev failed'));
+      const consoleError = jest.spyOn(console, 'error').mockImplementation();
+      const response = await createSelectorOrchestrator(select).processBatch(user, buildRequest(2));
+
+      expect(response.results.every(result => result.status === 'success')).toBe(true);
+      expect(response.selection).toEqual({ status: 'unavailable', reason: 'JUDGE_FAILED' });
+      consoleError.mockRestore();
+    });
+
+    it('never sends tier-limit errors to Jev or charges Jev usage', async () => {
+      const select = jest.fn().mockResolvedValue(successfulSelection);
+      const response = await createSelectorOrchestrator(select).processBatch({ ...user, tier: 'free' }, buildRequest(8));
+
+      expect(select.mock.calls[0][1]).toHaveLength(6);
+      expect(response.results.filter(result => result.status === 'error')).toHaveLength(2);
+      expect(quotaService.reportUsage).toHaveBeenCalledWith(user.userId, 180, 'batch', expect.any(String));
     });
   });
 

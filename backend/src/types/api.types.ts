@@ -59,7 +59,27 @@ export interface TransformationOptions {
  */
 export interface BatchResponse {
   results: BatchResult[];
+  /** Optional during rolling deployments; current backends normally include it. */
+  selection?: BatchSelection;
 }
+
+export type BatchSelection =
+  | {
+      status: 'success';
+      judge: 'jev';
+      model: string;
+      selectedResultId: string;
+      confidence: number;
+      probabilities: Record<string, number>;
+    }
+  | {
+      status: 'skipped';
+      reason: 'NOT_ENOUGH_VALID_RESULTS';
+    }
+  | {
+      status: 'unavailable';
+      reason: 'JUDGE_FAILED';
+    };
 
 /**
  * Result for a single assistant (union type)

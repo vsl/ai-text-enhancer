@@ -36,6 +36,12 @@ export interface SystemConfig {
 
   /** Whether to expose detailed error messages in API responses */
   exposeErrorDetails: boolean;
+
+  /** Internal Jev result-selection configuration */
+  jev: {
+    modelId: string;
+    timeoutMs: number;
+  };
 }
 
 /**
@@ -202,6 +208,10 @@ export interface EnvironmentConfig {
 
   /** Optional: Whether to expose detailed error messages (true/false) */
   EXPOSE_ERROR_DETAILS?: string;
+
+  /** Optional Jev result-selection overrides */
+  JEV_MODEL_ID?: string;
+  JEV_TIMEOUT_MS?: string;
 
   /** Optional LangSmith tracing configuration */
   LANGSMITH_TRACING?: string;

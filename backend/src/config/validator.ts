@@ -140,6 +140,13 @@ export function validateConfig(config: SystemConfig): void {
     });
   }
 
+  if (!config.jev?.modelId) {
+    errors.push({ field: 'jev.modelId', message: 'Jev model ID is required' });
+  }
+  if (!config.jev || config.jev.timeoutMs <= 0) {
+    errors.push({ field: 'jev.timeoutMs', message: 'Jev timeout must be positive' });
+  }
+
   // Validate Supabase configuration
   if (!config.supabase) {
     errors.push({

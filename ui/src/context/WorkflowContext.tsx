@@ -7,7 +7,7 @@ import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS, AUTH_ERROR_MESSAG
 import { API_BASE_URL } from '@/lib/runtime-config';
 import { getErrorMessage } from '@/lib/utils';
 import { useAuth } from './AuthContext';
-import type { BatchRequest, BatchResponse } from '../../../backend/src/types/api.types';
+import type { BatchRequest, BatchResponse, BatchSelection } from '../../../backend/src/types/api.types';
 
 /**
  * WorkflowContext interface defining the shape of the context
@@ -18,6 +18,7 @@ interface WorkflowContextType {
   selectedWorkflow: string;
   configs: AiConfig[];
   results: Map<number, Result>;
+  selection?: BatchSelection;
   isGenerating: boolean;
   inputText: string;
   contextText: string;
@@ -63,6 +64,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   // Local state
   const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [results, setResults] = useState<Map<number, Result>>(new Map());
+  const [selection, setSelection] = useState<BatchSelection>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [inputText, setInputText] = useState('');
   const [contextText, setContextText] = useState('');
@@ -139,6 +141,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     // No need for deep clone - configs are already new objects
     setConfigs([{ ...newConfig, options: { ...newConfig.options } }]);
     setResults(new Map());
+    setSelection(undefined);
   }, [workflows, setWorkflows, setSelectedWorkflow]);
 
   /**
@@ -146,6 +149,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
    */
   const handleLoadWorkflow = useCallback((name: string) => {
     setResults(new Map());
+    setSelection(undefined);
     const workflowToLoad = workflows.find(w => w.name === name) || workflows[0];
     if (workflowToLoad) {
       const migratedConfigs = workflowToLoad.configs.map(normalizeAiConfig);
@@ -173,12 +177,14 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
     }
     setResults(new Map());
+    setSelection(undefined);
   }, [workflows, selectedWorkflow, setWorkflows, setSelectedWorkflow]);
 
   /**
    * Save or update a config
    */
   const handleSaveConfig = useCallback((updatedConfig: AiConfig) => {
+    setSelection(undefined);
     setConfigs(prevConfigs => {
       const existingIndex = prevConfigs.findIndex(c => c.id === updatedConfig.id);
       const newConfigs = [...prevConfigs];
@@ -200,6 +206,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
    * Remove a config
    */
   const handleRemoveConfig = useCallback((id: number) => {
+    setSelection(undefined);
     const newConfigs = configs.filter(c => c.id !== id);
     setConfigs(newConfigs);
     autoSaveWorkflow(newConfigs);
@@ -209,6 +216,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
    * Toggle assistant enabled/disabled
    */
   const handleToggleAssistant = useCallback((id: number) => {
+    setSelection(undefined);
     const newConfigs = configs.map(c => {
       if (c.id === id) {
         return { ...c, enabled: !c.enabled };
@@ -223,6 +231,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
    * Copy a config
    */
   const handleCopyConfig = useCallback((id: number) => {
+    setSelection(undefined);
     const configToCopy = configs.find(c => c.id === id);
     if (!configToCopy) return;
 
@@ -257,6 +266,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     abortControllerRef.current = controller;
 
     setIsGenerating(true);
+    setSelection(undefined);
 
     // Set loading state for all enabled assistants
     setResults(prevResults => {
@@ -325,6 +335,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
       // Parse response
       const responseData = await response.json() as BatchResponse;
+      setSelection(responseData.selection);
 
       // Calculate total tokens used from all successful results BEFORE updating state
       const totalTokensUsed = responseData.results.reduce((total, res) => {
@@ -421,6 +432,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     selectedWorkflow,
     configs,
     results,
+    selection,
     isGenerating,
     inputText,
     contextText,

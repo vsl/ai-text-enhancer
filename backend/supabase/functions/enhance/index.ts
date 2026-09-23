@@ -15,6 +15,8 @@ import { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
 import { QuotaService } from '../../../src/services/quota-service.ts';
 import { AuthorizationService } from '../../../src/services/authorization-service.ts';
 import { flushTraces } from '../../../src/observability/tracing.ts';
+import { OpenRouterDecisionConnector } from '../../../src/connectors/openrouter-decision-connector.ts';
+import { JevResultSelector } from '../../../src/services/jev-result-selector.ts';
 
 // Load configuration once at startup
 const config = loadConfig();
@@ -26,12 +28,18 @@ const supabase = initializeSupabase(config.supabase.url, config.supabase.service
 // Initialize services
 const quotaService = new QuotaService(supabase);
 const authzService = new AuthorizationService();
+const openRouter = config.llmProviders.find(provider => provider.name === 'openrouter')!;
+const resultSelector = new JevResultSelector(
+  new OpenRouterDecisionConnector(openRouter.apiKey, config.jev.timeoutMs),
+  config.jev.modelId,
+);
 const orchestrator = new BatchOrchestrator(
   config.llmProviders,
   quotaService,
   authzService,
   config.timeout,
-  config.exposeErrorDetails
+  config.exposeErrorDetails,
+  resultSelector,
 );
 const authMiddleware = new AuthMiddleware(supabase);
 

@@ -10,6 +10,9 @@ import { InfoTooltip } from '@/components/features/InfoTooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AiConfig, Result } from '@/lib/types';
 import { TOOLTIP_TEXTS, getAiRoleLabel } from '@/lib/constants';
+import type { BatchSelection } from '../../../../backend/src/types/api.types';
+
+type SuccessfulSelection = Extract<BatchSelection, { status: 'success' }>;
 
 /**
  * Props for the AssistantCard component
@@ -33,6 +36,8 @@ interface AssistantCardProps {
   onImproveVersion: (text: string) => void;
   /** ID of the assistant whose result was just copied (for visual feedback) */
   copiedId: number | null;
+  /** Present only when this card is the current Jev selection. */
+  jevSelection?: SuccessfulSelection;
 }
 
 export function AssistantCard({
@@ -45,16 +50,19 @@ export function AssistantCard({
   onCopyResult,
   onImproveVersion,
   copiedId,
+  jevSelection,
 }: AssistantCardProps) {
+  const selectedByJev = Boolean(jevSelection && result && !result.error && !result.isLoading);
 
   return (
     <li
       key={config.id}
       data-testid={`assistant-card-${config.id}`}
-      className={`bg-background p-6 rounded-lg border flex flex-col gap-4 relative transition-opacity duration-300 ${
+      className={`bg-background p-6 rounded-lg border flex flex-col gap-4 relative transition-all duration-300 ${
         !config.enabled ? 'opacity-60' : ''
+      } ${selectedByJev ? 'ring-2 ring-secondary/40' : ''
       }`}
-      style={{ borderColor: result?.error ? 'var(--destructive)' : 'var(--border)' }}
+      style={{ borderColor: result?.error ? 'var(--destructive)' : selectedByJev ? 'var(--secondary)' : 'var(--border)' }}
     >
       {/* Assistant Card Header */}
       <div className="flex justify-between items-start gap-4">
@@ -68,6 +76,15 @@ export function AssistantCard({
             <h3 className="text-base text-secondary m-0">{getAiRoleLabel(config.aiRoleId)}</h3>
           </div>
           <small className="text-muted-foreground">{config.model}</small>
+          {selectedByJev && (
+            <span
+              data-testid={`jev-selection-${config.id}`}
+              className="mt-1 w-fit rounded-full bg-secondary/15 px-2.5 py-1 text-xs font-semibold text-secondary"
+              title="Selected by Jev from the successful results in this run."
+            >
+              ✨ Chosen by Jev
+            </span>
+          )}
         </div>
 
         {/* Kebab Menu */}
