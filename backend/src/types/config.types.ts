@@ -104,6 +104,9 @@ export interface RoleConfig {
   
   /** System prompt describing the role */
   systemPrompt: string;
+
+  /** Revision of this role-specific system prompt */
+  systemPromptVersion: string;
   
   /** Model IDs allowed for this role */
   allowedModels: string[];
@@ -199,4 +202,12 @@ export interface EnvironmentConfig {
 
   /** Optional: Whether to expose detailed error messages (true/false) */
   EXPOSE_ERROR_DETAILS?: string;
+
+  /** Optional LangSmith tracing configuration */
+  LANGSMITH_TRACING?: string;
+  LANGSMITH_API_KEY?: string;
+  LANGSMITH_PROJECT?: string;
+  LANGSMITH_ENDPOINT?: string;
+  APP_ENV?: 'staging' | 'production';
+  APP_RELEASE?: string;
 }

@@ -17,6 +17,7 @@ import {
   OrchestrationError,
 } from '../../../src/errors/orchestration-errors.ts';
 import { getFunctionPath } from '../../../src/utils/function-path.ts';
+import { addTraceMetadata, traceRun } from '../../../src/observability/tracing.ts';
 
 interface Services {
   orchestrator: BatchOrchestrator;
@@ -28,11 +29,14 @@ export async function handleRequest(
   req: Request,
   services: Services
 ): Promise<Response> {
+  const requestId = crypto.randomUUID();
   // CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Expose-Headers': 'X-Request-ID',
+    'X-Request-ID': requestId,
   };
 
   // Handle CORS preflight
@@ -52,7 +56,7 @@ export async function handleRequest(
 
     // Route: POST / (main endpoint)
     if (method === 'POST' && pathname === '/') {
-      return await handleEnhance(req, services, corsHeaders);
+      return await handleEnhance(req, services, corsHeaders, requestId);
     }
 
     // 404 Not Found
@@ -63,7 +67,7 @@ export async function handleRequest(
     );
 
   } catch (error) {
-    return handleError(error, services.config.exposeErrorDetails, corsHeaders);
+    return handleError(error, services.config.exposeErrorDetails, corsHeaders, requestId);
   }
 }
 
@@ -73,17 +77,23 @@ export async function handleRequest(
 async function handleEnhance(
   req: Request,
   services: Services,
-  corsHeaders: Record<string, string>
+  corsHeaders: Record<string, string>,
+  requestId: string,
 ): Promise<Response> {
-  // Parse request
-  const body: unknown = await req.json();
+  const rawBody = await req.text();
   const headers = Object.fromEntries(req.headers.entries());
-
-  // Authenticate
-  const user = await services.authMiddleware.authenticate(headers);
-
-  // Process batch
-  const result = await services.orchestrator.processBatch(user, body);
+  const result = await traceRun({
+    name: 'enhance.batch',
+    runType: 'chain',
+    inputs: { requestBody: rawBody },
+    metadata: { requestId },
+    operation: async () => {
+      const body: unknown = JSON.parse(rawBody);
+      const user = await services.authMiddleware.authenticate(headers);
+      addTraceMetadata({ requestId, userId: user.userId, userTier: user.tier });
+      return services.orchestrator.processBatch(user, body, requestId);
+    },
+  });
 
   return jsonResponse(result, 200, corsHeaders);
 }
@@ -94,10 +104,11 @@ async function handleEnhance(
 function handleError(
   error: unknown,
   exposeErrorDetails: boolean,
-  corsHeaders: Record<string, string>
+  corsHeaders: Record<string, string>,
+  requestId: string,
 ): Response {
   // Always log full error details for admin monitoring
-  console.error('[ERROR]', error);
+  console.error(`[ERROR][${requestId}]`, error);
 
   // Helper to build error response
   const buildErrorResponse = (code: string, message?: string) => {

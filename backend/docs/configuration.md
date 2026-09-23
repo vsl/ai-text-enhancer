@@ -31,6 +31,12 @@ Complete guide to environment setup, configuration modules, and system configura
 | `LM_STUDIO_BASE_URL` | No | Local LM Studio URL | `http://localhost:1234` |
 | `LLM_TIMEOUT_MS` | No | LLM request timeout | `30000` (default) |
 | `MAX_BATCH_SIZE` | No | Max assistants per batch | `10` (default) |
+| `LANGSMITH_TRACING` | No | Enable LangSmith tracing | `true` |
+| `LANGSMITH_API_KEY` | With tracing | LangSmith API key | `lsv2_...` |
+| `LANGSMITH_PROJECT` | With tracing | Trace project | `ai-text-enhancer-staging` |
+| `LANGSMITH_ENDPOINT` | No | LangSmith US endpoint | `https://api.smith.langchain.com` |
+| `APP_ENV` | No | Deployment environment | `staging` |
+| `APP_RELEASE` | No | Git release SHA | `abc123...` |
 
 ### Quick Setup Commands
 
@@ -141,6 +147,14 @@ npm run dev
 - **Security:** Debug logs contain user prompts, context, and generated text. Enable only while diagnosing an issue and never log the authorization header or API key.
 - **Local:** Add `LOG_LEVEL=debug` to `.env.local`
 - **Supabase Edge Functions:** Run `supabase secrets set LOG_LEVEL=debug`; set it to another value when finished
+
+#### LangSmith tracing
+
+Tracing is disabled locally unless `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are both set. CI enables 100% tracing for deployed Edge Functions and selects `ai-text-enhancer-staging` or `ai-text-enhancer-production`; `APP_RELEASE` is the deployed Git SHA. Keep `LANGSMITH_ENDPOINT=https://api.smith.langchain.com` for the US workspace.
+
+Traces contain complete user source/context, assembled prompts, raw provider responses, and final output. Restrict workspace access accordingly, use the shortest operationally useful retention period, and never enable raw `LOG_LEVEL=debug` payload logging in normal staging or production operation.
+
+Role prompt text remains versioned in Git. Increment that role's `systemPromptVersion` for a role prompt change. Increment the shared `PROMPT_VERSION` for shared policy or transformation instruction changes. LangSmith stores the resulting composite revision and SHA-256 prompt fingerprint; it is not a prompt registry.
 
 ---
 

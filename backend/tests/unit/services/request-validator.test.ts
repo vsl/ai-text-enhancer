@@ -80,6 +80,7 @@ describe('validateBatchRequest', () => {
       id: 'editor',
       name: 'Editor',
       systemPrompt: 'Edit text',
+      systemPromptVersion: 'v1',
       allowedModels: ['openai-gpt-5-nano'],
     });
     const request = validRequest();

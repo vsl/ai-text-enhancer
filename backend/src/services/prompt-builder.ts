@@ -9,7 +9,7 @@
  * Platform-agnostic - no Deno or Node.js specific APIs.
  */
 
-import { PromptTemplates } from './prompt-templates.ts';
+import { PromptTemplates, PROMPT_VERSION } from './prompt-templates.ts';
 import type { 
   PromptBuildRequest, 
   ConstructedPrompt 
@@ -24,7 +24,7 @@ export class PromptBuilder {
    * @returns Constructed prompt with system, user, and combined prompts
    * @throws Error if role is not found or model not allowed for role
    */
-  buildPrompt(request: PromptBuildRequest): ConstructedPrompt {
+  async buildPrompt(request: PromptBuildRequest): Promise<ConstructedPrompt> {
     // 1. Get role configuration
     const role = getRoleById(request.aiRoleId);
     
@@ -53,7 +53,18 @@ export class PromptBuilder {
     // 5. Return constructed prompt
     return {
       systemPrompt,
-      userPrompt
+      userPrompt,
+      promptRevision: buildPromptRevision(request.aiRoleId, role.systemPromptVersion),
+      promptFingerprint: await fingerprintPrompt(systemPrompt),
     };
   }
+}
+
+export function buildPromptRevision(roleId: string, systemPromptVersion: string): string {
+  return `${PROMPT_VERSION}/${roleId}@${systemPromptVersion}`;
+}
+
+export async function fingerprintPrompt(prompt: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(prompt));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }

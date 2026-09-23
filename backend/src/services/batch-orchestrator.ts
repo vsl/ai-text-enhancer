@@ -26,9 +26,10 @@ import { getModelById } from '../config/models.config.ts';
 import { getRoleById } from '../config/roles.config.ts';
 import { getLimitsForTier } from '../config/tier-limits.config.ts';
 import type { LLMProviderConfig } from '../types/config.types.ts';
-import { LLMTimeoutError } from '../errors/llm-errors.ts';
+import { LLMError, LLMTimeoutError } from '../errors/llm-errors.ts';
 import { parseTextOutput } from '../config/output-contract.config.ts';
 import { validateBatchRequest } from './request-validator.ts';
+import { addTraceMetadata, traceRun } from '../observability/tracing.ts';
 
 export class BatchOrchestrator {
   private promptBuilder: PromptBuilder;
@@ -63,7 +64,8 @@ export class BatchOrchestrator {
    */
   async processBatch(
     user: UserProfile,
-    input: unknown
+    input: unknown,
+    requestId: string = crypto.randomUUID(),
   ): Promise<BatchResponse> {
     // 1. Validate the untrusted API payload (batch size remains a partial-success limit)
     const request: BatchRequest = validateBatchRequest(input, user);
@@ -101,7 +103,7 @@ export class BatchOrchestrator {
     this.validateAllModelAccess(user, processable);
 
     // 8. Process processable assistants in parallel
-    const processingResults = await this.processAllAssistants(processable);
+    const processingResults = await this.processAllAssistants(processable, user, requestId);
 
     // 9. Calculate actual token usage from successful tasks
     const totalTokensUsed = processingResults
@@ -114,7 +116,8 @@ export class BatchOrchestrator {
         await this.quotaService.reportUsage(
           user.userId,
           totalTokensUsed,
-          'batch' // aggregated model identifier
+          'batch', // aggregated model identifier
+          requestId,
         );
       } catch (error) {
         // Log but don't fail - user already got results
@@ -182,11 +185,13 @@ export class BatchOrchestrator {
    * Process all assistants in parallel using Promise.allSettled
    */
   private async processAllAssistants(
-    assistants: AssistantConfiguration[]
+    assistants: AssistantConfiguration[],
+    user: UserProfile,
+    requestId: string,
   ): Promise<AssistantProcessingResult[]> {
     // Create promises for all assistant tasks
     const promises = assistants.map(assistant =>
-      this.executeAssistantTask(assistant)
+      this.executeAssistantTask(assistant, user, requestId)
     );
 
     // Execute all in parallel, catch individual failures
@@ -201,7 +206,7 @@ export class BatchOrchestrator {
       } else {
         // Handle promise rejection - always log for admin
         const error = result.reason as Error;
-        console.error('[ORCHESTRATOR] Task processing failed:', assistantId, error);
+        console.error(`[ORCHESTRATOR][${requestId}] Task processing failed:`, assistantId, conciseError(error));
 
         return {
           id: assistantId,
@@ -219,9 +224,59 @@ export class BatchOrchestrator {
    * Execute assistant task: build prompt + call LLM
    */
   private async executeAssistantTask(
-    assistant: AssistantConfiguration
+    assistant: AssistantConfiguration,
+    user: UserProfile,
+    requestId: string,
   ): Promise<AssistantProcessingResult> {
     try {
+      return await traceRun({
+        name: 'enhance.assistant',
+        runType: 'chain',
+        inputs: {
+          source: assistant.userText,
+          context: assistant.contextText,
+          assistant,
+        },
+        metadata: {
+          requestId,
+          userId: user.userId,
+          userTier: user.tier,
+          assistantId: assistant.id,
+          role: assistant.aiRoleId,
+          transformations: assistant.options,
+          requestedPublicModel: assistant.model,
+        },
+        operation: () => this.runAssistantTask(assistant, requestId),
+      });
+    } catch (error) {
+      if (error instanceof LLMTimeoutError) {
+        console.error(`[ORCHESTRATOR][${requestId}] Task timeout:`, assistant.id, conciseError(error));
+        return {
+          id: assistant.id,
+          success: false,
+          error: {
+            code: 'TASK_TIMEOUT',
+            ...(this.exposeErrorDetails && { message: error.message })
+          }
+        };
+      }
+
+      console.error(`[ORCHESTRATOR][${requestId}] LLM error:`, assistant.id, conciseError(error));
+      return {
+        id: assistant.id,
+        success: false,
+        error: {
+          code: 'LLM_ERROR',
+          ...(this.exposeErrorDetails && { message: (error as Error).message || 'LLM call failed' })
+        }
+      };
+    }
+  }
+
+  private async runAssistantTask(
+    assistant: AssistantConfiguration,
+    requestId: string,
+  ): Promise<AssistantProcessingResult> {
       // 1. Get model and role configurations
       const model = getModelById(assistant.model);
       const role = getRoleById(assistant.aiRoleId);
@@ -235,7 +290,7 @@ export class BatchOrchestrator {
       }
 
       // 2. Build prompts using PromptBuilder
-      const { systemPrompt, userPrompt } = this.promptBuilder.buildPrompt({
+      const { systemPrompt, userPrompt, promptRevision, promptFingerprint } = await this.promptBuilder.buildPrompt({
         id: assistant.id,
         model: assistant.model,
         aiRoleId: assistant.aiRoleId,
@@ -243,6 +298,7 @@ export class BatchOrchestrator {
         contextText: assistant.contextText,
         options: assistant.options
       });
+      addTraceMetadata({ promptRevision, promptFingerprint });
 
       // 3. Get appropriate LLM connector
       const connector = LLMConnectorFactory.getConnector(
@@ -253,6 +309,8 @@ export class BatchOrchestrator {
       // 4. Call LLM; the connector owns cancellation and timer cleanup
       const response = await connector.sendRequest({
         model: model.providerModelId,
+        requestedPublicModel: assistant.model,
+        requestId,
         systemPrompt,
         userPrompt,
         structuredOutputMode: model.structuredOutputMode,
@@ -262,7 +320,21 @@ export class BatchOrchestrator {
       });
 
       // 5. Require the provider's structured response contract
-      const enhancedText = parseTextOutput(response.text);
+      const enhancedText = await traceRun({
+        name: 'output.parse',
+        runType: 'parser',
+        inputs: { rawModelOutput: response.text },
+        metadata: {
+          requestId,
+          assistantId: assistant.id,
+          promptRevision,
+          promptFingerprint,
+          finishReason: response.diagnostics?.finishReason,
+        },
+        operation: async () => ({
+          text: parseTextOutput(response.text, response.diagnostics),
+        }),
+      }).then(result => result.text);
 
       // 6. Return success result
       return {
@@ -272,32 +344,6 @@ export class BatchOrchestrator {
         tokensUsed: response.usage.totalTokens
       };
 
-    } catch (error) {
-      if (error instanceof LLMTimeoutError) {
-        console.error('[ORCHESTRATOR] Task timeout:', assistant.id, error);
-        return {
-          id: assistant.id,
-          success: false,
-          error: {
-            code: 'TASK_TIMEOUT',
-            ...(this.exposeErrorDetails && { message: error.message })
-          }
-        };
-      }
-
-      // Always log for admin
-      console.error('[ORCHESTRATOR] LLM error:', assistant.id, error);
-
-      // Convert other errors to structured result
-      return {
-        id: assistant.id,
-        success: false,
-        error: {
-          code: 'LLM_ERROR',
-          ...(this.exposeErrorDetails && { message: (error as Error).message || 'LLM call failed' })
-        }
-      };
-    }
   }
 
   /**
@@ -319,4 +365,17 @@ export class BatchOrchestrator {
       } as ErrorResult;
     }
   }
+}
+
+function conciseError(error: unknown): Record<string, unknown> {
+  const value = error as Error;
+  return {
+    name: value?.name ?? 'Error',
+    message: value?.message ?? 'Unknown error',
+    ...(error instanceof LLMError && {
+      provider: error.provider,
+      code: error.code,
+      statusCode: error.statusCode,
+    }),
+  };
 }

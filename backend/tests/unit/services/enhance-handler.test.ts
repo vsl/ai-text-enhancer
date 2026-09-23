@@ -28,6 +28,8 @@ describe('enhance handler validation errors', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('X-Request-ID')).toMatch(/^[0-9a-f-]{36}$/);
+    expect(response.headers.get('Access-Control-Expose-Headers')).toBe('X-Request-ID');
     expect(await response.json()).toEqual({ status: 'ok', service: 'ai-text-enhancer' });
   });
 
@@ -43,6 +45,7 @@ describe('enhance handler validation errors', () => {
       error: { code: 'INVALID_REQUEST', message: 'assistants[0].tone is not supported' },
     });
     expect(processBatch).toHaveBeenCalledTimes(1);
+    expect(processBatch.mock.calls[0][2]).toBe(response.headers.get('X-Request-ID'));
   });
 
   it('returns INVALID_REQUEST for malformed JSON before authentication or provider work', async () => {
