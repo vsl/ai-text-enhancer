@@ -56,6 +56,20 @@ The default model is `openai/gpt-5-nano`, sent through OpenRouter with its
 `openrouter/free` and `qwen/qwen3-30b-a3b-instruct-2507`. All three are
 available to every user tier, so set a spend limit that includes their usage.
 
+### Optional: LangSmith tracing
+
+LangSmith is not required. Without its API key, deployments set
+`LANGSMITH_TRACING=false` and the backend runs normally without sending
+traces. To enable it, create a workspace API key in
+[LangSmith](https://smith.langchain.com/) and store it in your password
+manager. One key is used for both environments; the workflow separates their
+traces into `ai-text-enhancer-staging` and `ai-text-enhancer-production`.
+
+Traces include user source and context, assembled prompts, raw provider
+responses, and final output. Limit workspace access and retention accordingly.
+The backend redacts credential-like fields, but tracing is not a substitute for
+data-retention controls.
+
 ## 2. Create the Supabase organization and two projects
 
 1. Open [Supabase](https://database.new). If the organization picker does not
@@ -136,6 +150,7 @@ organization secrets instead, restrict each secret to this repository.
 | --- | --- |
 | `SUPABASE_ACCESS_TOKEN` | The scoped token created above |
 | `OPENROUTER_API_KEY` | The OpenRouter usage API key |
+| `LANGSMITH_API_KEY` | Optional LangSmith workspace API key; enables tracing when present |
 | `LLM_TIMEOUT_MS` | Optional; use `30000` or omit it for the default |
 | `MAX_BATCH_SIZE` | Optional; use `10` or omit it for the default |
 | `STAGING_SUPABASE_PROJECT_ID` | Staging project ref |
@@ -153,6 +168,13 @@ workflow selects `STAGING_` values
 for pull requests and `PRODUCTION_` values after a merge to `main`. No
 Cloudflare API token is required. GitHub does not provide repository secrets
 to fork pull requests, so use a branch in this repository for deployment PRs.
+
+The workflow derives `LANGSMITH_TRACING`, `LANGSMITH_PROJECT`, `APP_ENV`,
+`APP_RELEASE`, and `LOG_LEVEL`; do not create Actions secrets for those
+values. `LANGSMITH_TRACING` is `true` only when `LANGSMITH_API_KEY` exists;
+otherwise it is `false`. `LOG_LEVEL` stays at `info`. Do not set it to
+`debug` during normal operation because debug logs include complete provider
+payloads.
 
 Protect `main` in **Settings > Branches** (or **Rules**) so production comes
 from reviewed pull requests. Do not grant normal contributors repository-admin
@@ -178,6 +200,15 @@ APP_SUPABASE_SERVICE_ROLE_KEY='sb_secret_...'
 BOOTSTRAP_SECRET_KEY='staging-random-bootstrap-secret'
 LLM_TIMEOUT_MS='30000'
 MAX_BATCH_SIZE='10'
+
+# Optional LangSmith tracing. To enable it, change this to true and set the key.
+LANGSMITH_TRACING='false'
+# LANGSMITH_API_KEY='lsv2_...'
+LANGSMITH_PROJECT='ai-text-enhancer-staging'
+LANGSMITH_ENDPOINT='https://api.smith.langchain.com'
+APP_ENV='staging'
+APP_RELEASE='manual-bootstrap'
+LOG_LEVEL='info'
 ```
 
 Run the following from the repository root:
@@ -195,7 +226,16 @@ supabase secrets set \
   APP_SUPABASE_SERVICE_ROLE_KEY="$APP_SUPABASE_SERVICE_ROLE_KEY" \
   BOOTSTRAP_SECRET_KEY="$BOOTSTRAP_SECRET_KEY" \
   LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
-  MAX_BATCH_SIZE="$MAX_BATCH_SIZE"
+  MAX_BATCH_SIZE="$MAX_BATCH_SIZE" \
+  LANGSMITH_TRACING="$LANGSMITH_TRACING" \
+  LANGSMITH_PROJECT="$LANGSMITH_PROJECT" \
+  LANGSMITH_ENDPOINT="$LANGSMITH_ENDPOINT" \
+  APP_ENV="$APP_ENV" \
+  APP_RELEASE="$APP_RELEASE" \
+  LOG_LEVEL="$LOG_LEVEL"
+if [ -n "${LANGSMITH_API_KEY:-}" ]; then
+  supabase secrets set LANGSMITH_API_KEY="$LANGSMITH_API_KEY"
+fi
 supabase db push --linked
 for function in enhance admin me; do
   supabase functions deploy "$function" --no-verify-jwt
@@ -203,10 +243,12 @@ done
 ```
 
 Replace the values in the same `backend/.env` with the production values,
-including a different `BOOTSTRAP_SECRET_KEY`, and run the same commands again.
-`SUPABASE_URL` is supplied by the hosted Edge Functions runtime, so do not set
-it as a secret. Close the terminal when finished or run `unset` for the loaded
-variables.
+including a different `BOOTSTRAP_SECRET_KEY`,
+`LANGSMITH_PROJECT='ai-text-enhancer-production'`, and
+`APP_ENV='production'`, then run the same commands again. Use a different
+`APP_RELEASE` label for the manual production bootstrap. `SUPABASE_URL` is
+supplied by the hosted Edge Functions runtime, so do not set it as a secret.
+Close the terminal when finished or run `unset` for the loaded variables.
 
 Alternatively, a PR containing a genuine `backend/` change deploys staging;
 after review and merge, the same workflow deploys production. Do not make a
@@ -305,4 +347,5 @@ Useful current documentation: [Supabase CLI](https://supabase.com/docs/reference
 [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/auth-anonymous),
 [Cloudflare Pages Git integration](https://developers.cloudflare.com/pages/configuration/git-integration/),
 [Cloudflare preview deployments](https://developers.cloudflare.com/pages/configuration/preview-deployments/),
-and [OpenRouter authentication](https://openrouter.ai/docs/quickstart).
+[OpenRouter authentication](https://openrouter.ai/docs/quickstart), and
+[LangSmith tracing](https://docs.smith.langchain.com/).
