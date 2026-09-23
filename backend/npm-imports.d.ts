@@ -18,3 +18,12 @@ declare module 'npm:ajv@8' {
 declare module 'npm:jose@5' {
   export * from 'jose';
 }
+
+// LangSmith
+declare module 'npm:langsmith@0.10.5' {
+  export * from 'langsmith';
+}
+
+declare module 'npm:langsmith@0.10.5/traceable' {
+  export * from 'langsmith/traceable';
+}
