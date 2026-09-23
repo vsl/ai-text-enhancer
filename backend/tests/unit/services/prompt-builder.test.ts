@@ -1,9 +1,44 @@
 import { PromptBuilder } from '../../../src/services/prompt-builder.ts';
 import { ROLES } from '../../../src/config/roles.config.ts';
 import type { AssistantConfiguration } from '../../../src/types/api.types.ts';
+import {
+  BOOLEAN_TRANSFORMATION_KEYS, FORMALITY_VALUES, TONE_VALUES,
+  LANGUAGE_LEVEL_VALUES, LANGUAGE_VALUES,
+} from '../../../src/config/transformation-options.config.ts';
+
+const optionCases: AssistantConfiguration['options'][] = [
+  {},
+  Object.fromEntries(BOOLEAN_TRANSFORMATION_KEYS.map(key => [key, false])),
+  ...BOOLEAN_TRANSFORMATION_KEYS.map(key => ({ [key]: true })),
+  ...FORMALITY_VALUES.map(formality => ({ formality })),
+  ...TONE_VALUES.map(tone => ({ tone })),
+  ...LANGUAGE_LEVEL_VALUES.map(languageLevel => ({ languageLevel })),
+  ...LANGUAGE_VALUES.map(translateTo => ({ translateTo })),
+  { improve: true, fixMistakes: true, format: true, lengthen: true, formality: 'Formal', tone: 'Worried' },
+];
 
 describe('PromptBuilder', () => {
   const builder = new PromptBuilder();
+
+  describe.each(ROLES)('$id source/context boundary', role => {
+    it.each(optionCases)('preserves source priority with options %j', async options => {
+      const userText = 'Hi Morgan,\nwe do no have anothe ocnta.\nthnas\nAlex';
+      const contextText = 'Dear Ms. Taylor and Mr. Alex, please provide another emergency contact. Regards, Morgan';
+      const prompt = await builder.buildPrompt({
+        id: 'reply', model: role.allowedModels[0], aiRoleId: role.id,
+        userText, contextText, options,
+      });
+
+      expect(prompt.systemPrompt.startsWith(role.systemPrompt)).toBe(true);
+      expect(prompt.systemPrompt).toContain('Context is supporting background, not the text to transform.');
+      expect(prompt.systemPrompt).toContain('Use it to clarify references and add relevant, supported detail consistent with source.');
+      expect(prompt.systemPrompt).toContain('source takes precedence for the message, facts, speaker, recipient, and point of view.');
+      expect(prompt.systemPrompt).toContain('Style, tone, and length changes must not invent circumstances, reasons, or promises.');
+      expect(JSON.parse(prompt.userPrompt.slice(prompt.userPrompt.indexOf('{')))).toEqual({
+        context: contextText, source: userText,
+      });
+    });
+  });
 
   it.each(ROLES)('keeps the $id primary task when options are empty', async (role) => {
     const prompt = await builder.buildPrompt({
@@ -16,7 +51,7 @@ describe('PromptBuilder', () => {
 
     expect(prompt.systemPrompt.startsWith(role.systemPrompt)).toBe(true);
     expect(prompt.userPrompt).toContain("Perform the role's primary task without additional transformations.");
-    expect(prompt.promptRevision).toBe(`prompt-v2/${role.id}@v1`);
+    expect(prompt.promptRevision).toBe(`prompt-v3/${role.id}@${role.systemPromptVersion}`);
     expect(prompt.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -31,6 +66,10 @@ describe('PromptBuilder', () => {
 
     expect(prompt.systemPrompt).toContain('complete, ready-to-send email');
     expect(prompt.systemPrompt).toContain('Always include a specific "Subject:" line');
+    expect(prompt.systemPrompt).toContain('the source greeting identifies the recipient');
+    expect(prompt.systemPrompt).toContain('its signature identifies the sender');
+    expect(prompt.systemPrompt).toContain('a placeholder only when the sender is unknown');
+    expect(prompt.systemPrompt).toContain('do not copy the prior email\'s greeting or reverse the conversation');
     expect(prompt.userPrompt).not.toContain('Improve readability with appropriate paragraphs');
   });
 
