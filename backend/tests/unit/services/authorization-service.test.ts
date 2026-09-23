@@ -130,27 +130,30 @@ describe('AuthorizationService', () => {
       const user = createUser('free');
       const models = authzService.getAccessibleModels(user);
       
-      expect(models).toHaveLength(2);
+      expect(models).toHaveLength(3);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('open-router-free');
+      expect(models).toContain('openai-gpt-5-nano');
+      expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
     });
 
     it('should return free + plus models for plus users', () => {
       const user = createUser('plus');
       const models = authzService.getAccessibleModels(user);
       
-      expect(models.length).toBe(2);
+      expect(models.length).toBe(3);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('open-router-free');
+      expect(models).toContain('openai-gpt-5-nano');
+      expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
     });
 
     it('should return all models for premium users', () => {
       const user = createUser('premium');
       const models = authzService.getAccessibleModels(user);
       
-      expect(models.length).toBe(2);
+      expect(models.length).toBe(3);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('open-router-free');
+      expect(models).toContain('openai-gpt-5-nano');
+      expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
     });
 
     it('should return empty array for user with invalid tier', () => {

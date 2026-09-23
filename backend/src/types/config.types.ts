@@ -72,6 +72,9 @@ export interface ModelConfig {
 
   /** Structured-output feature verified for this provider/model pair */
   structuredOutputMode: StructuredOutputMode;
+
+  /** Optional OpenRouter processing tier for this model */
+  serviceTier?: 'flex';
   
   /** User tiers that can access this model */
   allowedTiers: ('free' | 'plus' | 'premium')[];

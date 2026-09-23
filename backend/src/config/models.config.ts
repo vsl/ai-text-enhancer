@@ -19,6 +19,20 @@ export const MODELS: readonly ModelConfig[] = [
   // OpenRouter models
   // ========================================
   {
+    id: 'openai-gpt-5-nano',
+    provider: 'openrouter',
+    providerModelId: 'openai/gpt-5-nano',
+    structuredOutputMode: 'json-schema',
+    serviceTier: 'flex',
+    allowedTiers: ['free', 'plus', 'premium'],
+    displayName: 'GPT-5 Nano',
+    contextWindow: 400000,
+    costPer1kTokens: {
+      input: 0.00005,
+      output: 0.0004,
+    },
+  },
+  {
     id: 'open-router-free',
     provider: 'openrouter',
     providerModelId: 'openrouter/free',
@@ -32,16 +46,16 @@ export const MODELS: readonly ModelConfig[] = [
     },
   },
   {
-    id: 'openai-gpt-5-nano',
+    id: 'qwen-qwen3-30b-a3b-instruct-2507',
     provider: 'openrouter',
-    providerModelId: 'openai/gpt-5-nano',
+    providerModelId: 'qwen/qwen3-30b-a3b-instruct-2507',
     structuredOutputMode: 'json-schema',
     allowedTiers: ['free', 'plus', 'premium'],
-    displayName: 'GPT-5 Nano',
-    contextWindow: 400000,
+    displayName: 'Qwen3 30B A3B Instruct 2507',
+    contextWindow: 262144,
     costPer1kTokens: {
-      input: 0.00005,
-      output: 0.0004,
+      input: 0.00004815,
+      output: 0.0001931,
     },
   },
 ] as const;

@@ -2,6 +2,7 @@ import {
   AVAILABLE_AI_ROLES,
   AVAILABLE_MODELS,
   DEFAULT_OPTIONS,
+  DEFAULT_WORKFLOWS,
   FORMALITY,
   LANGUAGES,
   LANGUAGE_LEVELS,
@@ -25,6 +26,9 @@ import {
 describe('UI/backend configuration parity', () => {
   it('keeps models, roles, tiers, and transformation values aligned', () => {
     expect([...AVAILABLE_MODELS].sort()).toEqual(MODELS.map(model => model.id).sort());
+    expect(AVAILABLE_MODELS[0]).toBe('openai-gpt-5-nano');
+    expect(DEFAULT_WORKFLOWS.every(workflow => workflow.configs.every(config => config.model === 'openai-gpt-5-nano'))).toBe(true);
+    expect(TIER_LIMITS.free).toMatchObject({ maxTextLength: 1000, maxContextLength: 2500 });
     expect(AVAILABLE_AI_ROLES.map(role => role.id).sort()).toEqual(ROLES.map(role => role.id).sort());
 
     for (const tier of ['free', 'plus', 'premium'] as const) {
@@ -50,6 +54,7 @@ describe('UI/backend configuration parity', () => {
     ]).toEqual(TRANSFORMATION_OPTION_KEYS);
     expect(MODELS.find(model => model.id === 'open-router-free')?.contextWindow).toBe(200000);
     expect(MODELS.find(model => model.id === 'openai-gpt-5-nano')?.contextWindow).toBe(400000);
+    expect(MODELS.find(model => model.id === 'qwen-qwen3-30b-a3b-instruct-2507')?.contextWindow).toBe(262144);
   });
 
   it('migrates legacy roles and retired models safely', () => {
@@ -66,7 +71,7 @@ describe('UI/backend configuration parity', () => {
         surprise: true,
       } as never,
     })).toEqual(expect.objectContaining({
-      model: 'open-router-free',
+      model: 'openai-gpt-5-nano',
       aiRoleId: 'summarizer',
       options: expect.objectContaining({
         shorten: true,
@@ -77,7 +82,7 @@ describe('UI/backend configuration parity', () => {
     }));
 
     expect(normalizeAiConfig({ id: 2, aiRole: 'Unknown role' })).toEqual(
-      expect.objectContaining({ model: 'open-router-free', aiRoleId: 'editor' })
+      expect.objectContaining({ model: 'openai-gpt-5-nano', aiRoleId: 'editor' })
     );
   });
 });

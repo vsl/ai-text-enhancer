@@ -375,7 +375,7 @@ function MyComponent() {
 
 | Tier | Text Limit | Context Limit | Batch Size | Models |
 |------|-----------|---------------|------------|---------|
-| Free | 500 chars | 800 chars | 3 assistants | gemini-flash, open-router-free |
+| Free | 500 chars | 800 chars | 6 assistants | gemini-flash, open-router-free |
 | Plus | 2000 chars | 3000 chars | 10 assistants | + gemini-pro |
 | Premium | 5000 chars | 10000 chars | 10 assistants | + gpt-4 |
 

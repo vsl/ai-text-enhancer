@@ -91,11 +91,11 @@ describe('validateBatchRequest', () => {
 
   it('rejects tier text and context limits', () => {
     const textRequest = validRequest();
-    textRequest.assistants[0].userText = 'x'.repeat(501);
+    textRequest.assistants[0].userText = 'x'.repeat(1001);
     expect(() => validateBatchRequest(textRequest, user)).toThrow('userText exceeds');
 
     const contextRequest = validRequest();
-    contextRequest.assistants[0].contextText = 'x'.repeat(801);
+    contextRequest.assistants[0].contextText = 'x'.repeat(2501);
     expect(() => validateBatchRequest(contextRequest, user)).toThrow('contextText exceeds');
   });
 

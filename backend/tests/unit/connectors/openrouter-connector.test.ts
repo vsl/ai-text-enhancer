@@ -253,6 +253,23 @@ describe('OpenRouterConnector', () => {
       expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body).temperature).toBe(0);
     });
 
+    it('sends the flex service tier only when configured', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"text":"ok"}' } }] }),
+      });
+
+      await connector.sendRequest({
+        model: 'openai/gpt-5-nano',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        serviceTier: 'flex',
+      });
+
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).service_tier).toBe('flex');
+    });
+
     it('should handle missing usage metadata', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,

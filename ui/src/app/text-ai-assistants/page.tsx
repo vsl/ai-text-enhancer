@@ -9,7 +9,7 @@ import { ConfigEditorModal } from '@/components/features/ConfigEditorModal';
 import { CharacterCounter } from '@/components/features/CharacterCounter';
 import { AssistantCard } from '@/components/features/AssistantCard';
 import { AiConfig } from '@/lib/types';
-import { TOOLTIP_TEXTS, DEFAULT_OPTIONS, DEFAULT_WORKFLOW_NAMES } from '@/lib/constants';
+import { TOOLTIP_TEXTS, DEFAULT_OPTIONS, DEFAULT_WORKFLOW_NAMES, AVAILABLE_MODELS } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
 
 /**
@@ -60,7 +60,7 @@ function TextAIAssistantsContent() {
 
     const newConfiguration: AiConfig = {
       id: Date.now(),
-      model: 'open-router-free',
+      model: AVAILABLE_MODELS[0],
       aiRoleId: 'editor',
       options: { ...DEFAULT_OPTIONS },
       enabled: true,

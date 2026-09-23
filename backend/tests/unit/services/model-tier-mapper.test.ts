@@ -92,7 +92,7 @@ describe('ModelTierMapper', () => {
       });
 
       it('should allow access to all models', () => {
-        const allModelIds = ['open-router-free', 'open-router-free'];
+        const allModelIds = ['open-router-free', 'openai-gpt-5-nano', 'qwen-qwen3-30b-a3b-instruct-2507'];
         allModelIds.forEach(modelId => {
           expect(
             ModelTierMapper.canAccessModel('premium', modelId)
@@ -111,23 +111,26 @@ describe('ModelTierMapper', () => {
   describe('getAccessibleModels', () => {
     it('should return only free models for free users', () => {
       const models = ModelTierMapper.getAccessibleModels('free');
-      expect(models).toHaveLength(2);
+      expect(models).toHaveLength(3);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('open-router-free');
+      expect(models).toContain('openai-gpt-5-nano');
+      expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
     });
 
     it('should return free + plus models for plus users', () => {
       const models = ModelTierMapper.getAccessibleModels('plus');
-      expect(models.length).toBe(2);
+      expect(models.length).toBe(3);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('open-router-free');
+      expect(models).toContain('openai-gpt-5-nano');
+      expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
     });
 
     it('should return all models for premium users', () => {
       const models = ModelTierMapper.getAccessibleModels('premium');
-      expect(models.length).toBe(2);
+      expect(models.length).toBe(3);
       expect(models).toContain('open-router-free');
-      expect(models).toContain('open-router-free');
+      expect(models).toContain('openai-gpt-5-nano');
+      expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
     });
 
     it('should return sorted accessible models consistently', () => {
@@ -145,14 +148,17 @@ describe('ModelTierMapper', () => {
       const premiumModels = ModelTierMapper.getAccessibleModels('premium');
       
       // Since all models allow all tiers, counts should be equal
-      expect(freeModels.length).toBe(2);
-      expect(plusModels.length).toBe(2);
-      expect(premiumModels.length).toBe(2);
+      expect(freeModels.length).toBe(3);
+      expect(plusModels.length).toBe(3);
+      expect(premiumModels.length).toBe(3);
       
       // All models should be accessible to all tiers in current config
       expect(freeModels).toContain('open-router-free');
       expect(plusModels).toContain('open-router-free');
       expect(premiumModels).toContain('open-router-free');
+      expect(freeModels).toContain('qwen-qwen3-30b-a3b-instruct-2507');
+      expect(plusModels).toContain('qwen-qwen3-30b-a3b-instruct-2507');
+      expect(premiumModels).toContain('qwen-qwen3-30b-a3b-instruct-2507');
     });
 
     it('should maintain correct tier level counts', () => {
@@ -160,9 +166,9 @@ describe('ModelTierMapper', () => {
       const plusCount = ModelTierMapper.getAccessibleModels('plus').length;
       const premiumCount = ModelTierMapper.getAccessibleModels('premium').length;
       
-      expect(freeCount).toBe(2);
-      expect(plusCount).toBe(2);
-      expect(premiumCount).toBe(2);
+      expect(freeCount).toBe(3);
+      expect(plusCount).toBe(3);
+      expect(premiumCount).toBe(3);
     });
   });
 });

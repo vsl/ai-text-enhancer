@@ -11,6 +11,7 @@ export interface LLMRequestParams {
   systemPrompt: string;
   userPrompt: string;
   structuredOutputMode?: StructuredOutputMode;
+  serviceTier?: 'flex';
   temperature?: number;
   maxTokens?: number;
   timeout?: number;
