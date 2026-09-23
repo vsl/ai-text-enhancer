@@ -15,7 +15,6 @@ const mockConfig: SystemConfig = {
   supabase: {
     url: 'http://localhost:54321',
     serviceRoleKey: 'test-service-role-key',
-    jwtSecret: 'test-jwt-secret',
   },
   rateLimits: {
     free: {

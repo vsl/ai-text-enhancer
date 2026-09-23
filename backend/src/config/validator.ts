@@ -170,13 +170,6 @@ export function validateConfig(config: SystemConfig): void {
         message: 'Supabase service role key is required',
       });
     }
-    
-    if (!config.supabase.jwtSecret) {
-      errors.push({
-        field: 'supabase.jwtSecret',
-        message: 'Supabase JWT secret is required',
-      });
-    }
   }
 
   // Validate bootstrap secret

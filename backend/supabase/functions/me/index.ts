@@ -14,13 +14,12 @@ import { getEnvVar } from '../../../src/config/loader.ts';
 // Load environment variables (using APP_ prefix to avoid Edge Functions restriction)
 const SUPABASE_URL = getEnvVar('SUPABASE_URL');
 const APP_SUPABASE_SERVICE_ROLE_KEY = getEnvVar('APP_SUPABASE_SERVICE_ROLE_KEY');
-const APP_SUPABASE_JWT_SECRET = getEnvVar('APP_SUPABASE_JWT_SECRET');
 
 // Initialize Supabase client
 const supabase = initializeSupabase(SUPABASE_URL!, APP_SUPABASE_SERVICE_ROLE_KEY!);
 
 // Initialize auth middleware
-const authMiddleware = new AuthMiddleware(supabase, APP_SUPABASE_JWT_SECRET!);
+const authMiddleware = new AuthMiddleware(supabase);
 
 // Start HTTP server
 Deno.serve(async (req: Request) => {

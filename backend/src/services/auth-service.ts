@@ -1,6 +1,6 @@
 /**
  * Authentication Service
- * Validates JWT tokens using local verification and fetches user profiles from database
+ * Validates JWT tokens and fetches user profiles from database
  * Platform-agnostic implementation
  */
 
@@ -8,34 +8,30 @@ import type { UserProfile, AuthResult } from '../types/auth.types.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { InvalidTokenError, UserBlockedError, UserNotFoundError } from '../errors/auth-errors.ts';
 import { UserRepository } from '../repositories/user.repository.ts';
-import { jwtVerify } from 'npm:jose@5';
 
 export class AuthService {
   private userRepository: UserRepository;
-  private jwtSecret: string;
-
-  constructor(private supabase: SupabaseClient, jwtSecret: string) {
+  constructor(private supabase: SupabaseClient) {
     this.userRepository = new UserRepository(supabase);
-    this.jwtSecret = jwtSecret;
   }
 
   /**
    * Validate JWT token using local verification and fetch user profile
    *
-   * Uses local JWT verification with jose library to avoid HTTP calls.
-   * This is more efficient in Edge Functions and avoids connection issues.
+   * Supabase verifies asymmetric tokens with its cached JWKS. Legacy symmetric
+   * tokens automatically fall back to the Auth service.
    *
    * @param token - JWT token from Authorization header
    * @returns AuthResult with user profile or error
    */
   async validateToken(token: string): Promise<AuthResult> {
     try {
-      // Step 1: Verify JWT locally using jose
-      const secret = new TextEncoder().encode(this.jwtSecret);
-      const { payload } = await jwtVerify(token, secret, {
-        issuer: undefined, // Allow any issuer
-        audience: undefined, // Allow any audience
-      });
+      // Step 1: Verify the JWT using Supabase's JWKS-aware verifier.
+      const { data, error } = await this.supabase.auth.getClaims(token);
+      if (error || !data?.claims) {
+        return { authenticated: false, error: 'Authentication failed' };
+      }
+      const { claims: payload } = data;
 
       if (!payload.sub) {
         return {

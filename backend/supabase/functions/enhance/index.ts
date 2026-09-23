@@ -32,7 +32,7 @@ const orchestrator = new BatchOrchestrator(
   config.timeout,
   config.exposeErrorDetails
 );
-const authMiddleware = new AuthMiddleware(supabase, config.supabase.jwtSecret);
+const authMiddleware = new AuthMiddleware(supabase);
 
 // Start HTTP server using Deno.serve (no import needed)
 Deno.serve(async (req: Request) => {

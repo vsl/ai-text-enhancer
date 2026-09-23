@@ -14,7 +14,6 @@ describe('Configuration Loader', () => {
       OPENROUTER_API_KEY: 'test-openrouter-key',
       SUPABASE_URL: 'http://localhost:54321',
       APP_SUPABASE_SERVICE_ROLE_KEY: 'test-supabase-key',
-      APP_SUPABASE_JWT_SECRET: 'test-jwt-secret',
     };
     Object.assign(process.env, { ...defaults, ...overrides });
   };
@@ -27,7 +26,6 @@ describe('Configuration Loader', () => {
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.SUPABASE_URL;
     delete process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
-    delete process.env.APP_SUPABASE_JWT_SECRET;
     delete process.env.BOOTSTRAP_SECRET_KEY;
     delete process.env.LM_STUDIO_BASE_URL;
     delete process.env.LLM_TIMEOUT_MS;
@@ -46,7 +44,6 @@ describe('Configuration Loader', () => {
     it('should throw error when OPENROUTER_API_KEY is missing', () => {
       process.env.SUPABASE_URL = 'http://localhost:54321';
       process.env.APP_SUPABASE_SERVICE_ROLE_KEY = 'test-supabase-key';
-      process.env.APP_SUPABASE_JWT_SECRET = 'test-jwt-secret';
 
       expect(() => loadConfig()).toThrow('OPENROUTER_API_KEY');
     });
@@ -54,17 +51,7 @@ describe('Configuration Loader', () => {
     it('should throw error when APP_SUPABASE_SERVICE_ROLE_KEY is missing', () => {
       process.env.SUPABASE_URL = 'http://localhost:54321';
       process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-      process.env.APP_SUPABASE_JWT_SECRET = 'test-jwt-secret';
-
       expect(() => loadConfig()).toThrow('APP_SUPABASE_SERVICE_ROLE_KEY');
-    });
-
-    it('should throw error when APP_SUPABASE_JWT_SECRET is missing', () => {
-      process.env.SUPABASE_URL = 'http://localhost:54321';
-      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-      process.env.APP_SUPABASE_SERVICE_ROLE_KEY = 'test-supabase-key';
-
-      expect(() => loadConfig()).toThrow('APP_SUPABASE_JWT_SECRET');
     });
 
     it('should throw error when multiple required variables are missing', () => {
@@ -82,7 +69,6 @@ describe('Configuration Loader', () => {
       expect(config.models.length).toBeGreaterThan(0);
       expect(config.roles.length).toBe(4);
       expect(config.supabase.serviceRoleKey).toBe('test-supabase-key');
-      expect(config.supabase.jwtSecret).toBe('test-jwt-secret');
     });
 
     it('should use default timeout when not specified', () => {
@@ -215,7 +201,7 @@ describe('Configuration Loader', () => {
     it('should return false when any required variable is missing', () => {
       process.env.SUPABASE_URL = 'http://localhost:54321';
       process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-      // Missing APP_SUPABASE_SERVICE_ROLE_KEY and APP_SUPABASE_JWT_SECRET
+      // Missing APP_SUPABASE_SERVICE_ROLE_KEY
 
       expect(hasRequiredEnvVars()).toBe(false);
     });
