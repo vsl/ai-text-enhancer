@@ -48,6 +48,18 @@ export class OpenRouterConnector implements LLMConnector {
         },
       };
 
+      const debug = process.env.LOG_LEVEL?.toLowerCase() === 'debug';
+      const requestId = debug ? crypto.randomUUID() : undefined;
+
+      if (debug) {
+        console.debug('[OPENROUTER][DEBUG] request', JSON.stringify({
+          requestId,
+          method: 'POST',
+          url,
+          body,
+        }));
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -61,6 +73,17 @@ export class OpenRouterConnector implements LLMConnector {
       });
 
       clearTimeout(timeoutId);
+
+      if (debug) {
+        const responseBody = await response.clone().text().catch((error) =>
+          `[unable to read response body: ${(error as Error).message}]`
+        );
+        console.debug('[OPENROUTER][DEBUG] response', JSON.stringify({
+          requestId,
+          status: response.status,
+          body: responseBody,
+        }));
+      }
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
