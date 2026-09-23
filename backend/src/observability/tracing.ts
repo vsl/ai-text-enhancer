@@ -1,5 +1,5 @@
-import { Client } from 'langsmith';
-import { getCurrentRunTree, traceable } from 'langsmith/traceable';
+import { Client } from 'npm:langsmith@0.10.5';
+import { getCurrentRunTree, traceable } from 'npm:langsmith@0.10.5/traceable';
 
 type TraceRunType = 'chain' | 'llm' | 'parser';
 type TraceValue = Record<string, unknown>;

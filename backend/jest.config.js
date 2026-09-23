@@ -6,6 +6,7 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^npm:([^@/]+)@[^/]+/(.*)$': '$1/$2', // Preserve package subpaths (e.g., npm:langsmith@0.10.5/traceable)
     '^npm:([^@]+)@.*$': '$1', // Map npm:package@version to package (e.g., npm:jose@5 -> jose)
     '^npm:(.*)$': '$1', // Map npm: imports to regular node_modules
   },
