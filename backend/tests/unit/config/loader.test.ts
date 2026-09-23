@@ -169,7 +169,7 @@ describe('Configuration Loader', () => {
       const config = loadConfig();
       
       // Free tier token limits
-      expect(config.rateLimits.free.maxTokensPerRequest).toBe(2048);
+      expect(config.rateLimits.free.maxTokensPerRequest).toBe(3500);
       expect(config.rateLimits.free.maxTokensPerDay).toBe(50000);
       
       // Plus tier token limits
