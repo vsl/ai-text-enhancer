@@ -54,7 +54,7 @@ jobs:
       BOOTSTRAP_SECRET_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_BOOTSTRAP_SECRET_KEY || secrets.PRODUCTION_BOOTSTRAP_SECRET_KEY }}
       LLM_TIMEOUT_MS: ${{ secrets.LLM_TIMEOUT_MS || '30000' }}
       MAX_BATCH_SIZE: ${{ secrets.MAX_BATCH_SIZE || '10' }}
-      LANGSMITH_TRACING: "true"
+      LANGSMITH_TRACING: ${{ secrets.LANGSMITH_API_KEY != '' && 'true' || 'false' }}
       LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
       LANGSMITH_PROJECT: ${{ github.event_name == 'pull_request' && 'ai-text-enhancer-staging' || 'ai-text-enhancer-production' }}
       LANGSMITH_ENDPOINT: https://api.smith.langchain.com
@@ -67,8 +67,6 @@ jobs:
       - uses: supabase/setup-cli@v2
         with:
           version: 2.101.0
-      - name: Require deployment secrets
-        run: test -n "$LANGSMITH_API_KEY"
       - name: Link Supabase project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Sync Supabase secrets
