@@ -1,10 +1,12 @@
 import {
   preflightCandidate,
   runPromptEvaluation,
+  runDeterministicChecks,
   type PromptEvaluationCase,
 } from '../../../src/evaluation/prompt-evaluator.ts';
 import type { LLMConnector } from '../../../src/types/llm.types.ts';
 import { ROLES } from '../../../src/config/roles.config.ts';
+import { PROMPT_EVALUATION_CASES } from '../../../evaluations/cases.ts';
 
 const evaluationCase: PromptEvaluationCase = {
   id: 'facts',
@@ -20,6 +22,21 @@ const evaluationCase: PromptEvaluationCase = {
 };
 
 describe('prompt evaluator', () => {
+  it.each(PROMPT_EVALUATION_CASES.filter(item => item.id.startsWith('email-source-priority')))(
+    '$id accepts the reply and rejects swapped recipients or invented commitments', evaluationCase => {
+      const reply = 'Subject: Emergency contact for Casey\n\nDear Morgan,\n\nWe do not have another emergency contact for Casey.\n\nThank you,\nAlex';
+      expect(runDeterministicChecks(evaluationCase, reply).every(check => check.passed)).toBe(true);
+      for (const badReply of [
+        reply.replace('Dear Morgan,', 'Dear Ms. Taylor and Mr. Alex,'),
+        reply.replace('We do not have another emergency contact for Casey.', 'Please provide us with a second emergency contact.'),
+        reply.replace('Thank you,', 'Our family situation is difficult. We will provide details soon. Thank you,'),
+        reply.replace(/Alex$/, 'Morgan'),
+      ]) {
+        expect(runDeterministicChecks(evaluationCase, badReply).some(check => !check.passed)).toBe(true);
+      }
+    }
+  );
+
   it('preflights catalog availability and supported parameters', async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,
@@ -71,14 +88,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v2',
+      promptVersion: 'prompt-v3',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v2',
-          promptRevision: 'prompt-v2/editor@v1',
+          promptVersion: 'prompt-v3',
+          promptRevision: 'prompt-v3/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -176,7 +193,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v2/${ROLES[index].id}@v1`);
+      expect(result.promptRevision).toBe(`prompt-v3/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });

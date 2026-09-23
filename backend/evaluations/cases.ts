@@ -1,6 +1,22 @@
 import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
 
 export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
+  ...[{}, { improve: true, fixMistakes: true, format: true, lengthen: true, formality: 'Formal', tone: 'Worried' } satisfies PromptEvaluationCase['options']]
+    .map((options, index): PromptEvaluationCase => ({
+      id: index === 0 ? 'email-source-priority-no-options' : 'email-source-priority-lengthened-worried',
+      roleId: 'email_assistant',
+      language: 'en',
+      userText: 'Hi Morgan,\nwe do no have anothe ocnta.\nthnas\nAlex',
+      contextText: 'Dear Ms. Taylor and Mr. Alex,\nOur student records are missing an additional emergency contact for Casey. Please provide a second emergency contact, including full name, phone number, and relationship to your family.\nBest regards,\nMorgan',
+      options,
+      checks: [
+        { type: 'matches', value: '^Subject:', flags: 'm' },
+        { type: 'matches', value: '^(?:Dear|Hi|Hello) Morgan[,!]', flags: 'm' },
+        { type: 'matches', value: 'Alex[.\\s]*$' },
+        { type: 'matches', value: '(?:do not|don[’\u0027]t) (?:currently )?have (?:another|an additional|a second) emergency contact', flags: 'i' },
+        { type: 'matches', value: '^(?![\\s\\S]*(?:Dear Ms\\.|family (?:situation|circumstances)|(?:we|I) (?:will|promise to) (?:provide|send)|actively working))[\\s\\S]*$', flags: 'i' },
+      ],
+    })),
   {
     id: 'editor-protected-facts',
     roleId: 'editor',
