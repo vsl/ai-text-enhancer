@@ -62,7 +62,7 @@ export function loadConfig(): SystemConfig {
     throw new Error('MAX_BATCH_SIZE must be a positive number between 1 and 100');
   }
   if (isNaN(jevTimeoutMs) || jevTimeoutMs <= 0) {
-    throw new Error('JEV_TIMEOUT_MS must be a positive number');
+    throw new Error('JEV_TIMEOUT_MS must be a positive number.');
   }
 
   // 6. Return complete configuration
