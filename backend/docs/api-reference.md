@@ -130,7 +130,7 @@ Process a batch of text enhancement tasks.
 **Authentication:** Required (Bearer token)
 
 **Rate Limits:**
-- Batch size: 1-10 assistants per request (tier-based: Free=3, Plus/Premium=10)
+- Batch size: 1-10 assistants per request (tier-based: Free=6, Plus/Premium=10)
 - Request timeout: 30 seconds per LLM call
 - Token quota enforced per tier
 
