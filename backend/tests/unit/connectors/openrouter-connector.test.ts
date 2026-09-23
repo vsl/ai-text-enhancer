@@ -271,7 +271,7 @@ describe('OpenRouterConnector', () => {
         type: 'json_object',
       });
       expect(body.provider).toEqual({ require_parameters: true });
-      expect(body.reasoning).toEqual({ enabled: false });
+      expect(body.reasoning).toEqual({ enabled: true });
     });
 
     it('uses strict JSON schema only when model metadata enables it', async () => {
