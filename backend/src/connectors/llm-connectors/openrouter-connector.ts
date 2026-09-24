@@ -37,6 +37,7 @@ export class OpenRouterConnector implements LLMConnector {
       ...(params.temperature !== undefined && { temperature: params.temperature }),
       ...(params.serviceTier && { service_tier: params.serviceTier }),
       max_tokens: params.maxTokens ?? 2048,
+      ...(params.model === 'openai/gpt-5-nano' && { reasoning: { effort: 'minimal' } }),
       response_format: params.structuredOutputMode === 'json-schema'
         ? {
             type: 'json_schema',
