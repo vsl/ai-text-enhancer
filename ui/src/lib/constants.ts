@@ -9,7 +9,7 @@ export const AVAILABLE_MODELS = ['qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt
 export const MODEL_NAMES: Record<string, string> = {
   'openai-gpt-5-nano': 'GPT-5 Nano',
   'open-router-free': 'OpenRouter Free',
-  'qwen-qwen3-30b-a3b-instruct-2507': 'Qwen3 30B A3B Instruct 2507',
+  'qwen-qwen3-30b-a3b-instruct-2507': 'Qwen3 30B',
 };
 
 export const AVAILABLE_AI_ROLES: readonly { id: AiRoleId; label: string }[] = [
@@ -27,28 +27,7 @@ export const TONES = [
   'Pessimistic', 'Worried'
 ] as const;
 
-export const TONE_EMOJIS: Record<string, string> = {
-  'Confident': '😎',
-  'Empathetic': '🤗',
-  'Cheerful': '😄',
-  'Witty': '😉',
-  'Direct': '🙂',
-  'Engaging': '✨',
-  'Polite': '😊',
-  'Sincere': '🙏',
-  'Disappointed': '😔',
-  'Apologetic': '🥺',
-  'Pessimistic': '😟',
-  'Worried': '😥'
-};
-
 export const FORMALITY = ['Casual', 'Neutral', 'Formal'] as const;
-
-export const FORMALITY_EMOJIS: Record<string, string> = {
-  'Casual': '👋',
-  'Neutral': '😐',
-  'Formal': '🧐'
-};
 
 export const LANGUAGE_LEVELS: LanguageLevel[] = [
   { value: '', label: 'Default (No change)' },

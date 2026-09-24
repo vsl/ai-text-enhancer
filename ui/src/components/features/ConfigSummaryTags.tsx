@@ -1,72 +1,50 @@
 "use client";
 
-import * as React from "react";
 import { Options } from "@/lib/types";
-import {
-  FORMALITY_EMOJIS,
-  TONE_EMOJIS,
-  LANGUAGE_LEVELS,
-  LANGUAGES,
-} from "@/lib/constants";
+import { LANGUAGE_LEVELS, LANGUAGES } from "@/lib/constants";
 
-/**
- * Props for the ConfigSummaryTags component
- */
 interface ConfigSummaryTagsProps {
-  /** The enhancement options to display as tags */
   options: Options;
-  /** Callback fired when the tags are clicked (typically opens edit modal) */
   onClick: () => void;
 }
 
 export function ConfigSummaryTags({ options, onClick }: ConfigSummaryTagsProps) {
-  const tags: string[] = [];
+  const actions: string[] = [];
+  if (options.improve) actions.push("Improve");
+  if (options.fixMistakes) actions.push("Fix mistakes");
+  if (options.format) actions.push("Format");
+  if (options.shorten) actions.push("Shorten");
+  if (options.lengthen) actions.push("Lengthen");
+  if (options.addEmojis) actions.push("Add emojis");
 
-  // Add action tags
-  if (options.improve) tags.push("Improve");
-  if (options.fixMistakes) tags.push("Fix Mistakes");
-  if (options.format) tags.push("Format");
-  if (options.shorten) tags.push("Shorten");
-  if (options.lengthen) tags.push("Lengthen");
-  if (options.addEmojis) tags.push("+ Emojis");
-
-  // Add formality with emoji
-  tags.push(`${FORMALITY_EMOJIS[options.formality]} ${options.formality}`);
-
-  // Add tone with emoji
-  tags.push(`${TONE_EMOJIS[options.tone]} ${options.tone}`);
-
-  // Add language level if set
+  const style: string[] = [options.formality, options.tone];
   if (options.languageLevel) {
-    const level = LANGUAGE_LEVELS.find((l) => l.value === options.languageLevel);
-    if (level) tags.push(`lvl: ${level.label}`);
+    const level = LANGUAGE_LEVELS.find((item) => item.value === options.languageLevel);
+    if (level) style.push(level.label);
   }
-
-  // Add translation target if set
   if (options.translateTo) {
-    const langName = LANGUAGES.find((l) => l.code === options.translateTo)?.name;
-    if (langName && langName !== "No Translation") {
-      tags.push(`→ ${langName}`);
-    }
+    const language = LANGUAGES.find((item) => item.code === options.translateTo);
+    if (language && language.name !== "No Translation") style.push("→ " + language.name);
   }
-
-  if (tags.length === 0) return null;
 
   return (
     <button
-      className="flex flex-wrap gap-2 cursor-pointer rounded-md px-2 py-2 -mx-2 transition-all duration-200 outline-2 outline-transparent outline-offset-2 focus-visible:bg-surface-hover focus-visible:outline-primary bg-transparent border-none w-full text-left"
+      className="mt-4 w-full cursor-pointer rounded-md text-left focus-visible:outline-2 focus-visible:outline-primary"
       onClick={onClick}
       type="button"
       title="Edit this assistant"
+      aria-label="Edit assistant configuration"
     >
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="bg-surface-hover text-muted-foreground px-2.5 py-1 rounded-xl text-xs"
-        >
-          {tag}
-        </span>
-      ))}
+      <span className="flex flex-wrap gap-1.5">
+        {actions.map((tag) => (
+          <span key={tag} className="rounded-md border border-border-strong bg-surface px-2 py-0.5 text-xs text-muted-foreground">{tag}</span>
+        ))}
+      </span>
+      <span className="mt-1.5 flex flex-wrap gap-1.5">
+        {style.map((tag) => (
+          <span key={tag} className="rounded-md bg-violet-surface px-2 py-0.5 text-xs text-primary">{tag}</span>
+        ))}
+      </span>
     </button>
   );
 }

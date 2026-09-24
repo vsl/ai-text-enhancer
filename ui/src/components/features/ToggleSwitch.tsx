@@ -13,7 +13,7 @@ export function ToggleSwitch({ checked, onChange, id }: ToggleSwitchProps) {
   return (
     <label
       htmlFor={id}
-      className="relative inline-block w-10 h-6 flex-shrink-0 m-0 cursor-pointer"
+      className="relative inline-block h-5 w-9 flex-shrink-0 m-0 cursor-pointer"
       title={checked ? "Disable Assistant" : "Enable Assistant"}
     >
       <input
@@ -25,12 +25,12 @@ export function ToggleSwitch({ checked, onChange, id }: ToggleSwitchProps) {
       />
       <span
         className={`
-          absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-3xl
-          transition-all duration-400
-          ${checked ? "bg-[#03dac6]" : "bg-neutral-700"}
-          peer-focus-visible:outline-2 peer-focus-visible:outline-[#03dac6] peer-focus-visible:outline-offset-2
-          before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1
-          before:bg-white before:transition-all before:duration-400 before:rounded-full
+          absolute inset-0 cursor-pointer rounded-full
+          transition-colors duration-200
+          ${checked ? "bg-primary" : "bg-muted"}
+          peer-focus-visible:outline-2 peer-focus-visible:outline-primary peer-focus-visible:outline-offset-2
+          before:absolute before:content-[''] before:h-3.5 before:w-3.5 before:left-[3px] before:bottom-[3px]
+          before:bg-white before:transition-transform before:duration-200 before:rounded-full
           ${checked ? "before:translate-x-4" : "before:translate-x-0"}
         `}
       />

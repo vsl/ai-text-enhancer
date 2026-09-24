@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react';
 import { TIER_LIMITS } from '@/lib/constants';
 
 jest.mock('next/navigation', () => ({ usePathname: () => '/' }));
-jest.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light', setTheme: jest.fn() }) }));
 jest.mock('../../src/context/AuthContext', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   useAuth: () => ({
@@ -60,7 +59,12 @@ describe('public anonymous demo UI', () => {
     );
 
     expect(screen.getByLabelText('Weekly demo allowance')).toBeInTheDocument();
-    expect(screen.getByText('50,000 tokens left · resets Monday 00:00 UTC')).toBeInTheDocument();
+    expect(screen.getByText('50,000 tokens left')).toBeInTheDocument();
+    expect(screen.getByText('resets Monday 00:00 UTC')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'App' })).toHaveAttribute('href', '/text-ai-assistants');
+    expect(screen.queryByRole('button', { name: /toggle theme/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Quick Fix' })).toBeInTheDocument();
     expect(screen.queryByText(/sign in|sign up|log in|account|pricing|payment|purchase|upgrade/i)).not.toBeInTheDocument();
   });
 });

@@ -11,7 +11,7 @@ export function LoadingSpinner({ className = "" }: LoadingSpinnerProps) {
     <div
       className={`
         w-8 h-8 
-        border-4 border-neutral-700 border-t-[#03dac6] 
+        border-4 border-border border-t-primary
         rounded-full 
         animate-spin
         ${className}

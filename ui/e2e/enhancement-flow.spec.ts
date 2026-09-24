@@ -18,6 +18,7 @@ test.describe('Text Enhancement Flow', () => {
       localStorage.setItem('aiTextEnhancerLastSelectedWorkflow', JSON.stringify('Jev Test'));
     });
     await page.reload();
+    await expect(page.getByTestId('workflow-tab-jev-test')).toHaveAttribute('aria-selected', 'true');
   };
 
   test.beforeEach(async ({ page }) => {
@@ -227,9 +228,9 @@ test.describe('Text Enhancement Flow', () => {
     // Verify text is copied to input
     await expect(page.getByTestId('input-text')).toHaveValue(enhancedText);
     
-    // Verify input has highlight animation class (check for animate-pulse or border-secondary)
+    // Verify the input has a visible highlight border
     const inputClasses = await page.getByTestId('input-text').getAttribute('class');
-    expect(inputClasses).toContain('animate-pulse');
+    expect(inputClasses).toContain('border-primary');
     
     // Verify page scrolled to top (check scroll position)
     const scrollY = await page.evaluate(() => window.scrollY);
@@ -317,9 +318,7 @@ test.describe('Text Enhancement Flow', () => {
 
     // Assistant card should have error border (red border)
     const firstCard = page.locator('[data-testid^="assistant-card-"]').first();
-    const borderColor = await firstCard.evaluate((el) => window.getComputedStyle(el).borderColor);
-    // Should be destructive color (reddish)
-    expect(borderColor).toContain('rgb'); // Just checking it has a computed color
+    await expect(firstCard).toHaveClass(/border-destructive/);
   });
 
   test('highlights exactly the successful result selected by Jev', async ({ page }) => {
@@ -343,7 +342,7 @@ test.describe('Text Enhancement Flow', () => {
     await page.getByTestId('enhance-button').click();
 
     await expect(page.locator('[data-testid^="jev-selection-"]')).toHaveCount(1);
-    await expect(page.getByTestId('jev-selection-2')).toHaveText('✨ Chosen by Jev');
+    await expect(page.getByTestId('jev-selection-2')).toHaveText('Chosen by Jev');
     await expect(page.getByTestId('assistant-card-2')).toContainText('Second result');
     await expect(page.getByTestId('jev-probability-2')).toHaveText('Jev 84%');
     await expect(page.getByTestId('jev-probability-1')).toHaveText('Jev 16%');

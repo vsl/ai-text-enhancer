@@ -12,6 +12,7 @@ import { AiConfig } from '@/lib/types';
 import { orderConfigsForDisplay } from '@/lib/result-order';
 import { TOOLTIP_TEXTS, DEFAULT_OPTIONS, DEFAULT_WORKFLOW_NAMES, AVAILABLE_MODELS } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
+import { Plus, Sparkles } from 'lucide-react';
 
 /**
  * Main application page component
@@ -44,6 +45,18 @@ function TextAIAssistantsContent() {
   const { tierLimits, profile } = useAuth();
 
   const displayedConfigs = orderConfigsForDisplay(configs, results, selection);
+  const hasResults = results.size > 0;
+  const selectedResultId = selection?.status === 'success' ? selection.selectedResultId : undefined;
+  const selectedResult = selectedResultId ? results.get(Number(selectedResultId)) : undefined;
+  const featuredResultId = selection?.status === 'success' && selectedResult
+    && !selectedResult.error && !selectedResult.isLoading
+    && selection.probabilities[selection.selectedResultId] !== undefined
+    ? selection.selectedResultId : undefined;
+  const workflowSubtitle = selectedWorkflow === 'Quick Fix'
+    ? 'Clean up and improve everyday text'
+    : selectedWorkflow === 'Formal Email'
+      ? 'Create polished email responses'
+      : 'Reusable AI workflow';
 
   // Local UI state
   const [isInputHighlighted, setIsInputHighlighted] = useState(false);
@@ -141,7 +154,7 @@ function TextAIAssistantsContent() {
   }, [inputText, contextText, configs, tierLimits, handleGenerate]);
 
   return (
-    <main className="flex flex-col flex-grow">
+    <div className="content-grid flex flex-col flex-grow py-10 md:py-12">
       {/* Modals */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
@@ -164,39 +177,41 @@ function TextAIAssistantsContent() {
         onCreate={handleCreateWorkflow}
         existingWorkflowNames={workflows.map((w) => w.name)}
       />
-      <div className="mx-auto w-full px-4 mb-5 flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-secondary text-2xl font-semibold">{selectedWorkflow || 'AI Text Enhancer'}</h1>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-[30px]">{selectedWorkflow || 'AI Text Enhancer'}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{workflowSubtitle}</p>
+        </div>
         {profile && (
-          <p className="text-sm text-muted-foreground" aria-label="Weekly demo allowance">
-            {profile.tokens_available.toLocaleString()} tokens left · resets Monday 00:00 UTC
-          </p>
+          <div className="text-left md:text-right" aria-label="Weekly demo allowance">
+            <p className="text-sm font-medium tabular-nums">{profile.tokens_available.toLocaleString()} tokens left</p>
+            <p className="mt-1 text-xs text-tertiary">resets Monday 00:00 UTC</p>
+          </div>
         )}
       </div>
 
-      {/* Two-column container */}
-      <div className="flex flex-col md:flex-row gap-8 w-full mx-auto flex-grow items-start px-4">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(320px,360px)_minmax(0,1fr)] xl:grid-cols-[minmax(340px,380px)_minmax(0,1fr)]">
         {/* Left Column - Input & Configuration */}
         <aside
-          className="bg-card p-8 rounded-lg flex flex-col justify-between gap-6 w-full md:w-1/2 lg:w-1/3 xl:w-1/4 flex-shrink-0 static md:sticky top-8 h-auto md:max-h-[calc(100vh-4rem)] overflow-visible md:overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-card [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border) var(--card)' }}
+          className="flex w-full flex-col gap-6 rounded-2xl border border-border-strong bg-card p-5 sm:p-6 lg:sticky lg:top-6"
           aria-labelledby="input-heading"
         >
           <h2 id="input-heading" className="sr-only">
             Input and Controls
           </h2>
 
-          <div id="setup-panel" className="flex flex-col gap-6">
+          <div id="setup-panel" className="flex flex-col gap-5">
             {/* Your Text Input */}
             <div className="flex flex-col">
-              <label htmlFor="inputText" className="flex items-center gap-2 mb-2 font-medium text-foreground">
-                Your Text <InfoTooltip text={TOOLTIP_TEXTS.yourText} />
+              <label htmlFor="inputText" className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+                Your text <InfoTooltip text={TOOLTIP_TEXTS.yourText} />
               </label>
               <textarea
                 id="inputText"
                 data-testid="input-text"
-                className={`w-full p-3 bg-background border rounded-lg text-foreground font-inherit text-base transition-all duration-300 resize-vertical min-h-[150px] focus:outline-none focus:border-primary ${
+                className={`min-h-[168px] w-full resize-y rounded-xl border bg-input p-3 text-sm leading-6 text-foreground placeholder:text-tertiary focus:border-primary focus:outline-none ${
                   isInputHighlighted
-                    ? 'border-secondary shadow-[0_0_8px_var(--secondary)] animate-pulse'
+                    ? 'border-primary'
                     : 'border-border'
                 }`}
                 value={inputText}
@@ -213,13 +228,14 @@ function TextAIAssistantsContent() {
 
             {/* Context Input */}
             <div className="flex flex-col">
-              <label htmlFor="contextText" className="flex items-center gap-2 mb-2 font-medium text-foreground">
-                Context (e.g., email thread, optional) <InfoTooltip text={TOOLTIP_TEXTS.context} />
+              <label htmlFor="contextText" className="mb-1 flex items-center gap-2 text-sm font-medium text-foreground">
+                Context <InfoTooltip text={TOOLTIP_TEXTS.context} />
               </label>
+              <p className="mb-2 text-xs leading-5 text-tertiary">Optional supporting text, email thread, or background</p>
               <textarea
                 id="contextText"
                 data-testid="context-text"
-                className="w-full p-3 bg-background border border-border rounded-lg text-foreground font-inherit text-base transition-all duration-300 resize-vertical min-h-[150px] focus:outline-none focus:border-primary"
+                className="min-h-[146px] w-full resize-y rounded-xl border border-border bg-input p-3 text-sm leading-6 text-foreground placeholder:text-tertiary focus:border-primary focus:outline-none"
                 value={contextText}
                 onChange={(e) => setContextText(e.target.value)}
                 placeholder="Provide any relevant context here..."
@@ -237,7 +253,7 @@ function TextAIAssistantsContent() {
             <button
               data-testid="cancel-button"
               onClick={handleCancel}
-              className="w-full p-4 text-xl bg-destructive text-destructive-foreground font-semibold rounded-lg hover:bg-destructive/90 cursor-pointer transition-colors"
+              className="w-full rounded-lg bg-destructive p-3 text-sm font-semibold text-white transition-colors hover:bg-destructive/90"
               title="Stop generation"
             >
               Cancel Generation
@@ -260,13 +276,13 @@ function TextAIAssistantsContent() {
                   inputText.length > tierLimits.maxTextLength ||
                   contextText.length > tierLimits.maxContextLength
                 }
-                className="w-full p-4 text-xl bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-muted cursor-pointer transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary p-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
                 title="Process text with the current assistants"
               >
-                Enhance Text
+                <Sparkles className="size-4" aria-hidden="true" /> Enhance text
               </button>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">⌘</kbd> + <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Enter</kbd> to enhance
+              <p className="mt-2 text-center text-xs text-tertiary">
+                Press <kbd className="rounded border border-border bg-surface px-1 py-0.5">⌘</kbd> + <kbd className="rounded border border-border bg-surface px-1 py-0.5">Enter</kbd> to enhance
               </p>
             </>
           )}
@@ -274,14 +290,13 @@ function TextAIAssistantsContent() {
 
         {/* Right Column - Workflows & Results */}
         <section
-          className="flex-grow min-w-0 bg-card p-8 rounded-lg w-full h-auto overflow-visible md:overflow-y-auto md:max-h-[calc(100vh-4rem)] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-card [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border) var(--card)' }}
+          className="min-w-0 w-full"
           aria-live="polite"
           aria-atomic="true"
         >
           {/* Workflow Tabs */}
           <ul
-            className="list-none flex items-center gap-1 border-b border-border mb-6 overflow-x-auto pb-[1px] flex-shrink-0"
+            className="mb-6 flex list-none items-center gap-2 overflow-x-auto pb-1"
             role="tablist"
             aria-label="AI Workflows"
           >
@@ -290,16 +305,22 @@ function TextAIAssistantsContent() {
                 <div
                   id={`tab-${workflow.name.toLowerCase().replace(/\s+/g, '-')}`}
                   data-testid={`workflow-tab-${workflow.name.toLowerCase().replace(/\s+/g, '-')}`}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-t-md border border-border border-b-0 whitespace-nowrap -mb-[1px] relative transition-colors cursor-pointer ${
+                  className={`relative flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-primary ${
                     selectedWorkflow === workflow.name
-                      ? 'bg-primary text-primary-foreground font-semibold'
-                      : 'bg-muted text-muted-foreground hover:bg-surface-hover hover:text-foreground'
+                      ? 'border-violet-border bg-violet-surface font-medium text-foreground'
+                      : 'border-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground'
                   }`}
                   onClick={() => handleLoadWorkflow(workflow.name)}
                   role="tab"
                   aria-selected={selectedWorkflow === workflow.name}
                   aria-controls={`panel-${workflow.name.toLowerCase().replace(/\s+/g, '-')}`}
-                  tabIndex={selectedWorkflow === workflow.name ? 0 : -1}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleLoadWorkflow(workflow.name);
+                    }
+                  }}
                 >
                   <span className="workflow-name">{workflow.name}</span>
                   {!DEFAULT_WORKFLOW_NAMES.includes(workflow.name) && (
@@ -310,9 +331,7 @@ function TextAIAssistantsContent() {
                         setWorkflowToDelete(workflow.name);
                         setIsDeleteModalOpen(true);
                       }}
-                      className={`bg-transparent border-none p-0 text-lg leading-none rounded-full h-[18px] w-[18px] inline-flex items-center justify-center transition-colors cursor-pointer ${
-                        selectedWorkflow === workflow.name ? 'text-primary-foreground' : 'text-muted-foreground'
-                      } hover:bg-destructive hover:text-destructive-foreground disabled:bg-transparent disabled:text-muted disabled:cursor-not-allowed`}
+                      className="inline-flex size-5 items-center justify-center rounded text-base leading-none text-muted-foreground hover:bg-destructive hover:text-white"
                       aria-label={`Delete workflow ${workflow.name}`}
                       title="Delete workflow"
                     >
@@ -325,11 +344,11 @@ function TextAIAssistantsContent() {
             <li role="presentation">
               <button
                 data-testid="create-workflow-button"
-                className="flex items-center gap-2 px-3 py-1 rounded-t-md border border-border border-b-0 bg-muted text-muted-foreground hover:bg-surface-hover hover:text-foreground text-2xl font-bold leading-none cursor-pointer"
+                className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
                 onClick={() => setIsCreateWorkflowModalOpen(true)}
                 title="Create a new workflow"
               >
-                +
+                <Plus className="size-4" aria-hidden="true" /> New workflow
               </button>
             </li>
           </ul>
@@ -341,7 +360,13 @@ function TextAIAssistantsContent() {
             aria-labelledby={`tab-${selectedWorkflow.toLowerCase().replace(/\s+/g, '-')}`}
             id={`panel-${selectedWorkflow.toLowerCase().replace(/\s+/g, '-')}`}
           >
-            <ul className="list-none grid gap-6 grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3" aria-label="Current AI Assistants">
+            {hasResults && (
+              <div className="mb-4 flex items-center gap-2">
+                <h2 className="text-base font-semibold">Results</h2>
+                {selection?.status === 'success' && <span className="rounded-full bg-surface-hover px-2.5 py-1 text-xs text-tertiary">Evaluated by Jev</span>}
+              </div>
+            )}
+            <ul className={`grid list-none gap-4 ${hasResults ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3'}`} aria-label="Current AI Assistants">
               {displayedConfigs.map((config) => (
                 <AssistantCard
                   key={config.id}
@@ -355,6 +380,7 @@ function TextAIAssistantsContent() {
                   onImproveVersion={handleImproveThisVersion}
                   copiedId={copiedId}
                   jevSelection={selection?.status === 'success' ? selection : undefined}
+                  featured={featuredResultId === config.id.toString()}
                 />
               ))}
 
@@ -363,10 +389,10 @@ function TextAIAssistantsContent() {
                 <div className="relative">
                   <button
                     data-testid="add-assistant-button"
-                    className={`w-full bg-transparent border-2 border-dashed text-muted-foreground p-8 flex flex-col items-center justify-center gap-4 rounded-lg transition-all min-h-[120px] ${
+                    className={`flex min-h-[154px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-transparent p-5 text-sm text-muted-foreground transition-colors ${
                       isBatchLimitReached
                         ? 'border-muted cursor-not-allowed opacity-50'
-                        : 'border-border hover:border-primary hover:text-secondary hover:bg-surface-hover focus-visible:border-primary focus-visible:text-secondary focus-visible:bg-surface-hover cursor-pointer'
+                        : 'border-border-strong hover:border-primary hover:bg-surface-hover hover:text-foreground'
                     }`}
                     onClick={handleOpenAddModal}
                     disabled={isBatchLimitReached}
@@ -387,7 +413,7 @@ function TextAIAssistantsContent() {
                     >
                       <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
                     </svg>
-                    <span>Add Assistant</span>
+                    <span>Add assistant</span>
                   </button>
                   {isBatchLimitReached && (
                     <div className="absolute -bottom-6 left-0 right-0 text-center">
@@ -402,7 +428,7 @@ function TextAIAssistantsContent() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }
 

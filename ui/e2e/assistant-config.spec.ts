@@ -15,7 +15,7 @@ test.describe('Assistant Configuration', () => {
     
     // Modal should open
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText('Add Assistant', { exact: false })).toBeVisible();
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'New AI Assistant' })).toBeVisible();
   });
 
   test('should add new assistant with custom configuration', async ({ page }) => {
@@ -80,9 +80,9 @@ test.describe('Assistant Configuration', () => {
     // Click Edit Assistant
     await page.getByTestId(`edit-assistant-${configId}`).click();
     
-    // Modal should open with edit mode (title shows "Editing: {role}")
+    // Modal should open with the selected role in its heading
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText('Editing:', { exact: false })).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('Edit assistant', { exact: true })).toBeVisible();
     
     // Change tone
     await page.locator('select[name="tone"]').selectOption('Cheerful');
@@ -94,7 +94,7 @@ test.describe('Assistant Configuration', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible();
     
     // Verify changes reflected in summary tags
-    await expect(firstCard.locator('text=😄 Cheerful')).toBeVisible();
+    await expect(firstCard.getByText('Cheerful')).toBeVisible();
   });
 
   test('should duplicate existing assistant', async ({ page }) => {
@@ -230,9 +230,9 @@ test.describe('Assistant Configuration', () => {
     
     // Verify summary tags are displayed
     await expect(lastCard.locator('text=Improve')).toBeVisible();
-    await expect(lastCard.locator('text=+ Emojis')).toBeVisible();
-    await expect(lastCard.locator('text=🧐 Formal')).toBeVisible();
-    await expect(lastCard.locator('text=😎 Confident')).toBeVisible();
+    await expect(lastCard.getByText('Add emojis')).toBeVisible();
+    await expect(lastCard.getByText('Formal')).toBeVisible();
+    await expect(lastCard.getByText('Confident')).toBeVisible();
   });
 
   test('should enable save button only when changes are made', async ({ page }) => {

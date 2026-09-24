@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { Check } from 'lucide-react';
+import { Check, Copy, MoreVertical, WandSparkles } from 'lucide-react';
 import { ToggleSwitch } from '@/components/features/ToggleSwitch';
 import { ConfigSummaryTags } from '@/components/features/ConfigSummaryTags';
 import { ResultTextarea } from '@/components/features/ResultTextarea';
@@ -13,43 +12,23 @@ import type { BatchSelection } from '../../../../backend/src/types/api.types';
 
 type SuccessfulSelection = Extract<BatchSelection, { status: 'success' }>;
 
-/**
- * Props for the AssistantCard component
- */
 interface AssistantCardProps {
-  /** The AI assistant configuration to display */
   config: AiConfig;
-  /** Optional result from the AI generation */
   result?: Result;
-  /** Callback to toggle assistant enabled state */
   onToggle: (id: number) => void;
-  /** Callback to open edit modal for this assistant */
   onEdit: (id: number) => void;
-  /** Callback to duplicate this assistant */
   onCopy: (id: number) => void;
-  /** Callback to remove this assistant */
   onRemove: (id: number) => void;
-  /** Callback to copy result text to clipboard */
   onCopyResult: (text: string, configId: number) => void;
-  /** Callback to use result as new input text */
   onImproveVersion: (text: string) => void;
-  /** ID of the assistant whose result was just copied (for visual feedback) */
   copiedId: number | null;
-  /** Successful Jev evaluation for the current run. */
   jevSelection?: SuccessfulSelection;
+  featured?: boolean;
 }
 
 export function AssistantCard({
-  config,
-  result,
-  onToggle,
-  onEdit,
-  onCopy,
-  onRemove,
-  onCopyResult,
-  onImproveVersion,
-  copiedId,
-  jevSelection,
+  config, result, onToggle, onEdit, onCopy, onRemove,
+  onCopyResult, onImproveVersion, copiedId, jevSelection, featured = false,
 }: AssistantCardProps) {
   const probability = result && !result.error && !result.isLoading
     ? jevSelection?.probabilities[config.id.toString()] : undefined;
@@ -59,151 +38,99 @@ export function AssistantCard({
 
   return (
     <li
-      key={config.id}
       data-testid={`assistant-card-${config.id}`}
-      className={`bg-background p-4 rounded-lg border flex flex-col gap-2 relative transition-all duration-300 ${
-        !config.enabled ? 'opacity-60' : ''
-      } ${selectedByJev ? 'ring-2 ring-secondary/40' : ''
-      }`}
-      style={{ borderColor: result?.error ? 'var(--destructive)' : selectedByJev ? 'var(--secondary)' : 'var(--border)' }}
+      className={`relative flex min-w-0 flex-col rounded-2xl border bg-card p-4 transition-colors sm:p-5 ${featured ? 'col-span-full bg-violet-surface/60' : ''} ${result?.error ? 'border-destructive/70' : selectedByJev ? 'border-violet-border' : 'border-border-strong'} ${!config.enabled ? 'opacity-60' : ''}`}
     >
-      {/* Assistant Card Header */}
-      <div className="flex justify-between items-start gap-4">
-        <div className="flex flex-col gap-1 flex-grow">
-          <div className="flex items-center gap-3">
-            <ToggleSwitch
-              id={`toggle-${config.id}`}
-              checked={config.enabled}
-              onChange={() => onToggle(config.id)}
-            />
-            <h3 className="text-base text-secondary m-0">{getAiRoleLabel(config.aiRoleId)}</h3>
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="pt-0.5">
+          <ToggleSwitch id={`toggle-${config.id}`} checked={config.enabled} onChange={() => onToggle(config.id)} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="text-sm font-semibold leading-5 text-foreground">{getAiRoleLabel(config.aiRoleId)}</h3>
+            {selectedByJev && (
+              <span
+                data-testid={`jev-selection-${config.id}`}
+                className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary"
+                title="Selected by Jev from the successful results in this run."
+              >
+                Chosen by Jev
+              </span>
+            )}
           </div>
-          <small className="text-muted-foreground" title={config.model}>{MODEL_NAMES[config.model] ?? config.model}</small>
-          {percentage !== undefined && (
-            <span data-testid={`jev-probability-${config.id}`} className="text-xs text-muted-foreground" title="Jev’s relative preference for this result among successful outputs in this run.">Jev {percentage}</span>
-          )}
-          {selectedByJev && (
-            <span
-              data-testid={`jev-selection-${config.id}`}
-              className="mt-1 w-fit rounded-full bg-secondary/15 px-2.5 py-1 text-xs font-semibold text-secondary"
-              title="Selected by Jev from the successful results in this run."
+          <p className="mt-0.5 text-xs text-tertiary">{MODEL_NAMES[config.model] ?? config.model}</p>
+        </div>
+        {percentage !== undefined && (
+          <span
+            data-testid={`jev-probability-${config.id}`}
+            className={`shrink-0 rounded-lg px-2 py-1 text-xs font-medium ${selectedByJev ? 'bg-primary/15 text-primary' : 'bg-surface-hover text-muted-foreground'}`}
+            title="Jev’s relative preference for this result among successful outputs in this run."
+          >
+            Jev {percentage}
+          </span>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              data-testid={`kebab-menu-${config.id}`}
+              className="shrink-0 rounded-md p-1 text-tertiary hover:bg-surface-hover hover:text-foreground"
+              aria-label="More options"
+              title="More options"
             >
-              ✨ Chosen by Jev
-            </span>
-          )}
-        </div>
-
-        {/* Kebab Menu */}
-        <div className="relative flex-shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                data-testid={`kebab-menu-${config.id}`}
-                className="bg-transparent border-none p-1 rounded-full cursor-pointer leading-none hover:bg-surface-hover transition-colors"
-                aria-label="More options"
-                title="More options"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="fill-muted-foreground hover:fill-foreground transition-colors"
-                  aria-hidden="true"
-                >
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path>
-                </svg>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                data-testid={`edit-assistant-${config.id}`}
-                onSelect={() => onEdit(config.id)}
-              >
-                Edit Assistant
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                data-testid={`duplicate-assistant-${config.id}`}
-                onSelect={() => onCopy(config.id)}
-              >
-                Duplicate Assistant
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                data-testid={`remove-assistant-${config.id}`}
-                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onSelect={() => onRemove(config.id)}
-              >
-                Remove Assistant
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+              <MoreVertical className="size-4" aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem data-testid={`edit-assistant-${config.id}`} onSelect={() => onEdit(config.id)}>Edit Assistant</DropdownMenuItem>
+            <DropdownMenuItem data-testid={`duplicate-assistant-${config.id}`} onSelect={() => onCopy(config.id)}>Duplicate Assistant</DropdownMenuItem>
+            <DropdownMenuItem data-testid={`remove-assistant-${config.id}`} className="text-destructive hover:bg-destructive hover:text-white" onSelect={() => onRemove(config.id)}>Remove Assistant</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Config Summary Tags */}
       <ConfigSummaryTags options={config.options} onClick={() => onEdit(config.id)} />
 
-      {/* Assistant Card Body */}
-      {result && <div className="bg-card rounded-lg p-4 flex flex-col">
-        {result?.isLoading ? (
-          <div
-            className="flex items-center gap-2 py-2 text-secondary"
-            role="status"
-            aria-label="Assistant is thinking"
-          >
-            <span className="animate-bounce text-lg" aria-hidden="true">✍️</span>
-            <span className="text-sm font-medium">Thinking...</span>
-          </div>
-        ) : result ? (
-          <div className="flex flex-col">
-            <ResultTextarea
-              value={result.text}
-              aria-label="Generated text"
-            />
-            <div className="mt-4 flex justify-end items-center gap-2">
-              {!result.error && (
-                <button
-                  data-testid={`improve-version-${config.id}`}
-                  onClick={() => onImproveVersion(result.text)}
-                  className="flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted-foreground/20 text-foreground rounded-lg transition-colors cursor-pointer"
-                  title="Use this text as the next input"
-                >
-                  Improve this Version
-                  <InfoTooltip text={TOOLTIP_TEXTS.useThisText} position="left" />
-                </button>
-              )}
-              <button
-                data-testid={`copy-result-${config.id}`}
-                onClick={() => onCopyResult(result.text, config.id)}
-                className="bg-transparent border-none p-2 opacity-60 hover:opacity-100 hover:text-secondary transition-all leading-none cursor-pointer"
-                aria-label={copiedId === config.id ? 'Copied!' : 'Copy result to clipboard'}
-                title={copiedId === config.id ? 'Copied!' : 'Copy result to clipboard'}
-              >
-                {copiedId === config.id ? (
-                  <Check className="h-5 w-5 text-green-500" />
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    fill="currentColor"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6Z"
-                    />
-                    <path d="M2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z" />
-                  </svg>
-                )}
-              </button>
+      {result && (
+        <div className="mt-4 border-t border-border pt-4">
+          {probability !== undefined && (
+            <div className="mb-4 h-1 overflow-hidden rounded-full bg-border-strong" aria-hidden="true">
+              <div className={`h-full rounded-full ${selectedByJev ? 'bg-primary' : 'bg-tertiary/50'}`} style={{ width: `${Math.max(probability * 100, 0.5)}%` }} />
             </div>
-          </div>
-        ) : null}
-      </div>}
-
+          )}
+          {result.isLoading ? (
+            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground" role="status" aria-label="Assistant is thinking">
+              <span className="size-3 animate-pulse rounded-full bg-primary" aria-hidden="true" /> Thinking...
+            </div>
+          ) : (
+            <>
+              <ResultTextarea value={result.text} aria-label="Generated text" />
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {!result.error && (
+                  <button
+                    data-testid={`improve-version-${config.id}`}
+                    onClick={() => onImproveVersion(result.text)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                    title="Use this text as the next input"
+                  >
+                    <WandSparkles className="size-3.5" aria-hidden="true" /> Improve this version
+                    <InfoTooltip text={TOOLTIP_TEXTS.useThisText} position="left" />
+                  </button>
+                )}
+                <button
+                  data-testid={`copy-result-${config.id}`}
+                  onClick={() => onCopyResult(result.text, config.id)}
+                  className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  aria-label={copiedId === config.id ? 'Copied!' : 'Copy result to clipboard'}
+                  title={copiedId === config.id ? 'Copied!' : 'Copy result to clipboard'}
+                >
+                  {copiedId === config.id ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
+                  {copiedId === config.id ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </li>
   );
 }

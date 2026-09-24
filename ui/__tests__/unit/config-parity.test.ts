@@ -27,7 +27,12 @@ import {
 describe('UI/backend configuration parity', () => {
   it('keeps models, roles, tiers, and transformation values aligned', () => {
     expect([...AVAILABLE_MODELS].sort()).toEqual(MODELS.map(model => model.id).sort());
-    expect(MODEL_NAMES).toEqual(Object.fromEntries(MODELS.map(model => [model.id, model.displayName])));
+    expect(Object.keys(MODEL_NAMES).sort()).toEqual(MODELS.map(model => model.id).sort());
+    expect(MODEL_NAMES).toMatchObject({
+      'openai-gpt-5-nano': 'GPT-5 Nano',
+      'qwen-qwen3-30b-a3b-instruct-2507': 'Qwen3 30B',
+      'open-router-free': 'OpenRouter Free',
+    });
     expect(AVAILABLE_MODELS[0]).toBe('qwen-qwen3-30b-a3b-instruct-2507');
     expect(DEFAULT_WORKFLOWS.every(workflow => workflow.configs.every(config => config.model === 'qwen-qwen3-30b-a3b-instruct-2507'))).toBe(true);
     expect(TIER_LIMITS.free).toMatchObject({ maxTextLength: 1000, maxContextLength: 2500 });
