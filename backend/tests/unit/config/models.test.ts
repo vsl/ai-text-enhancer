@@ -9,6 +9,7 @@ describe('Models Configuration', () => {
         providerModelId: 'openai/gpt-5-nano',
         structuredOutputMode: 'json-schema',
         serviceTier: 'flex',
+        reasoningEffort: 'minimal',
         contextWindow: 400000,
       }),
       expect.objectContaining({

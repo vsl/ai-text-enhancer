@@ -345,6 +345,7 @@ export class BatchOrchestrator {
         userPrompt,
         structuredOutputMode: model.structuredOutputMode,
         serviceTier: model.serviceTier,
+        reasoningEffort: model.reasoningEffort,
         maxTokens: getLimitsForTier(user.tier).maxTokensPerRequest,
         timeout: this.taskTimeoutMs
       });

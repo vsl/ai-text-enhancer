@@ -1,8 +1,9 @@
 import { parseTextOutput } from '../config/output-contract.config.ts';
 import { getRoleById } from '../config/roles.config.ts';
+import { MODELS } from '../config/models.config.ts';
 import { PromptTemplates, PROMPT_VERSION } from '../services/prompt-templates.ts';
 import type { TransformationOptions } from '../types/api.types.ts';
-import type { StructuredOutputMode } from '../types/config.types.ts';
+import type { ModelConfig, StructuredOutputMode } from '../types/config.types.ts';
 import type { LLMConnector } from '../types/llm.types.ts';
 import { buildPromptRevision, fingerprintPrompt } from '../services/prompt-builder.ts';
 
@@ -46,6 +47,7 @@ export interface PromptEvaluationReport {
     settings: {
       temperature: null;
       maxTokens: number;
+      reasoningEffort?: ModelConfig['reasoningEffort'];
     };
     preflight: CatalogPreflight;
     status: 'completed' | 'skipped';
@@ -169,12 +171,15 @@ export async function runPromptEvaluation(params: {
   for (const candidate of params.candidates) {
     const preflight = await preflightCandidate(candidate, params.apiKeys[candidate.provider], params.fetchImpl);
     const connector = params.connectors[candidate.provider];
+    const reasoningEffort = MODELS.find(model =>
+      model.provider === candidate.provider && model.providerModelId === candidate.model
+    )?.reasoningEffort;
     const candidateReport: PromptEvaluationReport['candidates'][number] = {
       provider: candidate.provider,
       requestedModel: candidate.model,
       modelRevision: null,
       structuredOutputMode: candidate.structuredOutputMode,
-      settings: { temperature: null, maxTokens: MAX_TOKENS },
+      settings: { temperature: null, maxTokens: MAX_TOKENS, reasoningEffort },
       preflight,
       status: preflight.status === 'available' && connector ? 'completed' : 'skipped',
       skipReason: preflight.status !== 'available'
@@ -211,6 +216,7 @@ export async function runPromptEvaluation(params: {
               contextText: evaluationCase.contextText,
             }),
             structuredOutputMode: candidate.structuredOutputMode,
+            reasoningEffort,
             maxTokens: MAX_TOKENS,
           });
           rawResponse = response.text;

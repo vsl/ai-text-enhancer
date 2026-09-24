@@ -24,6 +24,7 @@ export const MODELS: readonly ModelConfig[] = [
     providerModelId: 'openai/gpt-5-nano',
     structuredOutputMode: 'json-schema',
     serviceTier: 'flex',
+    reasoningEffort: 'minimal',
     allowedTiers: ['free', 'plus', 'premium'],
     displayName: 'GPT-5 Nano',
     contextWindow: 400000,

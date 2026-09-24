@@ -81,6 +81,9 @@ export interface ModelConfig {
 
   /** Optional OpenRouter processing tier for this model */
   serviceTier?: 'flex';
+
+  /** Optional reasoning effort verified for this provider/model pair */
+  reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   
   /** User tiers that can access this model */
   allowedTiers: ('free' | 'plus' | 'premium')[];

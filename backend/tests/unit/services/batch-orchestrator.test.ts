@@ -141,7 +141,7 @@ describe('BatchOrchestrator', () => {
   });
 
   describe('Validation', () => {
-    it('forwards GPT-5 Nano flex tier to its connector', async () => {
+    it('forwards model service tier and reasoning effort to its connector', async () => {
       user.tier = 'free';
       const { getModelById } = require('../../../src/config/models.config.ts');
       const { getRoleById } = require('../../../src/config/roles.config.ts');
@@ -151,6 +151,7 @@ describe('BatchOrchestrator', () => {
         providerModelId: 'openai/gpt-5-nano',
         structuredOutputMode: 'json-schema',
         serviceTier: 'flex',
+        reasoningEffort: 'minimal',
         displayName: 'GPT-5 Nano',
         contextWindow: 400000,
         costPer1kTokens: { input: 0, output: 0 },
@@ -175,6 +176,7 @@ describe('BatchOrchestrator', () => {
       expect(sendRequest).toHaveBeenCalledWith(expect.objectContaining({
         model: 'openai/gpt-5-nano',
         serviceTier: 'flex',
+        reasoningEffort: 'minimal',
         maxTokens: 3500,
       }));
     });
