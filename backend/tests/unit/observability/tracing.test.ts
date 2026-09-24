@@ -7,6 +7,7 @@ import { traceable } from 'langsmith/traceable';
 import {
   flushTraces,
   isTracingEnabled,
+  isContentCaptureEnabled,
   resetTracingForTests,
   sanitizeTraceValue,
   setTracingClientForTests,
@@ -17,6 +18,8 @@ describe('LangSmith tracing', () => {
   afterEach(() => {
     delete process.env.LANGSMITH_TRACING;
     delete process.env.LANGSMITH_API_KEY;
+    delete process.env.LANGSMITH_CAPTURE_CONTENT;
+    delete process.env.OPENROUTER_API_KEY;
     resetTracingForTests();
     jest.restoreAllMocks();
     jest.clearAllMocks();
@@ -34,7 +37,8 @@ describe('LangSmith tracing', () => {
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps content while excluding credentials and Gemini URL keys', () => {
+  it('keeps content while excluding credentials and URL keys in diagnostic mode', () => {
+    process.env.LANGSMITH_CAPTURE_CONTENT = 'true';
     expect(sanitizeTraceValue({
       source: 'full source',
       context: 'full context',
@@ -56,13 +60,57 @@ describe('LangSmith tracing', () => {
     });
   });
 
+  it('redacts embedded server secrets even in content-capture mode', () => {
+    process.env.OPENROUTER_API_KEY = 'sk-private-123456';
+    expect(sanitizeTraceValue({ text: 'echo sk-private-123456' }, true)).toEqual({ text: 'echo [REDACTED]' });
+  });
+
   it('isolates exporter failures', async () => {
     setTracingClientForTests({
       awaitPendingTraceBatches: jest.fn().mockRejectedValue(new Error('offline')),
     } as never);
     const warning = jest.spyOn(console, 'warn').mockImplementation();
     await expect(flushTraces()).resolves.toBeUndefined();
-    expect(warning).toHaveBeenCalledWith('[TRACING] Failed to flush traces:', 'offline');
+    expect(warning).toHaveBeenCalledWith('[TRACING] Failed to flush traces');
+  });
+
+  it('defaults to metadata-only traces and omits raw content at every run boundary', async () => {
+    setTracingClientForTests({ awaitPendingTraceBatches: jest.fn() } as never);
+    expect(isContentCaptureEnabled()).toBe(false);
+    await traceRun({
+      name: 'enhance.batch', runType: 'chain',
+      inputs: { userText: 'PRIVATE USER', contextText: 'PRIVATE CONTEXT', requestId: 'request-1', authorization: 'Bearer SECRET' },
+      metadata: { requestId: 'request-1', assistantId: 7 },
+      operation: async () => ({ enhancedText: 'PRIVATE OUTPUT', state: { candidates: [{ text: 'PRIVATE CANDIDATE' }] }, selectedResultId: '7' }),
+    });
+    const config = jest.mocked(traceable).mock.calls[0][1]!;
+    const input = config.processInputs!({ userText: 'PRIVATE USER', contextText: 'PRIVATE CONTEXT', requestId: 'request-1', authorization: 'Bearer SECRET' } as never);
+    const output = config.processOutputs!({ enhancedText: 'PRIVATE OUTPUT', state: { candidates: [{ text: 'PRIVATE CANDIDATE' }] }, selectedResultId: '7' } as never);
+    expect(JSON.stringify({ input, output, metadata: config.metadata })).not.toMatch(/PRIVATE|SECRET/);
+    expect(input).toMatchObject({ requestId: 'request-1', authorization: '[REDACTED]' });
+    expect(output).toMatchObject({ selectedResultId: '7' });
+  });
+
+  it('omits raw failure messages from trace export', async () => {
+    setTracingClientForTests({ awaitPendingTraceBatches: jest.fn() } as never);
+    await traceRun({ name: 'enhance.batch', runType: 'chain', inputs: {}, operation: async () => 'ok' });
+    const config = jest.mocked(traceable).mock.calls[0][1]!;
+    const run = { error: 'PRIVATE USER TEXT in provider error' };
+    config.on_end!(run as never);
+    expect(run.error).toBe('[ERROR DETAILS OMITTED]');
+  });
+
+  it('allows explicit diagnostic content while still redacting credentials', async () => {
+    process.env.LANGSMITH_CAPTURE_CONTENT = 'true';
+    setTracingClientForTests({ awaitPendingTraceBatches: jest.fn() } as never);
+    expect(isContentCaptureEnabled()).toBe(true);
+    await traceRun({
+      name: 'enhance.batch', runType: 'chain', inputs: { userText: 'PRIVATE USER' },
+      operation: async () => ({ text: 'PRIVATE OUTPUT' }),
+    });
+    const config = jest.mocked(traceable).mock.calls[0][1]!;
+    expect(config.processInputs!({ userText: 'PRIVATE USER', apiKey: 'SECRET' } as never)).toEqual({ userText: 'PRIVATE USER', apiKey: '[REDACTED]' });
+    expect(config.processOutputs!({ text: 'PRIVATE OUTPUT' } as never)).toEqual({ text: 'PRIVATE OUTPUT' });
   });
 
   it('builds nested batch, assistant, provider, and parser runs with full content', async () => {
@@ -107,6 +155,6 @@ describe('LangSmith tracing', () => {
       name: 'enhance.batch', runType: 'chain', inputs: { source: 'full source' }, operation,
     })).resolves.toEqual({ text: 'still returned' });
     expect(operation).toHaveBeenCalledTimes(1);
-    expect(warning).toHaveBeenCalledWith('[TRACING] Trace export failed:', 'export failed');
+    expect(warning).toHaveBeenCalledWith('[TRACING] Trace export failed');
   });
 });

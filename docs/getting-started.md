@@ -31,7 +31,7 @@ keys, and bootstrap secrets.
 | Cloudflare | Account access to create and edit Pages projects | No Cloudflare access for normal code changes |
 | GitHub organization | Organization owner or GitHub App manager if it restricts app installations | None |
 
-The current backend configuration uses OpenRouter for both available models.
+The current backend configuration uses OpenRouter for the three available models.
 
 Use Node.js 22 for local checks. Install the Supabase CLI only for the
 one-time command-line bootstrap below. Never put a service-role key, Supabase
@@ -65,10 +65,7 @@ traces. To enable it, create a workspace API key in
 manager. One key is used for both environments; the workflow separates their
 traces into `ai-text-enhancer-staging` and `ai-text-enhancer-production`.
 
-Traces include user source and context, assembled prompts, raw provider
-responses, and final output. Limit workspace access and retention accordingly.
-The backend redacts credential-like fields, but tracing is not a substitute for
-data-retention controls.
+By default, traces carry operational metadata and omit raw source, context, prompts, provider responses, generated text, and Jev candidates. `LANGSMITH_CAPTURE_CONTENT=true` enables those sensitive diagnostic values on the server; use it only for a deliberate debugging session. Credentials are redacted in either mode. Limit workspace access and retention accordingly.
 
 ## 2. Create the Supabase organization and two projects
 
@@ -171,10 +168,8 @@ to fork pull requests, so use a branch in this repository for deployment PRs.
 
 The workflow derives `LANGSMITH_TRACING`, `LANGSMITH_PROJECT`, `APP_ENV`,
 `APP_RELEASE`, and `LOG_LEVEL`; do not create Actions secrets for those
-values. `LANGSMITH_TRACING` is `true` only when `LANGSMITH_API_KEY` exists;
-otherwise it is `false`. `LOG_LEVEL` stays at `info`. Do not set it to
-`debug` during normal operation because debug logs include complete provider
-payloads.
+values. `LANGSMITH_TRACING` is `true` only when `LANGSMITH_API_KEY` exists; otherwise it is `false`. `LANGSMITH_CAPTURE_CONTENT` defaults to `false` in the deployment workflow. A repository variable set to `true` enables sensitive content capture for a deliberate diagnostic deployment. `LOG_LEVEL` stays at `info`. Do not set it to
+`debug` during normal operation. Provider payload debug logs require the explicit content-capture flag.
 
 Protect `main` in **Settings > Branches** (or **Rules**) so production comes
 from reviewed pull requests. Do not grant normal contributors repository-admin
@@ -203,6 +198,7 @@ MAX_BATCH_SIZE='10'
 
 # Optional LangSmith tracing. To enable it, change this to true and set the key.
 LANGSMITH_TRACING='false'
+LANGSMITH_CAPTURE_CONTENT='false'
 # LANGSMITH_API_KEY='lsv2_...'
 LANGSMITH_PROJECT='ai-text-enhancer-staging'
 LANGSMITH_ENDPOINT='https://api.smith.langchain.com'
@@ -228,6 +224,7 @@ supabase secrets set \
   LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
   MAX_BATCH_SIZE="$MAX_BATCH_SIZE" \
   LANGSMITH_TRACING="$LANGSMITH_TRACING" \
+  LANGSMITH_CAPTURE_CONTENT="$LANGSMITH_CAPTURE_CONTENT" \
   LANGSMITH_PROJECT="$LANGSMITH_PROJECT" \
   LANGSMITH_ENDPOINT="$LANGSMITH_ENDPOINT" \
   APP_ENV="$APP_ENV" \

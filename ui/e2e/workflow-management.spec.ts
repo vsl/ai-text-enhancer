@@ -13,7 +13,7 @@ test.describe('Workflow Management', () => {
     // Check that default workflow tabs are visible
     await expect(page.getByTestId('workflow-tab-quick-fix')).toBeVisible();
     await expect(page.getByTestId('workflow-tab-formal-email')).toBeVisible();
-    await expect(page.getByTestId('workflow-tab-social-media-blast')).toBeVisible();
+    await expect(page.getByRole('tab')).toHaveCount(2);
   });
 
   test('should load different workflows when clicking tabs', async ({ page }) => {
@@ -23,11 +23,8 @@ test.describe('Workflow Management', () => {
     // Verify the workflow is active (aria-selected should be true)
     await expect(page.getByTestId('workflow-tab-formal-email')).toHaveAttribute('aria-selected', 'true');
     
-    // Click on Social Media Blast workflow
-    await page.getByTestId('workflow-tab-social-media-blast').click();
-    
-    // Verify the workflow switched
-    await expect(page.getByTestId('workflow-tab-social-media-blast')).toHaveAttribute('aria-selected', 'true');
+    await page.getByTestId('workflow-tab-quick-fix').click();
+    await expect(page.getByTestId('workflow-tab-quick-fix')).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('workflow-tab-formal-email')).toHaveAttribute('aria-selected', 'false');
   });
 

@@ -402,7 +402,6 @@ function conciseError(error: unknown): Record<string, unknown> {
   const value = error as Error;
   return {
     name: value?.name ?? 'Error',
-    message: value?.message ?? 'Unknown error',
     ...(error instanceof LLMError && {
       provider: error.provider,
       code: error.code,

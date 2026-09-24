@@ -1,3 +1,5 @@
+> **Historical reference:** This document may describe earlier providers, limits, or deployment steps. For the current public demo, use the [root README](../../README.md), current source configuration, and deployment workflow. Stripe payment functions are a disabled prototype, not live endpoints.
+
 # Payment System Implementation Summary
 
 **Implementation Date:** January 2025
@@ -9,7 +11,7 @@
 
 ## 🎯 Implementation Overview
 
-Successfully implemented a complete Stripe Checkout integration for token purchases following the project's two-layer architecture principle. The implementation includes:
+Implemented a Stripe Checkout prototype for token purchases following the project's two-layer architecture principle. The implementation includes:
 
 - ✅ Platform-agnostic core payment service
 - ✅ Thin Edge Function handlers (<110 lines each)
@@ -578,7 +580,7 @@ npm run health
 
 ## 🎉 Conclusion
 
-The payment system implementation is **COMPLETE and PRODUCTION-READY** with the following accomplishments:
+The payment system prototype was implemented but is **disabled in the current deployment** with the following accomplishments:
 
 ✅ **Phases 1-7:** Fully implemented (configuration, core logic, handlers, tests, docs)
 ✅ **90 unit tests:** All passing with excellent coverage
@@ -588,7 +590,7 @@ The payment system implementation is **COMPLETE and PRODUCTION-READY** with the 
 
 **Next Steps:** Complete Phase 8 (Integration Testing) before production deployment.
 
-**Estimated Time to Production:** 2-4 hours (integration testing + Stripe Dashboard setup + deployment)
+**Deployment status:** Disabled; production readiness has not been verified.
 
 ---
 

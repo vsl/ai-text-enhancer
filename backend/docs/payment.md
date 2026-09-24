@@ -1,3 +1,5 @@
+> **Historical reference:** This document may describe earlier providers, limits, or deployment steps. For the current public demo, use the [root README](../../README.md), current source configuration, and deployment workflow. Stripe payment functions are a disabled prototype, not live endpoints.
+
 # Payment System Guide
 
 **Last Updated:** January 2025
@@ -693,7 +695,7 @@ try {
 
 **Option 1: Add stripe_event_id column (RECOMMENDED):**
 
-This is the robust, production-ready approach:
+This describes the prototype approach, which is disabled in the current deployment:
 
 ```sql
 ALTER TABLE token_purchases ADD COLUMN stripe_event_id TEXT UNIQUE;

@@ -5,9 +5,14 @@ type TraceRunType = 'chain' | 'llm' | 'parser';
 type TraceValue = Record<string, unknown>;
 
 const DEFAULT_ENDPOINT = 'https://api.smith.langchain.com';
-const SECRET_KEY = /(authorization|cookie|set-cookie|api[-_]?key|service[-_]?role[-_]?key|password|secret)/i;
+const SAFE_KEY = /^(requestId|environment|release|deploymentId|userTier|assistantId|role|model|requestedModel|requestedPublicModel|providerModel|resolvedModel|resolvedProvider|provider|promptRevision|promptFingerprint|elapsedMs|latencyMs|inputTokens|outputTokens|totalTokens|reasoningTokens|cachedTokens|tokensUsed|finishReason|nativeFinishReason|failureCode|httpStatus|candidateCount|candidateIds|selectedResultId|probabilities|confidence|improve|fixMistakes|format|shorten|lengthen|addEmojis|formality|tone|languageLevel|translateTo|judge|generationId|status|method|cost|isByok)$/;
+const SECRET_KEY = /(^key$|authorization|cookie|set-cookie|api[-_]?key|service[-_]?role[-_]?key|password|secret)/i;
 
 let client: Client | null | undefined;
+
+export function isContentCaptureEnabled(): boolean {
+  return process.env.LANGSMITH_CAPTURE_CONTENT === 'true';
+}
 
 export function isTracingEnabled(): boolean {
   return process.env.LANGSMITH_TRACING === 'true' && Boolean(process.env.LANGSMITH_API_KEY);
@@ -32,24 +37,42 @@ export function deploymentMetadata(): TraceValue {
   };
 }
 
-export function sanitizeTraceValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizeTraceValue);
+export function sanitizeTraceValue(value: unknown, captureContent = isContentCaptureEnabled()): unknown {
+  if (Array.isArray(value)) return value.map(item => sanitizeTraceValue(item, captureContent));
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([key, nested]) => [
       key,
-      SECRET_KEY.test(key) ? '[REDACTED]' : sanitizeTraceValue(nested),
+      SECRET_KEY.test(key) ? '[REDACTED]' :
+        !captureContent && /^(assistantId|selectedResultId|candidateIds|generationId)$/.test(key) && !safeIdentifier(nested)
+          ? '[CONTENT OMITTED]' :
+        !captureContent && !SAFE_KEY.test(key) && (nested === null || typeof nested !== 'object')
+          ? '[CONTENT OMITTED]' : sanitizeTraceValue(nested, captureContent),
     ]));
   }
   if (typeof value === 'string' && /^https?:\/\//i.test(value)) {
     try {
       const url = new URL(value);
-      if (url.searchParams.has('key')) url.searchParams.set('key', '[REDACTED]');
-      return url.toString();
+      for (const key of url.searchParams.keys()) {
+        if (SECRET_KEY.test(key)) url.searchParams.set(key, '[REDACTED]');
+      }
+      return redactSecretStrings(url.toString());
     } catch {
-      return value;
+      return redactSecretStrings(value);
     }
   }
-  return value;
+  return typeof value === 'string' ? redactSecretStrings(value) : value;
+}
+
+function redactSecretStrings(value: string): string {
+  return [process.env.OPENROUTER_API_KEY, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, process.env.LANGSMITH_API_KEY]
+    .filter((secret): secret is string => Boolean(secret && secret.length >= 8))
+    .reduce((redacted, secret) => redacted.replaceAll(secret, '[REDACTED]'), value);
+}
+
+function safeIdentifier(value: unknown): boolean {
+  return (typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value)) ||
+    (typeof value === 'number' && Number.isSafeInteger(value)) ||
+    (Array.isArray(value) && value.every(safeIdentifier));
 }
 
 export async function traceRun<TInput extends TraceValue, TOutput>(options: {
@@ -60,6 +83,7 @@ export async function traceRun<TInput extends TraceValue, TOutput>(options: {
   operation: () => Promise<TOutput>;
 }): Promise<TOutput> {
   const tracingClient = getClient();
+  const captureContent = isContentCaptureEnabled();
   if (!tracingClient) return options.operation();
 
   let operationStarted = false;
@@ -87,9 +111,10 @@ export async function traceRun<TInput extends TraceValue, TOutput>(options: {
       run_type: options.runType,
       client: tracingClient,
       project_name: process.env.LANGSMITH_PROJECT,
-      metadata: sanitizeTraceValue({ ...deploymentMetadata(), ...options.metadata }) as TraceValue,
-      processInputs: inputs => sanitizeTraceValue(inputs) as TraceValue,
-      processOutputs: outputs => sanitizeTraceValue(outputs) as TraceValue,
+      metadata: sanitizeTraceValue({ ...deploymentMetadata(), ...options.metadata }, captureContent) as TraceValue,
+      processInputs: inputs => sanitizeTraceValue(inputs, captureContent) as TraceValue,
+      processOutputs: outputs => sanitizeTraceValue(outputs, captureContent) as TraceValue,
+      on_end: run => { if (!captureContent && run.error) run.error = "[ERROR DETAILS OMITTED]"; },
     },
   );
 
@@ -97,11 +122,11 @@ export async function traceRun<TInput extends TraceValue, TOutput>(options: {
     return await (wrapped as unknown as (inputs: TInput) => Promise<TOutput>)(options.inputs);
   } catch (error) {
     if (operationCompleted) {
-      console.warn('[TRACING] Trace export failed:', (error as Error).message);
+      console.warn('[TRACING] Trace export failed');
       return operationResult!;
     }
     if (!operationStarted) {
-      console.warn('[TRACING] Trace setup failed:', (error as Error).message);
+      console.warn('[TRACING] Trace setup failed');
       return options.operation();
     }
     throw error;
@@ -118,7 +143,7 @@ export function addTraceMetadata(metadata: TraceValue): void {
   if (!run) return;
   run.extra.metadata = {
     ...(run.extra.metadata ?? {}),
-    ...(sanitizeTraceValue(metadata) as TraceValue),
+    ...(sanitizeTraceValue(metadata, isContentCaptureEnabled()) as TraceValue),
   };
 }
 
@@ -126,7 +151,7 @@ export async function flushTraces(): Promise<void> {
   try {
     await getClient()?.awaitPendingTraceBatches();
   } catch (error) {
-    console.warn('[TRACING] Failed to flush traces:', (error as Error).message);
+    console.warn('[TRACING] Failed to flush traces');
   }
 }
 

@@ -55,6 +55,7 @@ jobs:
       LLM_TIMEOUT_MS: ${{ secrets.LLM_TIMEOUT_MS || '30000' }}
       MAX_BATCH_SIZE: ${{ secrets.MAX_BATCH_SIZE || '10' }}
       LANGSMITH_TRACING: ${{ secrets.LANGSMITH_API_KEY != '' && 'true' || 'false' }}
+      LANGSMITH_CAPTURE_CONTENT: ${{ vars.LANGSMITH_CAPTURE_CONTENT == 'true' && 'true' || 'false' }}
       LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
       LANGSMITH_PROJECT: ${{ github.event_name == 'pull_request' && 'ai-text-enhancer-staging' || 'ai-text-enhancer-production' }}
       LANGSMITH_ENDPOINT: https://api.smith.langchain.com
@@ -78,6 +79,7 @@ jobs:
             LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
             MAX_BATCH_SIZE="$MAX_BATCH_SIZE" \
             LANGSMITH_TRACING="$LANGSMITH_TRACING" \
+            LANGSMITH_CAPTURE_CONTENT="$LANGSMITH_CAPTURE_CONTENT" \
             LANGSMITH_API_KEY="$LANGSMITH_API_KEY" \
             LANGSMITH_PROJECT="$LANGSMITH_PROJECT" \
             LANGSMITH_ENDPOINT="$LANGSMITH_ENDPOINT" \

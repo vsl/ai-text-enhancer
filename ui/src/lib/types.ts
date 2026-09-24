@@ -19,7 +19,7 @@ export interface Options {
   translateTo: '' | 'ar' | 'zh' | 'en' | 'fr' | 'de' | 'hi' | 'it' | 'ja' | 'ko' | 'pt' | 'ru' | 'es' | 'uk' | 'vi';
 }
 
-export type AiRoleId = 'editor' | 'summarizer' | 'social_media_assistant' | 'email_assistant';
+export type AiRoleId = 'editor' | 'summarizer' | 'email_assistant';
 
 /**
  * AI Assistant Configuration

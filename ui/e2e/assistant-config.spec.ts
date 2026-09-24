@@ -49,7 +49,7 @@ test.describe('Assistant Configuration', () => {
     
     // New assistant card should appear
     await expect(page.locator('text=Summarizer Assistant').first()).toBeVisible();
-    await expect(page.locator('text=open-router-free').first()).toBeVisible();
+    await expect(page.getByText('OpenRouter Free').first()).toBeVisible();
   });
 
   test('should cancel adding new assistant', async ({ page }) => {
@@ -299,7 +299,7 @@ test.describe('Assistant Configuration', () => {
   test('should persist assistant configurations across page reloads', async ({ page }) => {
     // Add a new assistant with specific config
     await page.getByTestId('add-assistant-button').click();
-    await page.locator('select[name="aiRoleId"]').selectOption('social_media_assistant');
+    await page.locator('select[name="aiRoleId"]').selectOption('email_assistant');
     await page.locator('input[name="improve"]').check();
     await page.getByRole('button', { name: 'Save' }).click();
     
@@ -307,13 +307,13 @@ test.describe('Assistant Configuration', () => {
     await page.waitForTimeout(500);
     
     // Verify assistant exists
-    await expect(page.locator('text=Social Media Assistant').first()).toBeVisible();
+    await expect(page.locator('text=Professional Email Assistant').first()).toBeVisible();
     
     // Reload page
     await page.reload();
     await page.waitForLoadState('networkidle');
     
     // Assistant should still be there
-    await expect(page.locator('text=Social Media Assistant').first()).toBeVisible();
+    await expect(page.locator('text=Professional Email Assistant').first()).toBeVisible();
   });
 });

@@ -269,8 +269,8 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setSelection(undefined);
 
     // Set loading state for all enabled assistants
-    setResults(prevResults => {
-      const newResults = new Map(prevResults);
+    setResults(() => {
+      const newResults = new Map<number, Result>();
       enabledConfigs.forEach(config => {
         newResults.set(config.id, {
           configId: config.id,

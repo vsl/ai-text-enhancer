@@ -1,150 +1,106 @@
 # AI Text Enhancer
 
-Monorepo for the AI Text Enhancer web application and Supabase backend.
+A serverless AI application for turning repeated text-editing prompts into reusable multi-model workflows.
 
-## Structure
+Provide source text and optional reference context once, then run configurable assistants in parallel, compare their outputs, and let Jev evaluate successful alternatives. The application keeps every result available for the user's final choice.
 
-- `ui/` — Next.js static application
-- `backend/` — Supabase migrations and Edge Functions
+[Live site](https://ai-text-enhancer.sertalp.com/) · [Open the app](https://ai-text-enhancer.sertalp.com/text-ai-assistants)
 
-Both applications use Node.js 22 and keep separate dependencies and lockfiles.
+## The problem
 
-## Local development
+General-purpose AI chats are flexible, but recurring writing tasks often require the same setup again: context, tone, formality, edits, alternative versions, and model choice. AI Text Enhancer saves those instructions as browser workflows. The default workflows are Quick Fix and Formal Email; users can configure or create their own.
+
+## What it does
+
+- Runs multiple assistants against one source text, with reference context kept in a separate field.
+- Offers editor, summarizer, and professional email roles, each with distinct prompts.
+- Configures improvements, corrections, formatting, length, tone, formality, language level, translation, and emojis per assistant.
+- Lets assistants use different currently configured OpenRouter models and returns partial results when an individual model fails.
+- Sends two or more valid outputs to TypeSafe Jev through the OpenRouter Decisions API. Jev returns a selected result and relative candidate probabilities; a failed evaluation never discards generated text.
+- Saves workflows in browser `localStorage`. The public demo uses invisible Supabase anonymous auth and a weekly token allowance, with no traditional signup flow.
+
+## Architecture
+
+```text
+Browser / Next.js static export (Cloudflare Pages)
+  ├─ local workflows, source and context, comparison UI
+  └─ Supabase anonymous JWT → Edge Function /enhance
+       ├─ validate request, tier access, and weekly quota
+       ├─ run assistants in parallel → OpenRouter → parse structured output
+       ├─ report successful token usage
+       └─ evaluate valid alternatives → Jev Decisions API
+            └─ return all results + optional selection
+```
+
+The `ui/` app exports static files. Secrets, quota checks, provider calls, and Jev evaluation stay in the Supabase backend. Backend business logic lives in `backend/src/` and uses portable TypeScript; Edge Function handlers adapt HTTP, Deno, and Supabase services. The `/me` function supplies profile and allowance data. Supabase Postgres holds quota and user records; generated texts and workflows are not stored there by this feature.
+
+| Area | Current implementation |
+| --- | --- |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
+| Hosting | Cloudflare Pages static export |
+| Backend | Supabase Edge Functions, Deno, TypeScript |
+| Data and auth | Supabase Postgres and anonymous Auth |
+| AI | OpenRouter model calls; TypeSafe Jev via OpenRouter Decisions API |
+| Observability | LangSmith traces and request-scoped IDs/logs |
+| CI/CD | GitHub Actions checks and backend deployment; Cloudflare Git integration for UI |
+| Testing | Jest, Playwright, prompt evaluations |
+| Development | Node.js 22; optional Docker or Podman shell |
+
+The configured demo models are [GPT-5 Nano, OpenRouter Free, and Qwen3 30B A3B Instruct 2507](backend/src/config/models.config.ts). The backend model catalog defines their provider IDs and display names; a UI parity test keeps the browser labels aligned.
+
+## Engineering choices
+
+- **Static frontend:** The UI needs no Next.js server, while server-side keys remain in Edge Functions.
+- **Portable core:** Business logic can be tested under Node; Deno and Supabase APIs stay at the boundary.
+- **Partial success:** One timeout or model failure should not erase useful outputs from other assistants.
+- **Noncritical Jev:** Generation remains usable when the decision service is unavailable. Jev's probabilities express relative preference among that run's candidates, not correctness or an absolute quality score.
+- **Browser workflows:** Local persistence is sufficient for the anonymous demo and avoids account-bound workflow storage.
+
+## Tracing and data handling
+
+LangSmith tracing is optional. `LANGSMITH_TRACING=true` with an API key records operational metadata such as request ID, model, elapsed time, token usage, and failure code. `LANGSMITH_CAPTURE_CONTENT=false` is the default: tracing omits raw source and context, full prompts, provider responses, generated text, and Jev candidate text. Set the server-side flag or repository variable to `true` only for an explicitly sensitive diagnostic session; credential fields remain redacted in both modes. Do not put backend keys in `ui/.env.local`. The frontend includes Google Analytics in production; avoid treating this tracing setting as a blanket privacy guarantee.
+
+## Repository layout
+
+```text
+.
+├── ui/                    # Next.js pages, components, context, Jest, Playwright
+├── backend/
+│   ├── src/               # services, connectors, config, observability
+│   ├── supabase/          # Edge Functions and migrations
+│   ├── tests/             # unit and integration checks
+│   └── evaluations/       # prompt regression cases
+├── docs/                  # current setup and product flow
+└── .github/workflows/     # UI and backend checks/deployments
+```
+
+## Run locally
+
+Use Node.js 22 and run from the repository root:
 
 ```bash
 npm --prefix ui ci
 npm --prefix backend ci
-
 npm --prefix ui run dev
-npm --prefix backend run dev
 ```
 
-Create `ui/.env.local` with:
+Copy [the UI environment template](ui/.env.local.example) to `ui/.env.local` and configure the public staging Supabase URL, anon key, and API base URL. For a local backend, use [the backend environment template](backend/.env.local.example), then `npm --prefix backend run dev`. Never commit `.env` files. [Setup and deployment details](docs/getting-started.md) cover Supabase, GitHub, and Cloudflare.
 
-```dotenv
-NEXT_PUBLIC_APP_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_APP_SUPABASE_ANON_KEY=your-public-anon-key
-NEXT_PUBLIC_API_BASE_URL=https://your-project.supabase.co/functions/v1
-```
-
-See `backend/.env.local.example` for backend development variables. Do not commit environment files or secrets.
-
-## Docker development
-
-The development image includes Node.js 22, Git, the Supabase CLI, and Chromium
-with the Linux libraries required by Playwright. It uses the shared staging
-Supabase backend; it does not start a local Supabase stack.
-
-Copy the UI environment template and replace its placeholders with the staging
-project URL and publishable key. Never put service-role, database, or
-LLM secrets in this file.
-
-```bash
-cp ui/.env.local.example ui/.env.local
-docker build -t ai-text-enhancer-dev .
-```
-
-Podman uses the same Dockerfile. Replace `docker` with `podman` in these
-commands if that is your installed container runtime:
-
-```bash
-podman build -t ai-text-enhancer-dev .
-```
-
-On macOS or Linux, open the development shell with:
-
-```bash
-docker run --rm -it \
-  --user "$(id -u):$(id -g)" \
-  --env npm_config_cache=/tmp/npm-cache \
-  -p 3000:3000 \
-  --env-file ui/.env.local \
-  --mount type=bind,source="$(pwd)",target=/workspace \
-  ai-text-enhancer-dev
-```
-
-The `--user` option keeps files created through the bind mount owned by your
-host account. This is required by rootless runtimes such as Podman.
-
-In PowerShell, use:
-
-```powershell
-docker run --rm -it `
-  -p 3000:3000 `
-  --env-file ui/.env.local `
-  --mount "type=bind,source=$($PWD.Path),target=/workspace" `
-  ai-text-enhancer-dev
-```
-
-Inside the container, install the locked dependencies and start the UI:
-
-```bash
-npm --prefix ui ci
-npm --prefix backend ci
-npm --prefix ui run dev -- --hostname 0.0.0.0
-```
-
-Then open <http://localhost:3000>. The bind mount keeps source edits and the
-Linux `node_modules` directories in the checkout. Use them only inside Docker.
-Run `npm ci` again after a lockfile changes; use `npm install <package>` only
-when intentionally changing dependencies.
-
-Run project checks from the same container shell:
+## Verification
 
 ```bash
 npm --prefix ui test -- --runInBand
 npm --prefix ui run build
 npm --prefix ui run test:e2e
-
 npm --prefix backend test -- --runInBand
 npm --prefix backend run type-check
 npm --prefix backend run lint:portability
 ```
 
-See [Repository and deployment setup](docs/getting-started.md) for the initial
-Supabase, GitHub, and Cloudflare configuration.
+Jest covers UI state and service boundaries, including structured output parsing, partial failures, timeouts, quota validation, Jev candidate mapping, invalid decisions, and judge fallback. Playwright covers browser flows; it is a separate suite and is not run by the current GitHub Actions checks. Prompt evaluation cases in `backend/evaluations/` are an additional AI-specific regression layer. GitHub Actions runs `npm ci`, Jest, backend type and portability checks, and the Next.js static build. Backend pull requests deploy to staging and `main` deploys to production; Cloudflare Pages builds previews and production from Git.
 
-## Cloudflare Pages
+## Monetization status and license
 
-Connect this GitHub repository to Cloudflare Pages with:
+A Stripe token-purchase subsystem exists as a monetization prototype, but payment functions are intentionally disabled in the current deployment. The deployed public demo uses a weekly anonymous allowance; old token-package prices are not a live offering.
 
-- Production branch: `main`
-- Root directory: `ui`
-- Framework preset: `Next.js (Static HTML Export)`
-- Build command: `npm run build`
-- Build output directory: `out`
-- Environment variable `NODE_VERSION`: `22`
-- Build watch include path: `ui/*`
-- Build watch exclude path: `ui/*.md`
-
-Add the three `NEXT_PUBLIC_*` variables above to both Cloudflare environments:
-Production uses production Supabase values and Preview uses staging Supabase
-values.
-
-The build-watch path prevents backend-only commits from starting a Pages build.
-The previous GitHub Pages workflow is not included in this monorepo. Disable
-the old GitHub Pages project only after the Cloudflare `*.pages.dev` deployment
-is verified.
-
-## GitHub Actions
-
-- `.github/workflows/ui.yml` tests and builds only for non-documentation changes
-  under `ui/`.
-- `.github/workflows/backend.yml` checks only non-documentation changes under
-  `backend/`. Pull requests validate and deploy to staging; changes merged to
-  `main` validate and deploy to production.
-
-Never push directly to `main`. Work on an `agent/*` branch and open a pull
-request; only the repository owner merges it.
-
-## License and usage
-
-**This is proprietary software. All rights are reserved.**
-
-This repository is publicly accessible for viewing only. No permission is
-granted to use, copy, modify, distribute, deploy, integrate, reproduce, or
-create derivative works from its code or other project materials without the
-repository owner's prior written permission.
-
-To request permission, contact the repository owner before using any part of
-the project. See [LICENSE](LICENSE) for the complete terms.
+This repository is proprietary and view-only. See [LICENSE](LICENSE) for the complete terms.

@@ -1,3 +1,5 @@
+> **Historical reference:** This document may describe earlier providers, limits, or deployment steps. For the current public demo, use the [root README](../../README.md), current source configuration, and deployment workflow. Stripe payment functions are a disabled prototype, not live endpoints.
+
 # Development Guide
 
 Practical guide for daily development, including setup, commands, patterns, and conventions for the AI Text Enhancer project.
@@ -261,7 +263,6 @@ Defined in `src/app/globals.css`:
      'General Assistant': 'editor',
      'Summarizer Assistant': 'summarizer',
      'Professional Email Assistant': 'email_assistant',
-     'Social Media Assistant': 'social_media_assistant',
      'My Custom Role': 'my_custom_role',  // Add this
    };
    ```

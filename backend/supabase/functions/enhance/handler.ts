@@ -108,7 +108,7 @@ function handleError(
   requestId: string,
 ): Response {
   // Always log full error details for admin monitoring
-  console.error(`[ERROR][${requestId}]`, error);
+  console.error(`[ERROR][${requestId}]`, { name: (error as Error)?.name ?? 'Error', code: (error as { code?: string })?.code ?? 'INTERNAL_ERROR' });
 
   // Helper to build error response
   const buildErrorResponse = (code: string, message?: string) => {

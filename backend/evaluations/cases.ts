@@ -67,29 +67,6 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
     ],
   },
   {
-    id: 'social-disabled-emoji',
-    roleId: 'social_media_assistant',
-    language: 'en',
-    userText: 'Our accessibility workshop is free on 21 June. Registration closes on 18 June.',
-    options: { format: true, tone: 'Engaging', addEmojis: false },
-    checks: [
-      { type: 'contains', value: '21 June' },
-      { type: 'contains', value: '18 June' },
-      { type: 'no-emoji' },
-    ],
-  },
-  {
-    id: 'social-enabled-emoji',
-    roleId: 'social_media_assistant',
-    language: 'en',
-    userText: 'Join our community cleanup this Saturday at Riverside Park.',
-    options: { addEmojis: true, tone: 'Cheerful' },
-    checks: [
-      { type: 'contains', value: 'Riverside Park' },
-      { type: 'matches', value: '\\p{Extended_Pictographic}', flags: 'u' },
-    ],
-  },
-  {
     id: 'combined-style-controls',
     roleId: 'editor',
     language: 'en',

@@ -7,7 +7,7 @@ The user writes one source text, configures one or more AI assistants, and recei
 An **assistant** is one saved combination of:
 
 - a **model**: which AI service processes the request;
-- a **role**: the assistant's primary job, such as editing, summarizing, writing an email, or creating a social post;
+- a **role**: the assistant's primary job, such as editing, summarizing, or writing an email;
 - **options**: extra changes such as shortening, tone, formality, translation, or emojis;
 - an **enabled** switch: only enabled assistants run.
 
@@ -44,7 +44,7 @@ The UI implementation is mainly in [the assistant page](../ui/src/app/text-ai-as
   "assistants": [
     {
       "id": "1",
-      "model": "gemini-flash",
+      "model": "qwen-qwen3-30b-a3b-instruct-2507",
       "aiRoleId": "email_assistant",
       "userText": "Ask Dana to send the report by Tuesday.",
       "contextText": "Dana already prepared the first draft.",
@@ -75,7 +75,7 @@ flowchart TD
 
     PARALLEL --> LOOKUP["Load selected role and model configuration"]
     LOOKUP --> PROMPT["Build system and user prompts"]
-    PROMPT --> CONNECTOR["Select Gemini or OpenRouter connector"]
+    PROMPT --> CONNECTOR["Select OpenRouter connector"]
     CONNECTOR --> LLM["Send request to the exact selected model"]
     LLM --> JSON["Require and locally validate { text: string }"]
     JSON --> RESULT["Create success or per-assistant error result"]
@@ -119,7 +119,7 @@ The detailed role comes from [roles.config.ts](../backend/src/config/roles.confi
 
 [models.config.ts](../backend/src/config/models.config.ts) maps the public model selected by the user to its provider model ID and structured-output capability. Selection is manual: there is currently no automatic routing or silent model replacement.
 
-The matching provider connector sends the prompts, enforces its timeout, and requests JSON output. Gemini uses its native schema. OpenRouter uses strict JSON Schema only when the model metadata enables it; otherwise it uses JSON mode.
+The matching provider connector sends the prompts, enforces its timeout, and requests JSON output. Current demo models use OpenRouter. The connector requests strict JSON Schema when model metadata enables it; otherwise it uses JSON mode.
 
 [output-contract.config.ts](../backend/src/config/output-contract.config.ts) defines the shared response shape and validates the provider response again locally:
 
@@ -137,7 +137,6 @@ Missing, malformed, empty, or additional output fields become an `LLM_ERROR` for
 flowchart LR
     B["One batch"] --> A1["Editor assistant"]
     B --> A2["Email assistant"]
-    B --> A3["Social assistant"]
     A1 --> OK1["Success"]
     A2 --> ERR["Provider error"]
     A3 --> OK3["Success"]

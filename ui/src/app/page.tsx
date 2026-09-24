@@ -1,93 +1,39 @@
-import Link from "next/link";
-import { ArrowRight, Sparkles, Zap, Shield } from "lucide-react";
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 
 export default function Home() {
   return (
-    <div className="container mx-auto px-4 py-12">
-      {/* Hero Section */}
-      <section className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-primary text-sm font-medium">
-          <Sparkles className="h-4 w-4" />
-          <span>Powered by Advanced AI</span>
-        </div>
-        
-        <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
-          AI Text Enhancer
-        </h1>
-        
-        <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-          Transform your text with powerful AI assistants. Summarize, translate, 
-          correct grammar, and enhance your writing with cutting-edge technology.
+    <div className="container mx-auto px-4 py-12 space-y-16">
+      <section className="max-w-4xl mx-auto text-center space-y-6">
+        <p className="text-secondary font-medium">AI Text Enhancer</p>
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight">Stop rewriting the same prompt every time.</h1>
+        <p className="text-lg md:text-xl text-muted-foreground">
+          Improve emails, messages, translations, and everyday writing with reusable AI assistants. Run the same text through different models and configurations, compare the results, and reuse the workflows that work for you.
         </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link
-            href="/text-ai-assistants"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg transition-all transform hover:scale-105 shadow-lg"
-          >
-            Get Started
-            <ArrowRight className="h-5 w-5" />
-          </Link>
-          
-          <Link
-            href="/about"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-card hover:bg-muted border border-border text-foreground font-semibold rounded-lg transition-colors"
-          >
-            Learn More
-          </Link>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="grid md:grid-cols-3 gap-8 mb-16">
-        <div className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors">
-          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-            <Zap className="h-6 w-6 text-primary" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Lightning Fast</h3>
-          <p className="text-muted-foreground">
-            Get instant results with our optimized AI models. Process your text in seconds.
-          </p>
-        </div>
-
-        <div className="p-6 bg-card border border-border rounded-lg hover:border-secondary/50 transition-colors">
-          <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
-            <Sparkles className="h-6 w-6 text-secondary" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Multiple AI Tools</h3>
-          <p className="text-muted-foreground">
-            Access 8+ AI assistants: summarize, translate, grammar check, and more.
-          </p>
-        </div>
-
-        <div className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors">
-          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-            <Shield className="h-6 w-6 text-primary" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Privacy Focused</h3>
-          <p className="text-muted-foreground">
-            Your data is secure. We process your text with enterprise-grade security.
-          </p>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-border rounded-2xl p-12 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          Ready to enhance your text?
-        </h2>
-        <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Join thousands of users who trust AI Text Enhancer for their writing needs.
-        </p>
-        <Link
-          href="/text-ai-assistants"
-          className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg transition-all transform hover:scale-105 shadow-lg"
-        >
-          Try It Now
-          <ArrowRight className="h-5 w-5" />
+        <Link href="/text-ai-assistants" className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary-hover">
+          Try AI Text Enhancer <ArrowRight className="h-5 w-5" />
         </Link>
+        <p className="text-sm text-muted-foreground">No traditional signup · weekly demo allowance</p>
+      </section>
+
+      <section className="max-w-4xl mx-auto space-y-4" aria-labelledby="purpose-heading">
+        <h2 id="purpose-heading" className="text-3xl font-semibold">Keep the setup. Change the text.</h2>
+        <p className="text-muted-foreground text-lg">General-purpose chats often make you restate the tone, style, reference context, transformations, and number of alternatives for recurring writing tasks. A workflow saves the assistant setup so you can start with your text next time.</p>
+      </section>
+
+      <section className="grid md:grid-cols-2 gap-5" aria-label="Product capabilities">
+        <article className="p-6 bg-card border border-border rounded-xl space-y-2"><h2 className="text-xl font-semibold">Reusable workflows</h2><p className="text-muted-foreground">Save a combination of assistants and settings for a recurring task, such as Formal Email, and switch back to it later in this browser.</p></article>
+        <article className="p-6 bg-card border border-border rounded-xl space-y-2"><h2 className="text-xl font-semibold">Multiple AI models</h2><p className="text-muted-foreground">Try the demo’s available models through one interface. Assistants in a workflow run in parallel, and each result stays available for comparison.</p></article>
+        <article className="p-6 bg-card border border-border rounded-xl space-y-2"><h2 className="text-xl font-semibold">Specialized assistants</h2><p className="text-muted-foreground">Choose a General Assistant, Summarizer Assistant, or Professional Email Assistant. Each has a distinct writing task.</p></article>
+        <article className="p-6 bg-card border border-border rounded-xl space-y-2"><h2 className="text-xl font-semibold">Context and transformations</h2><p className="text-muted-foreground">Keep source text separate from optional reference context. Configure edits, length, formatting, formality, tone, language level, translation, and emojis.</p></article>
+      </section>
+
+      <section className="rounded-2xl border border-secondary/50 bg-secondary/10 p-7 md:p-10 space-y-4" aria-labelledby="jev-heading">
+        <p className="text-secondary text-sm font-semibold uppercase tracking-wide">Compare alternatives</p>
+        <h2 id="jev-heading" className="text-3xl font-semibold">Results evaluated with Jev</h2>
+        <p className="text-muted-foreground max-w-3xl">When at least two assistants return valid results, Jev evaluates them and returns a selected candidate with relative probabilities. Every generated result remains available, so you can make the final choice.</p>
+        <Link href="/text-ai-assistants" className="inline-flex items-center gap-2 text-secondary font-semibold hover:underline">Try a workflow <ArrowRight className="h-4 w-4" /></Link>
       </section>
     </div>
   );
 }
-

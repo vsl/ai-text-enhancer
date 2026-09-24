@@ -1,6 +1,6 @@
 # API Reference
 
-**Last Updated:** August 2026
+**Last Updated:** September 2026
 
 Complete API specification for the AI Text Enhancer Backend, including authentication, endpoints, request/response schemas, error codes, and examples.
 
@@ -30,9 +30,9 @@ The AI Text Enhancer Backend is a serverless API that processes batches of text 
 - **Batch Processing:** Handle 1-10 enhancement tasks in a single request
 - **Parallel Execution:** All tasks processed concurrently for speed
 - **Flexible Enhancement:** Rich set of transformation options
-- **Multi-Model Support:** Production access through Gemini and OpenRouter
+- **Multi-Model Support:** Configured demo models through OpenRouter
 - **Tier-Based Access:** Three-tier system (Free, Plus, Premium) with different limits
-- **Token-Based Billing:** Daily token quota per tier with atomic deduction
+- **Weekly Demo Allowance:** Anonymous users receive a weekly token allowance with usage accounting
 
 **Base URL:** `http://localhost:54321/functions/v1` (local) or your production URL
 
@@ -42,7 +42,7 @@ The AI Text Enhancer Backend is a serverless API that processes batches of text 
 
 ### Overview
 
-The API uses **Supabase Auth** for authentication with JWT tokens and database-backed user profiles. Authentication supports multiple providers including email/password, OAuth (Google, GitHub, Apple, Facebook, Twitter, Azure), and **anonymous sign-ins**.
+The API uses **Supabase Auth** for authentication with JWT tokens and database-backed user profiles. The public demo uses **anonymous sign-ins**. JWT validation and user profiles also support internal/admin flows.
 
 ### Method
 
@@ -78,7 +78,7 @@ curl -X POST 'http://localhost:54321/auth/v1/signup' \
 ```
 
 **Anonymous User Features:**
-- Same free tier benefits (50k welcome tokens)
+- Weekly anonymous allowance (currently 50,000 tokens; configurable in the database)
 - No email required - users identified by UUID only
 - Automatic profile creation with tier and quota
 - Rate limited: 30 anonymous sign-ins per hour per IP address
@@ -100,11 +100,11 @@ curl -X POST 'http://localhost:54321/auth/v1/signup' \
 
 | Tier | Token Quota | User Text Limit | Context Text Limit | Batch Size | Model Access |
 |------|-------------|-----------------|-------------------|------------|--------------|
-| **Free** | 50,000 tokens (welcome) | 500 chars | 800 chars | 3 | Both production models |
-| **Plus** | 500,000 tokens | 2,000 chars | 3,000 chars | 10 | Both production models |
-| **Premium** | 5,000,000 tokens | 5,000 chars | 10,000 chars | 10 | Both production models |
+| **Free** | 50,000 tokens (weekly anonymous demo) | 1,000 chars | 2,500 chars | 6 | All configured models |
+| **Plus** | 500,000 tokens | 2,000 chars | 3,000 chars | 10 | All configured models |
+| **Premium** | 5,000,000 tokens | 5,000 chars | 10,000 chars | 10 | All configured models |
 
-**Note:** Token quotas are NOT daily limits - they are one-time balances that deplete with usage. Tokens can be purchased or granted by admins.
+**Note:** The deployed anonymous demo allowance resets weekly. Token purchases are a disabled prototype and are not available in the current deployment.
 
 ### Authentication Flow
 
@@ -465,8 +465,8 @@ interface BatchRequest {
 ```typescript
 interface AssistantConfiguration {
   id: string;                   // Unique client-side identifier
-  model: string;                // Model identifier (e.g., 'gemini-flash')
-  aiRoleId: string;             // editor | summarizer | email_assistant | social_media_assistant
+  model: string;                // Model identifier (e.g., 'qwen-qwen3-30b-a3b-instruct-2507')
+  aiRoleId: string;             // editor | summarizer | email_assistant
   userText: string;             // Text to enhance (tier-based max length)
   contextText?: string;         // Optional context (tier-based max length)
   options: TransformationOptions;
@@ -540,7 +540,7 @@ interface SuccessResult {
   id: string;              // Matches request assistant.id
   status: 'success';
   enhancedText: string;    // AI-generated enhanced text
-  total_tokens: number;    // Tokens consumed (for billing)
+  total_tokens: number;    // Tokens consumed for quota accounting
 }
 ```
 
@@ -602,7 +602,7 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
   "assistants": [
     {
       "id": "task-001",
-      "model": "gemini-flash",
+      "model": "qwen-qwen3-30b-a3b-instruct-2507",
       "aiRoleId": "editor",
       "userText": "this sentance has a typo and is unprofessional.",
       "options": {
@@ -622,7 +622,7 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
   "assistants": [
     {
       "id": "edit-01",
-      "model": "gemini-flash",
+      "model": "qwen-qwen3-30b-a3b-instruct-2507",
       "aiRoleId": "editor",
       "userText": "Quick summary of the meeting",
       "options": {
@@ -632,7 +632,7 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
     },
     {
       "id": "translate-01",
-      "model": "gemini-flash",
+      "model": "qwen-qwen3-30b-a3b-instruct-2507",
       "aiRoleId": "editor",
       "userText": "Welcome to our platform",
       "options": {
@@ -705,7 +705,6 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 |---------|------|-------------|----------------|
 | `editor` | Editor | Edits clarity, correctness, readability, and flow | All production models |
 | `summarizer` | Summarizer | Condenses text while preserving key information | All production models |
-| `social_media_assistant` | Social Media Assistant | Creates engaging, shareable social media content | All production models |
 | `email_assistant` | Email Assistant | Writes complete, ready-to-send emails | All production models |
 
 **Note:** Roles are configured in `src/config/roles.config.ts`.
