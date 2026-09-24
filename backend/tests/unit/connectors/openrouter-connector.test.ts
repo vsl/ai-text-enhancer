@@ -271,7 +271,39 @@ describe('OpenRouterConnector', () => {
         type: 'json_object',
       });
       expect(body.provider).toEqual({ require_parameters: true });
-      expect(body.reasoning).toEqual({ enabled: true });
+      expect(body).not.toHaveProperty('reasoning');
+    });
+
+    it.each([
+      ['openai/gpt-5-nano', 'no effort passed to the connector'],
+      ['qwen/qwen3-30b-a3b-instruct-2507', 'non-thinking model'],
+      ['openrouter/free', 'selected model capabilities are unknown'],
+    ])('omits reasoning for %s (%s)', async (model) => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"text":"ok"}' } }] }),
+      });
+
+      await connector.sendRequest({ model, systemPrompt: 'System', userPrompt: 'User' });
+
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body).not.toHaveProperty('reasoning');
+      expect(body).not.toHaveProperty('thinking');
+      expect(body).not.toHaveProperty('reasoning_effort');
+    });
+
+    it.each(['minimal', 'low', 'none'] as const)('passes configured reasoning effort %s for any model', async (reasoningEffort) => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"text":"ok"}' } }] }),
+      });
+
+      await connector.sendRequest({ model: 'configured-model', systemPrompt: 'System', userPrompt: 'User', reasoningEffort });
+
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.reasoning).toEqual({ effort: reasoningEffort });
     });
 
     it('uses strict JSON schema only when model metadata enables it', async () => {

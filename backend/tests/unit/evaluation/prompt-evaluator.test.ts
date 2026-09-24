@@ -112,6 +112,32 @@ describe('prompt evaluator', () => {
     expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('meticulous professional editor');
   });
 
+  it.each([
+    ['openai/gpt-5-nano', 'minimal'],
+    ['openrouter/free', undefined],
+    ['unconfigured/model', undefined],
+  ] as const)('uses model-config reasoning effort when evaluating %s', async (model, reasoningEffort) => {
+    const sendRequest = jest.fn().mockResolvedValue({
+      text: '{"text":"ok"}',
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      model,
+      provider: 'openrouter',
+    });
+    const report = await runPromptEvaluation({
+      candidates: [{ provider: 'openrouter', model, structuredOutputMode: 'json-schema' }],
+      cases: [evaluationCase],
+      apiKeys: { openrouter: 'key' },
+      connectors: { openrouter: { name: 'openrouter', supportsStreaming: false, sendRequest } },
+      fetchImpl: jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [{ id: model, supported_parameters: ['response_format'] }] }),
+      }) as unknown as typeof fetch,
+    });
+
+    expect(sendRequest).toHaveBeenCalledWith(expect.objectContaining({ model, reasoningEffort }));
+    expect(report.candidates[0].settings.reasoningEffort).toBe(reasoningEffort);
+  });
+
   it('skips missing keys safely and records malformed structured output', async () => {
     const missingKeyReport = await runPromptEvaluation({
       candidates: [{ provider: 'gemini', model: 'candidate', structuredOutputMode: 'json-schema' }],
