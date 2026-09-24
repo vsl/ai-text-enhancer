@@ -104,8 +104,8 @@ test.describe('Text Enhancement Flow', () => {
     // Cancel button should appear
     await expect(page.getByTestId('cancel-button')).toBeVisible();
     
-    // Loading spinner should be visible in assistant cards (check for role="status")
-    await expect(page.locator('[role="status"]').first()).toBeVisible();
+    // Thinking indicator should be visible in assistant cards
+    await expect(page.getByRole('status', { name: 'Assistant is thinking' }).first()).toContainText('Thinking...');
   });
 
   test('should display results after enhancement', async ({ page }) => {

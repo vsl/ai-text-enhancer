@@ -317,7 +317,8 @@ This generates a fully static site in the `out/` directory that can be served by
 
 ## 📄 License
 
-This project is private and not licensed for public use.
+This project is proprietary and may not be used without prior written
+permission. See the repository's [LICENSE](../LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
