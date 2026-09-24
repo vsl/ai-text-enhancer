@@ -136,3 +136,15 @@ is verified.
 
 Never push directly to `main`. Work on an `agent/*` branch and open a pull
 request; only the repository owner merges it.
+
+## License and usage
+
+**This is proprietary software. All rights are reserved.**
+
+This repository is publicly accessible for viewing only. No permission is
+granted to use, copy, modify, distribute, deploy, integrate, reproduce, or
+create derivative works from its code or other project materials without the
+repository owner's prior written permission.
+
+To request permission, contact the repository owner before using any part of
+the project. See [LICENSE](LICENSE) for the complete terms.

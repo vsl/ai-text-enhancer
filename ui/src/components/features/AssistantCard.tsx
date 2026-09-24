@@ -5,7 +5,6 @@ import { Check } from 'lucide-react';
 import { ToggleSwitch } from '@/components/features/ToggleSwitch';
 import { ConfigSummaryTags } from '@/components/features/ConfigSummaryTags';
 import { ResultTextarea } from '@/components/features/ResultTextarea';
-import { LoadingSpinner } from '@/components/features/LoadingSpinner';
 import { InfoTooltip } from '@/components/features/InfoTooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AiConfig, Result } from '@/lib/types';
@@ -141,9 +140,13 @@ export function AssistantCard({
       {/* Assistant Card Body */}
       <div className="bg-card rounded-lg p-4 min-h-[100px] flex flex-col">
         {result?.isLoading ? (
-          <div className="mx-auto my-8">
-            <LoadingSpinner />
-            <span className="sr-only">Loading...</span>
+          <div
+            className="m-auto flex flex-col items-center gap-3 py-8 text-secondary"
+            role="status"
+            aria-label="Assistant is thinking"
+          >
+            <span className="animate-bounce text-3xl" aria-hidden="true">✍️</span>
+            <span className="text-sm font-medium">Thinking...</span>
           </div>
         ) : result ? (
           <div className="flex flex-col">

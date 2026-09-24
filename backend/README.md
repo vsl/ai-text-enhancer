@@ -1,6 +1,6 @@
 # AI Text Enhancer Backend
 
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+[![License: Proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](../LICENSE)
 [![TypeScript](https://img.shields.io/badge/--typescript-3178C6?logo=typescript&logoColor=ffffff)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/--supabase-3ECF8E?logo=supabase&logoColor=ffffff)](https://supabase.com/)
 
@@ -642,4 +642,5 @@ For detailed instructions on deploying to a production Supabase project, see the
 
 ## License
 
-This project is licensed under the ISC License. See the `package.json` file for details.
+This project is proprietary and may not be used without prior written
+permission. See the repository's [LICENSE](../LICENSE) file for details.
