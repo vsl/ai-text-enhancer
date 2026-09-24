@@ -72,7 +72,8 @@ describe('ConfigEditorModal Integration Tests', () => {
         />
       );
 
-      expect(screen.getByText('Editing: General Assistant')).toBeInTheDocument();
+      expect(screen.getByText('Edit assistant')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'General Assistant' })).toBeInTheDocument();
     });
 
     it('should display correct title in add mode', () => {
@@ -86,7 +87,8 @@ describe('ConfigEditorModal Integration Tests', () => {
         />
       );
 
-      expect(screen.getByText('Add New Assistant')).toBeInTheDocument();
+      expect(screen.getByText('Add assistant')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'New AI Assistant' })).toBeInTheDocument();
     });
   });
 
@@ -374,7 +376,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect((toneSelect as HTMLSelectElement).value).toBe('Polite');
     });
 
-    it('should display formality emoji', () => {
+    it('shows formality without a decorative emoji', () => {
       render(
         <ConfigEditorModal
           isOpen={true}
@@ -386,10 +388,10 @@ describe('ConfigEditorModal Integration Tests', () => {
       );
 
       const formalityLabel = screen.getByText(/formality/i);
-      expect(formalityLabel.textContent).toContain('😐'); // Neutral emoji
+      expect(formalityLabel.textContent).not.toContain('😐');
     });
 
-    it('should display tone emoji', () => {
+    it('shows tone without a decorative emoji', () => {
       render(
         <ConfigEditorModal
           isOpen={true}
@@ -401,7 +403,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       );
 
       const toneLabel = screen.getByText(/tone/i);
-      expect(toneLabel.textContent).toContain('😎'); // Confident emoji
+      expect(toneLabel.textContent).not.toContain('😎');
     });
   });
 
@@ -739,9 +741,9 @@ describe('ConfigEditorModal Integration Tests', () => {
         />
       );
 
-      expect(screen.getByText('Base Setup')).toBeInTheDocument();
+      expect(screen.getByText('Base setup')).toBeInTheDocument();
       expect(screen.getByText('Actions')).toBeInTheDocument();
-      expect(screen.getByText('Style')).toBeInTheDocument();
+      expect(screen.getByText('Writing style')).toBeInTheDocument();
       expect(screen.getByText('Language')).toBeInTheDocument();
     });
 

@@ -15,20 +15,13 @@ export function CharacterCounter({
   maxLength,
   label,
 }: CharacterCounterProps) {
-  const percentage = (currentLength / maxLength) * 100;
-
-  const getColorClass = () => {
-    if (percentage > 90) return 'text-red-600 dark:text-red-400';
-    if (percentage > 70) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-green-600 dark:text-green-400';
-  };
+  const overLimit = currentLength > maxLength;
 
   return (
-    <div className="text-xs text-muted-foreground mt-1">
-      <span className={getColorClass()}>
+    <div className={`mt-1 text-right text-xs tabular-nums ${overLimit ? 'text-destructive' : 'text-tertiary'}`}>
+      <span>
         {currentLength} / {maxLength}
       </span>
-      {' '}characters
     </div>
   );
 }

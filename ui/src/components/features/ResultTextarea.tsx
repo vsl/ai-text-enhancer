@@ -42,7 +42,7 @@ export function ResultTextarea({
       value={value}
       onChange={onChange}
       readOnly={isReadOnly}
-      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground font-[inherit] text-base transition-all duration-300 focus:outline-none focus:border-primary resize-none"
+      className="block w-full resize-none overflow-hidden border-0 bg-transparent p-0 font-[inherit] text-sm leading-7 text-muted-foreground focus:outline-none"
       {...props}
     />
   );

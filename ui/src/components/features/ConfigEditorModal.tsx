@@ -19,9 +19,7 @@ import {
   AVAILABLE_AI_ROLES,
   OPTIONS_CHECKBOXES,
   FORMALITY,
-  FORMALITY_EMOJIS,
   TONES,
-  TONE_EMOJIS,
   LANGUAGE_LEVELS,
   LANGUAGES,
   TOOLTIP_TEXTS,
@@ -154,41 +152,41 @@ export function ConfigEditorModal({
   const levelTooltipText = editedConfig.options.translateTo
     ? "Adjusts the complexity of the translated language."
     : "Adjusts the complexity of the original language.";
+  const selectClassName = "w-full min-w-0 rounded-xl border border-border-strong bg-input px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none";
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[600px] bg-card border-border flex flex-col p-0"
+        className="w-full sm:max-w-[550px] gap-0 border-border-strong bg-card p-0 shadow-none"
         aria-describedby="editor-modal-description"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           modelSelectRef.current?.focus({ preventScroll: true });
         }}
       >
-        <SheetHeader className="px-8 pt-6 pb-4 border-b border-border flex-shrink-0">
-          <SheetTitle id="editor-modal-title" className="text-xl font-semibold flex items-center gap-2">
-            {mode === "edit"
-              ? `Editing: ${getAiRoleLabel(configData.aiRoleId)}`
-              : "Add New Assistant"}
+        <SheetHeader className="shrink-0 border-b border-border px-6 pb-5 pt-6 sm:px-8">
+          <span className="text-sm text-tertiary">{mode === "edit" ? "Edit assistant" : "Add assistant"}</span>
+          <SheetTitle id="editor-modal-title" className="text-2xl font-semibold tracking-tight">
+            {mode === "edit" ? getAiRoleLabel(configData.aiRoleId) : "New AI Assistant"}
           </SheetTitle>
           <SheetDescription id="editor-modal-description" className="sr-only">
             Configure AI assistant settings including model, role, actions, style, and language options.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
           <fieldset className="border-none">
             <legend className="sr-only">Configuration Options</legend>
 
             {/* Base Setup */}
-            <div className="py-6 first:pt-0">
-              <h4 className="text-base font-semibold mb-4">Base Setup</h4>
-              <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-tertiary">Base setup</h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label
                     htmlFor="model"
-                    className="text-sm font-medium flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
                     Model <InfoTooltip text={TOOLTIP_TEXTS.model} />
                   </label>
@@ -198,7 +196,7 @@ export function ConfigEditorModal({
                     ref={modelSelectRef}
                     value={editedConfig.model}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
+                    className={selectClassName}
                   >
                     {AVAILABLE_MODELS.map((m) => {
                       const isAvailable = tierLimits.availableModels.includes(m);
@@ -217,16 +215,16 @@ export function ConfigEditorModal({
                 <div className="space-y-2">
                   <label
                     htmlFor="aiRoleId"
-                    className="text-sm font-medium flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
-                    AI Role <InfoTooltip text={TOOLTIP_TEXTS.aiRole} position="left" />
+                    AI role <InfoTooltip text={TOOLTIP_TEXTS.aiRole} position="left" />
                   </label>
                   <select
                     id="aiRoleId"
                     name="aiRoleId"
                     value={editedConfig.aiRoleId}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
+                    className={selectClassName}
                   >
                     {AVAILABLE_AI_ROLES.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -239,44 +237,41 @@ export function ConfigEditorModal({
             </div>
 
             {/* Actions */}
-            <div className="py-6 border-t border-border">
-              <h4 className="text-base font-semibold mb-4">Actions</h4>
-              <div className="grid grid-cols-3 gap-4">
-                {Object.entries(OPTIONS_CHECKBOXES).map(([key, label], index) => (
-                  <div key={key} className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      id={key}
-                      name={key}
-                      checked={editedConfig.options[key] as boolean}
-                      onChange={handleChange}
-                      className="mt-1 w-4 h-4 rounded border-border bg-background checked:bg-primary focus:ring-primary cursor-pointer"
-                    />
-                    <label
-                      htmlFor={key}
-                      className="text-sm flex items-center gap-1 cursor-pointer"
-                    >
-                      {label}
-                      <InfoTooltip
-                        text={TOOLTIP_TEXTS[key as keyof typeof TOOLTIP_TEXTS]}
-                        position={(index + 1) % 3 === 0 ? "left" : "right"}
+            <div className="mt-8">
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-tertiary">Actions</h4>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {Object.entries(OPTIONS_CHECKBOXES).map(([key, label]) => {
+                  const checked = Boolean(editedConfig.options[key]);
+                  return (
+                  <div key={key} className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-sm ${checked ? 'border-violet-border bg-violet-surface/70 text-foreground' : 'border-border-strong bg-input text-muted-foreground'}`}>
+                    <label htmlFor={key} className="flex flex-1 cursor-pointer items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id={key}
+                        name={key}
+                        checked={editedConfig.options[key] as boolean}
+                        onChange={handleChange}
+                        className="size-5 shrink-0 cursor-pointer rounded border border-border-strong bg-surface accent-primary focus-visible:outline-2 focus-visible:outline-primary"
                       />
+                      <span>{label}</span>
                     </label>
+                    <InfoTooltip text={TOOLTIP_TEXTS[key as keyof typeof TOOLTIP_TEXTS]} />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Style */}
-            <div className="py-6 border-t border-border">
-              <h4 className="text-base font-semibold mb-4">Style</h4>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="mt-8">
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-tertiary">Writing style</h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label
                     htmlFor="formality"
-                    className="text-sm font-medium flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
-                    Formality {FORMALITY_EMOJIS[editedConfig.options.formality]}
+                    Formality
                     <InfoTooltip text={TOOLTIP_TEXTS.formality} />
                   </label>
                   <select
@@ -284,7 +279,7 @@ export function ConfigEditorModal({
                     name="formality"
                     value={editedConfig.options.formality}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
+                    className={selectClassName}
                   >
                     {FORMALITY.map((f) => (
                       <option key={f} value={f}>
@@ -296,9 +291,9 @@ export function ConfigEditorModal({
                 <div className="space-y-2">
                   <label
                     htmlFor="tone"
-                    className="text-sm font-medium flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
-                    Tone {TONE_EMOJIS[editedConfig.options.tone]}
+                    Tone
                     <InfoTooltip text={TOOLTIP_TEXTS.tone} position="left" />
                   </label>
                   <select
@@ -306,7 +301,7 @@ export function ConfigEditorModal({
                     name="tone"
                     value={editedConfig.options.tone}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
+                    className={selectClassName}
                   >
                     {TONES.map((t) => (
                       <option key={t} value={t}>
@@ -319,13 +314,13 @@ export function ConfigEditorModal({
             </div>
 
             {/* Language */}
-            <div className="py-6 border-t border-border">
-              <h4 className="text-base font-semibold mb-4">Language</h4>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="mt-8">
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-tertiary">Language</h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label
                     htmlFor="languageLevel"
-                    className="text-sm font-medium flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
                     Level
                     <InfoTooltip text={levelTooltipText} />
@@ -335,7 +330,7 @@ export function ConfigEditorModal({
                     name="languageLevel"
                     value={editedConfig.options.languageLevel}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
+                    className={selectClassName}
                   >
                     {LANGUAGE_LEVELS.map((l) => (
                       <option key={l.value} value={l.value}>
@@ -347,7 +342,7 @@ export function ConfigEditorModal({
                 <div className="space-y-2">
                   <label
                     htmlFor="translateTo"
-                    className="text-sm font-medium flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm font-medium"
                   >
                     Translate to
                     <InfoTooltip text={TOOLTIP_TEXTS.translateTo} position="left" />
@@ -357,7 +352,7 @@ export function ConfigEditorModal({
                     name="translateTo"
                     value={editedConfig.options.translateTo}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary transition-colors"
+                    className={selectClassName}
                   >
                     {LANGUAGES.map((lang) => (
                       <option key={lang.code} value={lang.code}>
@@ -371,12 +366,12 @@ export function ConfigEditorModal({
           </fieldset>
         </div>
 
-        <SheetFooter className="px-8 py-4 border-t border-border flex-shrink-0">
+        <SheetFooter className="shrink-0 border-t border-border bg-card px-6 py-4 sm:px-8">
           <div className="flex justify-end gap-3 w-full">
             <Button
               onClick={handleClose}
               variant="secondary"
-              className="bg-muted hover:bg-muted-foreground/20 text-foreground cursor-pointer"
+              className="h-10 cursor-pointer border border-border-strong bg-surface px-4 text-foreground hover:bg-surface-hover"
               title="Discard changes and close editor"
               type="button"
             >
@@ -385,13 +380,13 @@ export function ConfigEditorModal({
             <Button
               onClick={handleSaveClick}
               disabled={isSaveDisabled}
-              className="bg-primary hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed cursor-pointer"
+              className="h-10 cursor-pointer bg-primary px-4 text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
               title={
                 isSaveDisabled ? "No changes to save" : "Save this configuration"
               }
               type="button"
             >
-              Save Changes
+              Save changes
             </Button>
           </div>
         </SheetFooter>

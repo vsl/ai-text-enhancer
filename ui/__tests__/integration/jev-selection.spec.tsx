@@ -43,12 +43,12 @@ const handlers = {
 
 describe('Jev selection badge', () => {
   it('visibly and accessibly marks the selected successful card without “Best” language', () => {
-    render(<AssistantCard config={config} result={result} jevSelection={selection} {...handlers} />);
+    render(<AssistantCard config={config} result={result} jevSelection={selection} featured {...handlers} />);
     const badge = screen.getByTestId('jev-selection-7');
-    expect(badge).toHaveTextContent('✨ Chosen by Jev');
+    expect(badge).toHaveTextContent('Chosen by Jev');
     expect(badge).toHaveAttribute('title', 'Selected by Jev from the successful results in this run.');
     expect(screen.getByTestId('jev-probability-7')).toHaveTextContent('Jev 80%');
-    expect(screen.getByTestId('assistant-card-7')).toHaveClass('ring-2');
+    expect(screen.getByTestId('assistant-card-7')).toHaveClass('border-violet-border');
     expect(screen.queryByText(/best|confidence/i)).not.toBeInTheDocument();
   });
 
