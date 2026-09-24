@@ -6,8 +6,8 @@ import { ROLES, getRoleById, isModelAllowedForRole } from '../../../src/config/r
 
 describe('Roles Configuration', () => {
   describe('ROLES', () => {
-    it('should have exactly 4 roles defined', () => {
-      expect(ROLES.length).toBe(4);
+    it('should have exactly 3 roles defined', () => {
+      expect(ROLES.length).toBe(3);
     });
 
     it('should have all required fields for each role', () => {
@@ -41,13 +41,6 @@ describe('Roles Configuration', () => {
       expect(role?.systemPrompt).toContain('summarizer and analyst');
     });
 
-    it('should include social_media_assistant role', () => {
-      const role = ROLES.find((r) => r.id === 'social_media_assistant');
-      expect(role).toBeDefined();
-      expect(role?.name).toBe('Social Media Assistant');
-      expect(role?.systemPrompt).toContain('social media');
-    });
-
     it('should include email_assistant role', () => {
       const role = ROLES.find((r) => r.id === 'email_assistant');
       expect(role).toBeDefined();
@@ -58,7 +51,6 @@ describe('Roles Configuration', () => {
     it.each<[string, string[]]>([
       ['editor', ['meticulous professional editor', 'Correct grammar', 'Make proportionate edits', 'Quality standard:']],
       ['summarizer', ['expert summarizer and analyst', 'Preserve important names, figures, dates', 'facts, opinions, proposals', 'Quality standard:']],
-      ['social_media_assistant', ['expert social media copywriter', 'compelling hook', 'Do not introduce emojis', 'Quality standard:']],
       ['email_assistant', ['expert email writer', 'Always include a specific "Subject:" line', 'reference context', 'Quality standard:']],
     ])('should define distinct expertise and quality criteria for %s', (roleId, expectedPhrases) => {
       const role = getRoleById(roleId);
@@ -93,11 +85,7 @@ describe('Roles Configuration', () => {
       expect(role?.name).toBe('Summarizer');
     });
 
-    it('should return correct role for social_media_assistant', () => {
-      const role = getRoleById('social_media_assistant');
-      expect(role).not.toBeNull();
-      expect(role?.name).toBe('Social Media Assistant');
-    });
+
   });
 
   describe('isModelAllowedForRole', () => {

@@ -14,7 +14,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "AI Text Enhancer",
-  description: "Enhance your text with AI-powered assistants for summarization, translation, grammar correction, and more.",
+  description: "Turn repeated text-editing prompts into reusable multi-model workflows.",
   keywords: ["AI", "text enhancer", "summarization", "translation", "grammar", "paraphrasing"],
 };
 

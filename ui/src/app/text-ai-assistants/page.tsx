@@ -9,6 +9,7 @@ import { ConfigEditorModal } from '@/components/features/ConfigEditorModal';
 import { CharacterCounter } from '@/components/features/CharacterCounter';
 import { AssistantCard } from '@/components/features/AssistantCard';
 import { AiConfig } from '@/lib/types';
+import { orderConfigsForDisplay } from '@/lib/result-order';
 import { TOOLTIP_TEXTS, DEFAULT_OPTIONS, DEFAULT_WORKFLOW_NAMES, AVAILABLE_MODELS } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
 
@@ -41,6 +42,8 @@ function TextAIAssistantsContent() {
   } = useWorkflow();
 
   const { tierLimits, profile } = useAuth();
+
+  const displayedConfigs = orderConfigsForDisplay(configs, results, selection);
 
   // Local UI state
   const [isInputHighlighted, setIsInputHighlighted] = useState(false);
@@ -161,30 +164,14 @@ function TextAIAssistantsContent() {
         onCreate={handleCreateWorkflow}
         existingWorkflowNames={workflows.map((w) => w.name)}
       />
-      {profile && (
-        <div className="mx-auto w-full max-w-7xl px-4 mb-6">
-          <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-0.5">
-                <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-foreground">Weekly usage</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {profile.tokens_available.toLocaleString()} tokens remaining. Allowance resets Monday at 00:00 UTC.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main heading */}
-      <h1 className="text-center mb-8 text-secondary text-4xl font-semibold flex-shrink-0">
-        AI Text Enhancer({selectedWorkflow})
-      </h1>
+      <div className="mx-auto w-full px-4 mb-5 flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-secondary text-2xl font-semibold">{selectedWorkflow || 'AI Text Enhancer'}</h1>
+        {profile && (
+          <p className="text-sm text-muted-foreground" aria-label="Weekly demo allowance">
+            {profile.tokens_available.toLocaleString()} tokens left · resets Monday 00:00 UTC
+          </p>
+        )}
+      </div>
 
       {/* Two-column container */}
       <div className="flex flex-col md:flex-row gap-8 w-full mx-auto flex-grow items-start px-4">
@@ -355,7 +342,7 @@ function TextAIAssistantsContent() {
             id={`panel-${selectedWorkflow.toLowerCase().replace(/\s+/g, '-')}`}
           >
             <ul className="list-none grid gap-6 grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3" aria-label="Current AI Assistants">
-              {configs.map((config) => (
+              {displayedConfigs.map((config) => (
                 <AssistantCard
                   key={config.id}
                   config={config}
@@ -367,12 +354,7 @@ function TextAIAssistantsContent() {
                   onCopyResult={copyToClipboard}
                   onImproveVersion={handleImproveThisVersion}
                   copiedId={copiedId}
-                  jevSelection={
-                    selection?.status === 'success' &&
-                    selection.selectedResultId === config.id.toString()
-                      ? selection
-                      : undefined
-                  }
+                  jevSelection={selection?.status === 'success' ? selection : undefined}
                 />
               ))}
 
@@ -381,7 +363,7 @@ function TextAIAssistantsContent() {
                 <div className="relative">
                   <button
                     data-testid="add-assistant-button"
-                    className={`w-full bg-transparent border-2 border-dashed text-muted-foreground p-8 flex flex-col items-center justify-center gap-4 rounded-lg transition-all min-h-[320px] ${
+                    className={`w-full bg-transparent border-2 border-dashed text-muted-foreground p-8 flex flex-col items-center justify-center gap-4 rounded-lg transition-all min-h-[120px] ${
                       isBatchLimitReached
                         ? 'border-muted cursor-not-allowed opacity-50'
                         : 'border-border hover:border-primary hover:text-secondary hover:bg-surface-hover focus-visible:border-primary focus-visible:text-secondary focus-visible:bg-surface-hover cursor-pointer'

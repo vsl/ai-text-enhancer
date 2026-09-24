@@ -187,7 +187,7 @@ test.describe('Theme Toggle', () => {
     await page.waitForTimeout(500);
     
     // Navigate to another page
-    await page.goto('/about');
+    await page.goto('/text-ai-assistants');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
     
@@ -246,9 +246,7 @@ test.describe('Theme Toggle', () => {
     await page.waitForTimeout(500);
     
     // Navigate to multiple pages
-    await page.goto('/about');
-    await page.waitForTimeout(300);
-    await page.goto('/contact');
+    await page.goto('/text-ai-assistants');
     await page.waitForTimeout(300);
     await page.goto('/text-ai-assistants');
     await page.waitForTimeout(300);

@@ -18,9 +18,7 @@ export function Header() {
 
   const navItems = [
     { href: "/", label: "Home" },
-    { href: "/text-ai-assistants", label: "Text AI Assistants" },
-    { href: "/about", label: "About" },
-    // { href: "/contact", label: "Contact" },
+    { href: "/text-ai-assistants", label: "App" },
   ];
 
   const isActive = (href: string) => {

@@ -25,7 +25,7 @@ export interface BatchRequest {
 export interface AssistantConfiguration {
   id: string;                   // Unique client-side identifier
   model: string;                // Model identifier (e.g., 'open-router-free', 'openai-gpt-5-nano')
-  aiRoleId: string;             // AI persona (e.g., 'summarizer', 'editor', 'social_media_assistant', 'email_assistant')
+  aiRoleId: string;             // AI persona (e.g., 'summarizer', 'editor', 'email_assistant')
   userText: string;             // Text to enhance (max 500 chars)
   contextText?: string;         // Optional context (max 800 chars)
   options: TransformationOptions;

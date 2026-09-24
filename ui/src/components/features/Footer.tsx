@@ -10,25 +10,14 @@ export function Footer() {
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <a
-              href="https://github.com"
+              href="https://github.com/vsl/ai-text-enhancer"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors"
             >
               GitHub
             </a>
-            <a
-              href="/about"
-              className="hover:text-foreground transition-colors"
-            >
-              About
-            </a>
-            {/* <a
-              href="/contact"
-              className="hover:text-foreground transition-colors"
-            >
-              Contact
-            </a> */}
+
           </div>
         </div>
       </div>

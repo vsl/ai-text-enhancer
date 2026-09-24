@@ -1,3 +1,5 @@
+> **Historical reference:** This document may describe earlier providers, limits, or deployment steps. For the current public demo, use the [root README](../../README.md), current source configuration, and deployment workflow. Stripe payment functions are a disabled prototype, not live endpoints.
+
 # Getting Started
 
 Complete guide to setting up your development environment and making your first API call.

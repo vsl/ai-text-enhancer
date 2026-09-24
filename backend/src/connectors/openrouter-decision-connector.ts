@@ -32,7 +32,7 @@ export class OpenRouterDecisionConnector implements DecisionConnector {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`,
-            'HTTP-Referer': 'https://github.com/vorkov/ai-text-enhancer',
+            'HTTP-Referer': 'https://github.com/vsl/ai-text-enhancer',
             'X-Title': 'AI Text Enhancer',
           },
           body: JSON.stringify(request),

@@ -14,6 +14,7 @@ describe('OpenRouterConnector', () => {
   beforeEach(() => {
     connector = new OpenRouterConnector('test-api-key');
     delete process.env.LOG_LEVEL;
+    delete process.env.LANGSMITH_CAPTURE_CONTENT;
     jest.clearAllMocks();
   });
 
@@ -21,6 +22,7 @@ describe('OpenRouterConnector', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     delete process.env.LOG_LEVEL;
+    delete process.env.LANGSMITH_CAPTURE_CONTENT;
   });
 
   describe('sendRequest', () => {
@@ -477,6 +479,14 @@ describe('OpenRouterConnector', () => {
       expect(debugSpy).not.toHaveBeenCalled();
 
       process.env.LOG_LEVEL = 'debug';
+      await connector.sendRequest({
+        model: 'openrouter/free',
+        systemPrompt: 'System prompt',
+        userPrompt: 'User prompt',
+      });
+      expect(debugSpy).not.toHaveBeenCalled();
+
+      process.env.LANGSMITH_CAPTURE_CONTENT = 'true';
       await connector.sendRequest({
         model: 'openrouter/free',
         systemPrompt: 'System prompt',

@@ -218,6 +218,7 @@ export interface EnvironmentConfig {
 
   /** Optional LangSmith tracing configuration */
   LANGSMITH_TRACING?: string;
+  LANGSMITH_CAPTURE_CONTENT?: string;
   LANGSMITH_API_KEY?: string;
   LANGSMITH_PROJECT?: string;
   LANGSMITH_ENDPOINT?: string;

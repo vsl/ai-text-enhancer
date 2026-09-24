@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { AiConfig, AiRoleId } from "@/lib/types";
 import {
   AVAILABLE_MODELS,
+  MODEL_NAMES,
   AVAILABLE_AI_ROLES,
   OPTIONS_CHECKBOXES,
   FORMALITY,
@@ -207,7 +208,7 @@ export function ConfigEditorModal({
                           value={m}
                           disabled={!isAvailable}
                         >
-                          {m}{!isAvailable ? ' (Unavailable)' : ''}
+                          {MODEL_NAMES[m] ?? m}{!isAvailable ? ' (Unavailable)' : ''}
                         </option>
                       );
                     })}

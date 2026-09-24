@@ -8,7 +8,7 @@ import { ResultTextarea } from '@/components/features/ResultTextarea';
 import { InfoTooltip } from '@/components/features/InfoTooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AiConfig, Result } from '@/lib/types';
-import { TOOLTIP_TEXTS, getAiRoleLabel } from '@/lib/constants';
+import { TOOLTIP_TEXTS, getAiRoleLabel, MODEL_NAMES } from '@/lib/constants';
 import type { BatchSelection } from '../../../../backend/src/types/api.types';
 
 type SuccessfulSelection = Extract<BatchSelection, { status: 'success' }>;
@@ -35,7 +35,7 @@ interface AssistantCardProps {
   onImproveVersion: (text: string) => void;
   /** ID of the assistant whose result was just copied (for visual feedback) */
   copiedId: number | null;
-  /** Present only when this card is the current Jev selection. */
+  /** Successful Jev evaluation for the current run. */
   jevSelection?: SuccessfulSelection;
 }
 
@@ -51,13 +51,17 @@ export function AssistantCard({
   copiedId,
   jevSelection,
 }: AssistantCardProps) {
-  const selectedByJev = Boolean(jevSelection && result && !result.error && !result.isLoading);
+  const probability = result && !result.error && !result.isLoading
+    ? jevSelection?.probabilities[config.id.toString()] : undefined;
+  const selectedByJev = probability !== undefined && jevSelection?.selectedResultId === config.id.toString();
+  const percentage = probability === undefined ? undefined : probability > 0 && probability < 0.01
+    ? '<1%' : `${Math.round(probability * 100)}%`;
 
   return (
     <li
       key={config.id}
       data-testid={`assistant-card-${config.id}`}
-      className={`bg-background p-6 rounded-lg border flex flex-col gap-4 relative transition-all duration-300 ${
+      className={`bg-background p-4 rounded-lg border flex flex-col gap-2 relative transition-all duration-300 ${
         !config.enabled ? 'opacity-60' : ''
       } ${selectedByJev ? 'ring-2 ring-secondary/40' : ''
       }`}
@@ -74,7 +78,10 @@ export function AssistantCard({
             />
             <h3 className="text-base text-secondary m-0">{getAiRoleLabel(config.aiRoleId)}</h3>
           </div>
-          <small className="text-muted-foreground">{config.model}</small>
+          <small className="text-muted-foreground" title={config.model}>{MODEL_NAMES[config.model] ?? config.model}</small>
+          {percentage !== undefined && (
+            <span data-testid={`jev-probability-${config.id}`} className="text-xs text-muted-foreground" title="Jev’s relative preference for this result among successful outputs in this run.">Jev {percentage}</span>
+          )}
           {selectedByJev && (
             <span
               data-testid={`jev-selection-${config.id}`}
@@ -138,14 +145,14 @@ export function AssistantCard({
       <ConfigSummaryTags options={config.options} onClick={() => onEdit(config.id)} />
 
       {/* Assistant Card Body */}
-      <div className="bg-card rounded-lg p-4 min-h-[100px] flex flex-col">
+      {result && <div className="bg-card rounded-lg p-4 flex flex-col">
         {result?.isLoading ? (
           <div
-            className="m-auto flex flex-col items-center gap-3 py-8 text-secondary"
+            className="flex items-center gap-2 py-2 text-secondary"
             role="status"
             aria-label="Assistant is thinking"
           >
-            <span className="animate-bounce text-3xl" aria-hidden="true">✍️</span>
+            <span className="animate-bounce text-lg" aria-hidden="true">✍️</span>
             <span className="text-sm font-medium">Thinking...</span>
           </div>
         ) : result ? (
@@ -194,18 +201,9 @@ export function AssistantCard({
               </button>
             </div>
           </div>
-        ) : (
-          <div className="text-center text-muted-foreground m-auto flex flex-col gap-2 p-4">
-            <p className="font-medium text-base">Ready to enhance your text?</p>
-            <p className="text-sm">
-              Enter text in the input field and click "Enhance Text" to see AI-generated results here.
-            </p>
-            <p className="text-xs opacity-75">
-              Tip: Enable multiple assistants to compare different enhancement styles
-            </p>
-          </div>
-        )}
-      </div>
+        ) : null}
+      </div>}
+
     </li>
   );
 }

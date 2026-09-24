@@ -59,8 +59,8 @@ describe('public anonymous demo UI', () => {
       </>
     );
 
-    expect(screen.getByText('Weekly usage')).toBeInTheDocument();
-    expect(screen.getByText('50,000 tokens remaining. Allowance resets Monday at 00:00 UTC.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Weekly demo allowance')).toBeInTheDocument();
+    expect(screen.getByText('50,000 tokens left · resets Monday 00:00 UTC')).toBeInTheDocument();
     expect(screen.queryByText(/sign in|sign up|log in|account|pricing|payment|purchase|upgrade/i)).not.toBeInTheDocument();
   });
 });

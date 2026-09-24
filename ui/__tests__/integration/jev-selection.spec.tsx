@@ -47,7 +47,27 @@ describe('Jev selection badge', () => {
     const badge = screen.getByTestId('jev-selection-7');
     expect(badge).toHaveTextContent('✨ Chosen by Jev');
     expect(badge).toHaveAttribute('title', 'Selected by Jev from the successful results in this run.');
-    expect(screen.queryByText(/best/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('jev-probability-7')).toHaveTextContent('Jev 80%');
+    expect(screen.getByTestId('assistant-card-7')).toHaveClass('ring-2');
+    expect(screen.queryByText(/best|confidence/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a probability on successful unselected results without another badge', () => {
+    render(<AssistantCard config={config} result={result} jevSelection={{ ...selection, selectedResultId: '8' }} {...handlers} />);
+    expect(screen.getByTestId('jev-probability-7')).toHaveTextContent('Jev 80%');
+    expect(screen.queryByTestId('jev-selection-7')).not.toBeInTheDocument();
+  });
+
+  it('shows small positive probability without rounding it to zero', () => {
+    render(<AssistantCard config={config} result={result} jevSelection={{ ...selection, probabilities: { '7': 0.004 } }} {...handlers} />);
+    expect(screen.getByTestId('jev-probability-7')).toHaveTextContent('Jev <1%');
+  });
+
+  it('stays compact before generation with a human-readable model name', () => {
+    render(<AssistantCard config={config} {...handlers} />);
+    expect(screen.getByText('OpenRouter Free')).toBeInTheDocument();
+    expect(screen.queryByText(/Ready to enhance/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Generated text')).not.toBeInTheDocument();
   });
 
   it('never marks an errored result', () => {

@@ -6,11 +6,16 @@ import { AiConfig, AiRoleId, Options, Workflow, Language, LanguageLevel, Tier, T
 
 export const AVAILABLE_MODELS = ['qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt-5-nano', 'open-router-free'] as const;
 
+export const MODEL_NAMES: Record<string, string> = {
+  'openai-gpt-5-nano': 'GPT-5 Nano',
+  'open-router-free': 'OpenRouter Free',
+  'qwen-qwen3-30b-a3b-instruct-2507': 'Qwen3 30B A3B Instruct 2507',
+};
+
 export const AVAILABLE_AI_ROLES: readonly { id: AiRoleId; label: string }[] = [
   { id: 'editor', label: 'General Assistant' },
   { id: 'summarizer', label: 'Summarizer Assistant' },
   { id: 'email_assistant', label: 'Professional Email Assistant' },
-  { id: 'social_media_assistant', label: 'Social Media Assistant' },
 ] as const;
 
 export const getAiRoleLabel = (id: AiRoleId): string =>
@@ -132,7 +137,6 @@ const LEGACY_ROLE_IDS: Record<string, AiRoleId> = {
   'General Assistant': 'editor',
   'Summarizer Assistant': 'summarizer',
   'Professional Email Assistant': 'email_assistant',
-  'Social Media Assistant': 'social_media_assistant',
 };
 
 export function normalizeAiConfig(
@@ -193,16 +197,6 @@ export const DEFAULT_WORKFLOWS: Workflow[] = [
       model: 'qwen-qwen3-30b-a3b-instruct-2507',
       aiRoleId: 'email_assistant',
       options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true, format: true, formality: 'Formal', tone: 'Polite' },
-      enabled: true,
-    }],
-  },
-  {
-    name: 'Social Media Blast',
-    configs: [{
-      id: 1,
-      model: 'qwen-qwen3-30b-a3b-instruct-2507',
-      aiRoleId: 'social_media_assistant',
-      options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true, addEmojis: true, formality: 'Casual', tone: 'Engaging' },
       enabled: true,
     }],
   },

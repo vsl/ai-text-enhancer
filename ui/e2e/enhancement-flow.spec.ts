@@ -345,6 +345,11 @@ test.describe('Text Enhancement Flow', () => {
     await expect(page.locator('[data-testid^="jev-selection-"]')).toHaveCount(1);
     await expect(page.getByTestId('jev-selection-2')).toHaveText('✨ Chosen by Jev');
     await expect(page.getByTestId('assistant-card-2')).toContainText('Second result');
+    await expect(page.getByTestId('jev-probability-2')).toHaveText('Jev 84%');
+    await expect(page.getByTestId('jev-probability-1')).toHaveText('Jev 16%');
+    await expect(page.locator('[data-testid^=\"assistant-card-\"]').first()).toHaveAttribute('data-testid', 'assistant-card-2');
+    const savedOrder = await page.evaluate(() => JSON.parse(localStorage.getItem('aiTextEnhancerWorkflows') || '[]')[0].configs.map((config: { id: number }) => config.id));
+    expect(savedOrder).toEqual([1, 2]);
     await expect(page.getByText(/best/i)).toHaveCount(0);
 
     await page.locator('label[for="toggle-2"]').click();
@@ -433,6 +438,7 @@ test.describe('Text Enhancement Flow', () => {
     await page.getByTestId('input-text').fill('Second run');
     await page.getByTestId('enhance-button').click();
     await expect(page.locator('[data-testid^="jev-selection-"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid^="jev-probability-"]')).toHaveCount(0);
   });
 
   test.skip('should edit result text inline', async ({ page }) => {

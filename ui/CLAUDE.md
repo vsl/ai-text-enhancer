@@ -197,7 +197,6 @@ The app makes a single POST request to enhance text:
 - 'General Assistant' → 'editor'
 - 'Summarizer Assistant' → 'summarizer'
 - 'Professional Email Assistant' → 'email_assistant'
-- 'Social Media Assistant' → 'social_media_assistant'
 
 **Response Format**:
 ```typescript
@@ -247,7 +246,7 @@ All configuration constants live in `src/lib/constants.ts`:
 - **LANGUAGE_LEVELS**: Language complexity options
 - **LANGUAGES**: Translation target languages
 - **DEFAULT_OPTIONS**: Default enhancement options (improve: true, fixMistakes: true, others false)
-- **DEFAULT_WORKFLOWS**: Three pre-configured workflows (Quick Fix, Formal Email, Social Media Blast)
+- **DEFAULT_WORKFLOWS**: Two pre-configured workflows (Quick Fix, Formal Email)
 - **TOOLTIP_TEXTS**: All tooltip text for InfoTooltip components
 - **TIER_LIMITS**: Tier-based feature limits (maxTextLength, maxContextLength, maxBatchSize, availableModels)
 - **ERROR_MESSAGES**: Generic API error messages mapped to error codes

@@ -7,7 +7,7 @@ import {
   LLMTimeoutError,
 } from '../../errors/llm-errors.ts';
 import { TEXT_OUTPUT_SCHEMA, TEXT_OUTPUT_SCHEMA_NAME } from '../../config/output-contract.config.ts';
-import { addTraceMetadata, traceRun } from '../../observability/tracing.ts';
+import { addTraceMetadata, isContentCaptureEnabled, traceRun } from '../../observability/tracing.ts';
 import { parseProviderResponse } from './provider-response.ts';
 
 interface ProviderResult {
@@ -46,7 +46,7 @@ export class OpenRouterConnector implements LLMConnector {
         : { type: 'json_object' },
       provider: { require_parameters: true },
     };
-    const debug = process.env.LOG_LEVEL?.toLowerCase() === 'debug';
+    const debug = process.env.LOG_LEVEL?.toLowerCase() === 'debug' && isContentCaptureEnabled();
 
     if (debug) {
       console.debug('[OPENROUTER][DEBUG] request', JSON.stringify({ requestId: params.requestId, method: 'POST', url, body }));
@@ -71,7 +71,7 @@ export class OpenRouterConnector implements LLMConnector {
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.apiKey}`,
-                'HTTP-Referer': 'https://github.com/vorkov/ai-text-enhancer',
+                'HTTP-Referer': 'https://github.com/vsl/ai-text-enhancer',
                 'X-Title': 'AI Text Enhancer',
               },
               body: JSON.stringify(body),
