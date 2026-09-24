@@ -26,8 +26,8 @@ import {
 describe('UI/backend configuration parity', () => {
   it('keeps models, roles, tiers, and transformation values aligned', () => {
     expect([...AVAILABLE_MODELS].sort()).toEqual(MODELS.map(model => model.id).sort());
-    expect(AVAILABLE_MODELS[0]).toBe('openai-gpt-5-nano');
-    expect(DEFAULT_WORKFLOWS.every(workflow => workflow.configs.every(config => config.model === 'openai-gpt-5-nano'))).toBe(true);
+    expect(AVAILABLE_MODELS[0]).toBe('qwen-qwen3-30b-a3b-instruct-2507');
+    expect(DEFAULT_WORKFLOWS.every(workflow => workflow.configs.every(config => config.model === 'qwen-qwen3-30b-a3b-instruct-2507'))).toBe(true);
     expect(TIER_LIMITS.free).toMatchObject({ maxTextLength: 1000, maxContextLength: 2500 });
     expect(AVAILABLE_AI_ROLES.map(role => role.id).sort()).toEqual(ROLES.map(role => role.id).sort());
 
@@ -71,7 +71,7 @@ describe('UI/backend configuration parity', () => {
         surprise: true,
       } as never,
     })).toEqual(expect.objectContaining({
-      model: 'openai-gpt-5-nano',
+      model: 'qwen-qwen3-30b-a3b-instruct-2507',
       aiRoleId: 'summarizer',
       options: expect.objectContaining({
         shorten: true,
@@ -82,7 +82,7 @@ describe('UI/backend configuration parity', () => {
     }));
 
     expect(normalizeAiConfig({ id: 2, aiRole: 'Unknown role' })).toEqual(
-      expect.objectContaining({ model: 'openai-gpt-5-nano', aiRoleId: 'editor' })
+      expect.objectContaining({ model: 'qwen-qwen3-30b-a3b-instruct-2507', aiRoleId: 'editor' })
     );
   });
 });
