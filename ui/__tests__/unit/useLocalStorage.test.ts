@@ -50,6 +50,18 @@ describe('useLocalStorage', () => {
       expect(localStorage.getItem('test-key')).toBe(JSON.stringify(15));
     });
 
+    it('applies consecutive function updates to the latest value', () => {
+      const { result } = renderHook(() => useLocalStorage('test-key', 0));
+
+      act(() => {
+        result.current[1](previous => previous + 1);
+        result.current[1](previous => previous + 1);
+      });
+
+      expect(result.current[0]).toBe(2);
+      expect(localStorage.getItem('test-key')).toBe('2');
+    });
+
     it('should handle complex object updates', () => {
       const initialValue = { name: 'John', age: 30 };
       const { result } = renderHook(() => useLocalStorage('test-key', initialValue));
