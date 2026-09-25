@@ -27,6 +27,18 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
       .map((value) => ({ type: 'contains' as const, value })),
   },
   {
+    id: 'editor-avoid-em-dash-from-source',
+    roleId: 'editor',
+    language: 'mixed-to-en',
+    userText: 'tests; to do По умолчанию — true',
+    options: { improve: true, fixMistakes: true, avoidCommonAiSymbols: true, formality: 'Neutral', tone: 'Confident' },
+    checks: [
+      { type: 'not-contains', value: '—' },
+      { type: 'matches', value: 'tests', flags: 'i' },
+      { type: 'matches', value: 'true', flags: 'i' },
+    ],
+  },
+  {
     id: 'editor-untrusted-context',
     roleId: 'editor',
     language: 'en',

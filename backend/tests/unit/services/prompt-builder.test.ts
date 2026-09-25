@@ -51,7 +51,7 @@ describe('PromptBuilder', () => {
 
     expect(prompt.systemPrompt.startsWith(role.systemPrompt)).toBe(true);
     expect(prompt.userPrompt).toContain("Perform the role's primary task without additional transformations.");
-    expect(prompt.promptRevision).toBe(`prompt-v4/${role.id}@${role.systemPromptVersion}`);
+    expect(prompt.promptRevision).toBe(`prompt-v5/${role.id}@${role.systemPromptVersion}`);
     expect(prompt.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -79,8 +79,21 @@ describe('PromptBuilder', () => {
       userText: 'Source', options: { avoidCommonAiSymbols: true },
     });
     expect(prompt.systemPrompt).toContain(role.systemPrompt);
+    expect(prompt.systemPrompt).toContain('JSON text value must not contain an em dash (U+2014)');
     expect(prompt.userPrompt).toContain('Avoid common AI-writing symbols and patterns');
     if (role.id === 'email_assistant') expect(prompt.systemPrompt).toContain('"Subject:" line');
+  });
+
+  it('carries the reported source dash as data while instructing every role to rewrite it', async () => {
+    for (const role of ROLES) {
+      const prompt = await builder.buildPrompt({
+        id: role.id, model: role.allowedModels[0], aiRoleId: role.id,
+        userText: 'tests; to do По умолчанию — true', options: { avoidCommonAiSymbols: true },
+      });
+      expect(prompt.userPrompt).toContain('По умолчанию — true');
+      expect(prompt.systemPrompt).toContain('even if the source contains one');
+      expect(prompt.systemPrompt).toContain(role.systemPrompt);
+    }
   });
 
   it('keeps summarization inherent without shorten', async () => {

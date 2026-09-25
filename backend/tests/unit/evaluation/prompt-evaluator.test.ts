@@ -22,6 +22,12 @@ const evaluationCase: PromptEvaluationCase = {
 };
 
 describe('prompt evaluator', () => {
+  it('checks the reported em dash failure when the option is enabled', () => {
+    const evaluationCase = PROMPT_EVALUATION_CASES.find(item => item.id === 'editor-avoid-em-dash-from-source')!;
+    expect(runDeterministicChecks(evaluationCase, 'Tests: to do. By default — true.').some(check => !check.passed)).toBe(true);
+    expect(runDeterministicChecks(evaluationCase, 'Tests: to do. By default, true.').every(check => check.passed)).toBe(true);
+  });
+
   it.each(PROMPT_EVALUATION_CASES.filter(item => item.id.startsWith('email-source-priority')))(
     '$id accepts the reply and rejects swapped recipients or invented commitments', evaluationCase => {
       const reply = 'Subject: Emergency contact for Casey\n\nDear Morgan,\n\nWe do not have another emergency contact for Casey.\n\nThank you,\nAlex';
@@ -80,7 +86,7 @@ describe('prompt evaluator', () => {
 
     const report = await runPromptEvaluation({
       candidates: [{ provider: 'gemini', model: 'gemini-2.5-flash', structuredOutputMode: 'json-schema' }],
-      cases: [evaluationCase],
+      cases: [{ ...evaluationCase, options: { ...evaluationCase.options, avoidCommonAiSymbols: true } }],
       apiKeys: { gemini: 'key' },
       connectors: { gemini: connector },
       fetchImpl,
@@ -88,14 +94,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v4',
+      promptVersion: 'prompt-v5',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v4',
-          promptRevision: 'prompt-v4/editor@v1',
+          promptVersion: 'prompt-v5',
+          promptRevision: 'prompt-v5/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -110,6 +116,7 @@ describe('prompt evaluator', () => {
     }));
     expect(sendRequest.mock.calls[0][0]).not.toHaveProperty('temperature');
     expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('meticulous professional editor');
+    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('JSON text value must not contain an em dash (U+2014)');
   });
 
   it.each([
@@ -219,7 +226,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v4/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
+      expect(result.promptRevision).toBe(`prompt-v5/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });
