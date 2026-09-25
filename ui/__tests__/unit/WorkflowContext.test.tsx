@@ -296,8 +296,8 @@ describe('WorkflowContext', () => {
           result.current.handleSaveConfig(second);
         });
 
-        expect(result.current.configs.map(config => config.id)).toEqual([1, 999, 1000]);
-        expect(result.current.workflows[0].configs.map(config => config.id)).toEqual([1, 999, 1000]);
+        expect(result.current.configs.map(config => config.id)).toEqual([1, 2, 3, 999, 1000]);
+        expect(result.current.workflows[0].configs.map(config => config.id)).toEqual([1, 2, 3, 999, 1000]);
       });
     });
 
@@ -608,25 +608,7 @@ describe('WorkflowContext', () => {
 
       const { result } = renderHook(() => useWorkflow(), { wrapper });
 
-      // Add two more configs to have 3 total
-      const config2: AiConfig = {
-        id: Date.now() + 1,
-        model: 'open-router-free',
-        aiRoleId: 'editor',
-        options: { ...DEFAULT_OPTIONS },
-        enabled: true,
-      };
-      const config3: AiConfig = {
-        id: Date.now() + 2,
-        model: 'open-router-free',
-        aiRoleId: 'editor',
-        options: { ...DEFAULT_OPTIONS },
-        enabled: true,
-      };
-
       act(() => {
-        result.current.handleSaveConfig(config2);
-        result.current.handleSaveConfig(config3);
         result.current.setInputText('Test input text');
       });
 
@@ -669,25 +651,7 @@ describe('WorkflowContext', () => {
 
       const { result } = renderHook(() => useWorkflow(), { wrapper });
 
-      // Add two more configs
-      const config2: AiConfig = {
-        id: Date.now() + 1,
-        model: 'open-router-free',
-        aiRoleId: 'editor',
-        options: { ...DEFAULT_OPTIONS },
-        enabled: true,
-      };
-      const config3: AiConfig = {
-        id: Date.now() + 2,
-        model: 'open-router-free',
-        aiRoleId: 'editor',
-        options: { ...DEFAULT_OPTIONS },
-        enabled: true,
-      };
-
       act(() => {
-        result.current.handleSaveConfig(config2);
-        result.current.handleSaveConfig(config3);
         result.current.setInputText('Test input text');
       });
 

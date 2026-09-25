@@ -165,23 +165,55 @@ export function normalizeAiConfig(
 export const DEFAULT_WORKFLOWS: Workflow[] = [
   {
     name: 'Quick Fix',
-    configs: [{
-      id: 1,
-      model: 'qwen-qwen3-30b-a3b-instruct-2507',
-      aiRoleId: 'editor',
-      options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true },
-      enabled: true,
-    }],
+    configs: [
+      {
+        id: 1,
+        model: 'qwen-qwen3-30b-a3b-instruct-2507',
+        aiRoleId: 'editor',
+        options: { ...DEFAULT_OPTIONS },
+        enabled: true,
+      },
+      {
+        id: 2,
+        model: 'openai-gpt-5-nano',
+        aiRoleId: 'editor',
+        options: { ...DEFAULT_OPTIONS, improve: false, tone: 'Direct' },
+        enabled: true,
+      },
+      {
+        id: 3,
+        model: 'open-router-free',
+        aiRoleId: 'editor',
+        options: { ...DEFAULT_OPTIONS, format: true, shorten: true },
+        enabled: true,
+      },
+    ],
   },
   {
     name: 'Formal Email',
-    configs: [{
-      id: 1,
-      model: 'qwen-qwen3-30b-a3b-instruct-2507',
-      aiRoleId: 'email_assistant',
-      options: { ...DEFAULT_OPTIONS, improve: true, fixMistakes: true, format: true, formality: 'Formal', tone: 'Polite' },
-      enabled: true,
-    }],
+    configs: [
+      {
+        id: 1,
+        model: 'qwen-qwen3-30b-a3b-instruct-2507',
+        aiRoleId: 'email_assistant',
+        options: { ...DEFAULT_OPTIONS, format: true, formality: 'Formal', tone: 'Polite' },
+        enabled: true,
+      },
+      {
+        id: 2,
+        model: 'openai-gpt-5-nano',
+        aiRoleId: 'email_assistant',
+        options: { ...DEFAULT_OPTIONS, format: true, shorten: true, formality: 'Formal', tone: 'Direct' },
+        enabled: true,
+      },
+      {
+        id: 3,
+        model: 'open-router-free',
+        aiRoleId: 'email_assistant',
+        options: { ...DEFAULT_OPTIONS, format: true, formality: 'Formal', tone: 'Empathetic' },
+        enabled: true,
+      },
+    ],
   },
 ];
 
