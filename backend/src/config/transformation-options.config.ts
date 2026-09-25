@@ -5,6 +5,7 @@ export const BOOLEAN_TRANSFORMATION_KEYS = [
   'shorten',
   'lengthen',
   'addEmojis',
+  'avoidCommonAiSymbols',
 ] as const;
 
 export const FORMALITY_VALUES = ['Casual', 'Neutral', 'Formal'] as const;

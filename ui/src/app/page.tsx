@@ -106,6 +106,12 @@ export default function Home() {
               </article>
             ))}
           </div>
+          <article className="mt-4 rounded-2xl border border-violet-border bg-violet-surface/65 p-6">
+            <h3 className="text-base font-semibold">Avoid common AI symbols</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Prefer simpler punctuation and more natural phrasing without repeatedly asking the model to remove em dashes, semicolons, unnecessary formatting, and other common AI-writing patterns.
+            </p>
+          </article>
         </div>
       </section>
 

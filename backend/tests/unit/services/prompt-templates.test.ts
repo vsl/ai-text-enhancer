@@ -8,7 +8,7 @@ import type { TransformationOptions } from '../../../src/types/api.types.ts';
 
 describe('PromptTemplates', () => {
   it('appends the shared policy without changing the role task', () => {
-    expect(PROMPT_VERSION).toBe('prompt-v3');
+    expect(PROMPT_VERSION).toBe('prompt-v4');
     expect(PromptTemplates.buildSystemPrompt('ROLE TASK')).toBe(
       'ROLE TASK\n\n' + PromptTemplates.SYSTEM_POLICY
     );
@@ -90,6 +90,20 @@ describe('PromptTemplates', () => {
   it('does not add an emoji transformation when addEmojis is disabled', () => {
     const result = PromptTemplates.buildUserPrompt({ options: { addEmojis: false }, userText: 'Source' });
     expect(result).not.toContain('emoji');
+  });
+
+  it('adds the AI-symbol preference only when enabled and preserves required formatting', () => {
+    const enabled = PromptTemplates.buildUserPrompt({ options: { avoidCommonAiSymbols: true }, userText: 'Source' });
+    expect(enabled).toContain('Avoid common AI-writing symbols and patterns');
+    for (const pattern of ['em dashes', 'semicolons', 'colons', 'Oxford commas', 'Markdown', 'headings', 'bullet lists', 'numbered lists', 'groups of three', 'not X, but Y', 'not just X, but Y']) {
+      expect(enabled).toContain(pattern);
+    }
+    for (const exception of ['grammar', 'clarity', 'output language', 'quotations', 'code', 'URLs', 'identifiers', 'numeric notation', 'explicit user formatting requests', 'email Subject: line']) {
+      expect(enabled).toContain(exception);
+    }
+    for (const options of [{ avoidCommonAiSymbols: false }, {}]) {
+      expect(PromptTemplates.buildUserPrompt({ options, userText: 'Source' })).not.toContain('AI-writing symbols');
+    }
   });
 
   it('performs only the role task when no options are enabled', () => {

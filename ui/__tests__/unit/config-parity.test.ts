@@ -65,6 +65,9 @@ describe('UI/backend configuration parity', () => {
   });
 
   it('migrates legacy roles and retired models safely', () => {
+    expect(DEFAULT_OPTIONS.avoidCommonAiSymbols).toBe(true);
+    expect(normalizeAiConfig({ id: 0, options: { improve: false } as never }).options.avoidCommonAiSymbols).toBe(true);
+    expect(normalizeAiConfig({ id: 0, options: { avoidCommonAiSymbols: false } as never }).options.avoidCommonAiSymbols).toBe(false);
     expect(normalizeAiConfig({
       id: 1,
       model: 'local-debug-model',

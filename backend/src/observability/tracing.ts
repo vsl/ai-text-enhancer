@@ -5,7 +5,7 @@ type TraceRunType = 'chain' | 'llm' | 'parser';
 type TraceValue = Record<string, unknown>;
 
 const DEFAULT_ENDPOINT = 'https://api.smith.langchain.com';
-const SAFE_KEY = /^(requestId|environment|release|deploymentId|userTier|assistantId|role|model|requestedModel|requestedPublicModel|providerModel|resolvedModel|resolvedProvider|provider|promptRevision|promptFingerprint|elapsedMs|latencyMs|inputTokens|outputTokens|totalTokens|reasoningTokens|cachedTokens|tokensUsed|finishReason|nativeFinishReason|failureCode|httpStatus|candidateCount|candidateIds|selectedResultId|probabilities|confidence|improve|fixMistakes|format|shorten|lengthen|addEmojis|formality|tone|languageLevel|translateTo|judge|generationId|status|method|cost|isByok)$/;
+const SAFE_KEY = /^(requestId|environment|release|deploymentId|userTier|assistantId|role|model|requestedModel|requestedPublicModel|providerModel|resolvedModel|resolvedProvider|provider|promptRevision|promptFingerprint|elapsedMs|latencyMs|inputTokens|outputTokens|totalTokens|reasoningTokens|cachedTokens|tokensUsed|finishReason|nativeFinishReason|failureCode|httpStatus|candidateCount|candidateIds|selectedResultId|probabilities|confidence|improve|fixMistakes|format|shorten|lengthen|addEmojis|avoidCommonAiSymbols|formality|tone|languageLevel|translateTo|judge|generationId|status|method|cost|isByok)$/;
 const SECRET_KEY = /(^key$|authorization|cookie|set-cookie|api[-_]?key|service[-_]?role[-_]?key|password|secret)/i;
 
 let client: Client | null | undefined;

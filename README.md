@@ -15,6 +15,7 @@ General-purpose AI chats are flexible, but recurring writing tasks often require
 - Runs multiple assistants against one source text, with reference context kept in a separate field.
 - Offers editor, summarizer, and professional email roles, each with distinct prompts.
 - Configures improvements, corrections, formatting, length, tone, formality, language level, translation, and emojis per assistant.
+- **Avoid common AI symbols** — optionally discourages em dashes, semicolons, unnecessary formatting, and other frequently overused AI-writing patterns when simpler phrasing works.
 - Lets assistants use different currently configured OpenRouter models and returns partial results when an individual model fails.
 - Sends two or more valid outputs to TypeSafe Jev through the OpenRouter Decisions API. Jev returns a selected result and relative candidate probabilities; a failed evaluation never discards generated text.
 - Saves workflows in browser `localStorage`. The public demo uses invisible Supabase anonymous auth and a weekly token allowance, with no traditional signup flow.
@@ -47,6 +48,10 @@ The `ui/` app exports static files. Secrets, quota checks, provider calls, and J
 | Development | Node.js 22; optional Docker or Podman shell |
 
 The configured demo models are [GPT-5 Nano, OpenRouter Free, and Qwen3 30B A3B Instruct 2507](backend/src/config/models.config.ts). The backend model catalog defines their provider IDs and display names; a UI parity test keeps the browser labels aligned.
+
+## Prompt engineering and transformations
+
+Each assistant keeps its distinct role prompt. Enabled transformations add instructions to that role. **Avoid common AI symbols** is enabled by default in the UI and configurable per assistant. It is a prompt-level preference: generated text is not post-processed or mechanically stripped of punctuation. Role requirements and grammatical correctness take precedence, including a professional email's `Subject:` line. This feature is not an AI detector and does not claim to make text indistinguishable from human writing.
 
 ## Engineering choices
 

@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test('public navigation and truthful landing page', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Stop repeating the same instructions to AI.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Avoid common AI symbols' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'App', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'About' })).toHaveCount(0);

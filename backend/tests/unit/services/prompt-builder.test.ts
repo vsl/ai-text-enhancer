@@ -51,7 +51,7 @@ describe('PromptBuilder', () => {
 
     expect(prompt.systemPrompt.startsWith(role.systemPrompt)).toBe(true);
     expect(prompt.userPrompt).toContain("Perform the role's primary task without additional transformations.");
-    expect(prompt.promptRevision).toBe(`prompt-v3/${role.id}@${role.systemPromptVersion}`);
+    expect(prompt.promptRevision).toBe(`prompt-v4/${role.id}@${role.systemPromptVersion}`);
     expect(prompt.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -71,6 +71,16 @@ describe('PromptBuilder', () => {
     expect(prompt.systemPrompt).toContain('a placeholder only when the sender is unknown');
     expect(prompt.systemPrompt).toContain('do not copy the prior email\'s greeting or reverse the conversation');
     expect(prompt.userPrompt).not.toContain('Improve readability with appropriate paragraphs');
+  });
+
+  it.each(ROLES)('applies AI-symbol preference without dropping $id role requirements', async (role) => {
+    const prompt = await builder.buildPrompt({
+      id: role.id, model: role.allowedModels[0], aiRoleId: role.id,
+      userText: 'Source', options: { avoidCommonAiSymbols: true },
+    });
+    expect(prompt.systemPrompt).toContain(role.systemPrompt);
+    expect(prompt.userPrompt).toContain('Avoid common AI-writing symbols and patterns');
+    if (role.id === 'email_assistant') expect(prompt.systemPrompt).toContain('"Subject:" line');
   });
 
   it('keeps summarization inherent without shorten', async () => {

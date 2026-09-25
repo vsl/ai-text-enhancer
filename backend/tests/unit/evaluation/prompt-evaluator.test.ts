@@ -88,14 +88,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v3',
+      promptVersion: 'prompt-v4',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v3',
-          promptRevision: 'prompt-v3/editor@v1',
+          promptVersion: 'prompt-v4',
+          promptRevision: 'prompt-v4/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -219,7 +219,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v3/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
+      expect(result.promptRevision).toBe(`prompt-v4/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });

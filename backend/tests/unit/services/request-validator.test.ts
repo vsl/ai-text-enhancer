@@ -43,6 +43,18 @@ describe('validateBatchRequest', () => {
     expect(validateBatchRequest(validRequest(), user)).toEqual(validRequest());
   });
 
+  it.each([true, false])('accepts avoidCommonAiSymbols=%s', (enabled) => {
+    const request = validRequest();
+    (request.assistants[0].options as Record<string, unknown>).avoidCommonAiSymbols = enabled;
+    expect(validateBatchRequest(request, user)).toEqual(request);
+  });
+
+  it('rejects a non-boolean avoidCommonAiSymbols value', () => {
+    const request = validRequest();
+    (request.assistants[0].options as Record<string, unknown>).avoidCommonAiSymbols = 'yes';
+    expect(() => validateBatchRequest(request, user)).toThrow('avoidCommonAiSymbols must be a boolean');
+  });
+
   it.each([
     null,
     [],

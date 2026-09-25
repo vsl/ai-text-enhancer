@@ -197,6 +197,20 @@ describe('ConfigEditorModal Integration Tests', () => {
   });
 
   describe('Actions section - Checkboxes', () => {
+    it('saves the Avoid common AI symbols toggle in both states', async () => {
+      const user = userEvent.setup();
+      render(<ConfigEditorModal isOpen onClose={mockOnClose} onSave={mockOnSave} configData={sampleConfig} mode="edit" />);
+      const checkbox = screen.getByRole('checkbox', { name: 'Avoid common AI symbols' }) as HTMLInputElement;
+      expect(checkbox).toBeChecked();
+      await user.click(checkbox);
+      expect(checkbox).not.toBeChecked();
+      await user.click(checkbox);
+      expect(checkbox).toBeChecked();
+      await user.click(checkbox);
+      await user.click(screen.getByRole('button', { name: /save/i }));
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({ options: expect.objectContaining({ avoidCommonAiSymbols: false }) }));
+    });
+
     it('should toggle improve checkbox', async () => {
       const user = userEvent.setup();
       
@@ -236,7 +250,8 @@ describe('ConfigEditorModal Integration Tests', () => {
         'format',
         'shorten',
         'lengthen',
-        'add emojis'
+        'add emojis',
+        'avoid common ai symbols'
       ];
 
       for (const label of checkboxes) {
