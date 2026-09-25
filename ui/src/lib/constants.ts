@@ -45,6 +45,7 @@ export const OPTIONS_CHECKBOXES = {
   shorten: 'Shorten',
   lengthen: 'Lengthen',
   addEmojis: 'Add Emojis',
+  avoidCommonAiSymbols: 'Avoid common AI symbols',
 };
 
 export const LANGUAGES: Language[] = [
@@ -79,6 +80,7 @@ export const TOOLTIP_TEXTS = {
   shorten: "Condenses the text to be more concise while keeping the core message.",
   lengthen: "Expands on the original text to be more detailed or descriptive.",
   addEmojis: "Adds relevant emojis to make the text more expressive.",
+  avoidCommonAiSymbols: "Avoid punctuation, formatting, and phrasing patterns commonly associated with AI-written text when a simpler alternative works, including em dashes, semicolons, unnecessary formatting, and formulaic sentence structures.",
   formality: "Adjusts the language to be casual, neutral, or professional.",
   tone: "Sets the emotional style of the writing (e.g., Confident, Witty, Polite).",
   level: "Adjusts the complexity of the language. When a translation is selected, this adjusts the translated text's level. Otherwise, it adjusts the original language.",
@@ -106,6 +108,7 @@ export const DEFAULT_OPTIONS: Options = {
   shorten: false,
   lengthen: false,
   addEmojis: false,
+  avoidCommonAiSymbols: true,
   formality: 'Neutral',
   tone: 'Confident',
   languageLevel: '',
@@ -141,6 +144,7 @@ export function normalizeAiConfig(
       shorten,
       lengthen,
       addEmojis: typeof stored.addEmojis === 'boolean' ? stored.addEmojis : DEFAULT_OPTIONS.addEmojis,
+      avoidCommonAiSymbols: typeof stored.avoidCommonAiSymbols === 'boolean' ? stored.avoidCommonAiSymbols : DEFAULT_OPTIONS.avoidCommonAiSymbols,
       formality: FORMALITY.includes(stored.formality as Options['formality'])
         ? stored.formality as Options['formality']
         : DEFAULT_OPTIONS.formality,

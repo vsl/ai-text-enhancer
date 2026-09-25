@@ -427,6 +427,21 @@ describe('WorkflowContext', () => {
   });
 
   describe('Generation', () => {
+    it('sends each assistant\'s AI-symbol setting in both states', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
+      const { result } = renderHook(() => useWorkflow(), { wrapper });
+      act(() => result.current.setInputText('Test input'));
+      await act(async () => result.current.handleGenerate());
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).assistants[0].options.avoidCommonAiSymbols).toBe(true);
+
+      act(() => result.current.handleSaveConfig({
+        ...result.current.configs[0],
+        options: { ...result.current.configs[0].options, avoidCommonAiSymbols: false },
+      }));
+      await act(async () => result.current.handleGenerate());
+      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body).assistants[0].options.avoidCommonAiSymbols).toBe(false);
+    });
+
     it('should initialize generation state as false', () => {
       const { result } = renderHook(() => useWorkflow(), { wrapper });
       expect(result.current.isGenerating).toBe(false);

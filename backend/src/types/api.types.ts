@@ -52,6 +52,7 @@ export interface TransformationOptions {
   // Special Transformations
   translateTo?: Language;
   addEmojis?: boolean;          // Add relevant emojis
+  avoidCommonAiSymbols?: boolean; // Prefer simpler punctuation and phrasing
 }
 
 /**

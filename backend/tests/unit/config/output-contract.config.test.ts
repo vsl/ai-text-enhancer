@@ -21,5 +21,7 @@ describe('structured output failure classification', () => {
 
   it('accepts exactly one non-empty text property', () => {
     expect(parseTextOutput('{"text":"ok"}')).toBe('ok');
+    expect(parseTextOutput(JSON.stringify({ text: 'Use an em dash — here; and **bold** if needed.' })))
+      .toBe('Use an em dash — here; and **bold** if needed.');
   });
 });

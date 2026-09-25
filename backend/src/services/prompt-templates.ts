@@ -11,7 +11,7 @@ import {
   TONE_INSTRUCTIONS,
 } from '../config/transformation-options.config.ts';
 
-export const PROMPT_VERSION = 'prompt-v3';
+export const PROMPT_VERSION = 'prompt-v4';
 
 export class PromptTemplates {
   /**
@@ -107,6 +107,10 @@ export class PromptTemplates {
 
     if (options.addEmojis) {
       instructions.push('- Add a small number of relevant emojis where they improve tone or scanability; avoid clutter.');
+    }
+
+    if (options.avoidCommonAiSymbols === true) {
+      instructions.push('- Avoid common AI-writing symbols and patterns when simpler phrasing works: prefer periods, commas, parentheses, or a natural rewrite over unnecessary em dashes; prefer periods or commas over unnecessary semicolons; avoid colons used only to make ordinary prose look structured; in English, do not add Oxford commas mechanically when clarity does not require them. Avoid unnecessary Markdown, bold text, headings, bullet lists, and numbered lists when paragraphs are more natural. Avoid artificial groups of three and formulaic contrasts such as "not X, but Y" or "not just X, but Y". Prefer simple, varied, ordinary phrasing over templated prose. These are preferences, not bans: preserve punctuation and formatting needed for grammar, clarity, the output language, quotations, code, URLs, identifiers, numeric notation, explicit user formatting requests, and role-required output such as an email Subject: line.');
     }
 
     // If no specific instructions, provide a default

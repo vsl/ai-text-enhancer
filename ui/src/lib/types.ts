@@ -13,6 +13,7 @@ export interface Options {
   shorten: boolean;
   lengthen: boolean;
   addEmojis: boolean;
+  avoidCommonAiSymbols: boolean;
   formality: 'Casual' | 'Neutral' | 'Formal';
   tone: 'Confident' | 'Empathetic' | 'Cheerful' | 'Witty' | 'Direct' | 'Engaging' | 'Polite' | 'Sincere' | 'Disappointed' | 'Apologetic' | 'Pessimistic' | 'Worried';
   languageLevel: '' | 'simple' | 'intermediate' | 'advanced' | 'fluent' | 'native';
