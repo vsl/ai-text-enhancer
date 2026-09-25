@@ -8,7 +8,7 @@ import type { TransformationOptions } from '../../../src/types/api.types.ts';
 
 describe('PromptTemplates', () => {
   it('appends the shared policy without changing the role task', () => {
-    expect(PROMPT_VERSION).toBe('prompt-v5');
+    expect(PROMPT_VERSION).toBe('prompt-v6');
     expect(PromptTemplates.buildSystemPrompt('ROLE TASK')).toBe(
       'ROLE TASK\n\n' + PromptTemplates.SYSTEM_POLICY
     );
@@ -104,10 +104,11 @@ describe('PromptTemplates', () => {
     for (const options of [{ avoidCommonAiSymbols: false }, {}]) {
       expect(PromptTemplates.buildUserPrompt({ options, userText: 'Source' })).not.toContain('AI-writing symbols');
       expect(PromptTemplates.buildSystemPrompt('ROLE TASK', options)).not.toContain('em dash');
+      expect(PromptTemplates.buildSystemPrompt('ROLE TASK', options)).not.toContain('—');
     }
     const systemPrompt = PromptTemplates.buildSystemPrompt('ROLE TASK', { avoidCommonAiSymbols: true });
-    expect(systemPrompt).toContain('JSON text value must not contain an em dash (U+2014), even if the source contains one');
-    expect(systemPrompt).toContain('inspect the text value and revise any sentence that still contains U+2014');
+    expect(systemPrompt).toContain('never use this character in the JSON text value: —');
+    expect(systemPrompt).toContain('Do not introduce it, and rewrite it when it appears in the source');
   });
 
   it('performs only the role task when no options are enabled', () => {

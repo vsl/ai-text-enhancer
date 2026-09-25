@@ -39,6 +39,18 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
     ],
   },
   {
+    id: 'editor-avoid-added-em-dash',
+    roleId: 'editor',
+    language: 'en',
+    userText: 'UI is broken I try to add new assistant but it disapied. Time to time it is appiared and that removed from UI. Do you have integration or e2e test for it?',
+    options: { improve: true, fixMistakes: true, avoidCommonAiSymbols: true, formality: 'Neutral', tone: 'Confident' },
+    checks: [
+      { type: 'not-contains', value: '—' },
+      { type: 'matches', value: 'assistant', flags: 'i' },
+      { type: 'matches', value: 'test', flags: 'i' },
+    ],
+  },
+  {
     id: 'editor-untrusted-context',
     roleId: 'editor',
     language: 'en',

@@ -26,6 +26,9 @@ describe('prompt evaluator', () => {
     const evaluationCase = PROMPT_EVALUATION_CASES.find(item => item.id === 'editor-avoid-em-dash-from-source')!;
     expect(runDeterministicChecks(evaluationCase, 'Tests: to do. By default — true.').some(check => !check.passed)).toBe(true);
     expect(runDeterministicChecks(evaluationCase, 'Tests: to do. By default, true.').every(check => check.passed)).toBe(true);
+    const dashFreeSourceCase = PROMPT_EVALUATION_CASES.find(item => item.id === 'editor-avoid-added-em-dash')!;
+    expect(runDeterministicChecks(dashFreeSourceCase, 'The UI is broken—I cannot add an assistant. Is there a test?').some(check => !check.passed)).toBe(true);
+    expect(runDeterministicChecks(dashFreeSourceCase, 'The UI is broken. I cannot add an assistant. Is there a test?').every(check => check.passed)).toBe(true);
   });
 
   it.each(PROMPT_EVALUATION_CASES.filter(item => item.id.startsWith('email-source-priority')))(
@@ -94,14 +97,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v5',
+      promptVersion: 'prompt-v6',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v5',
-          promptRevision: 'prompt-v5/editor@v1',
+          promptVersion: 'prompt-v6',
+          promptRevision: 'prompt-v6/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -116,7 +119,7 @@ describe('prompt evaluator', () => {
     }));
     expect(sendRequest.mock.calls[0][0]).not.toHaveProperty('temperature');
     expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('meticulous professional editor');
-    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('JSON text value must not contain an em dash (U+2014)');
+    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('never use this character in the JSON text value: —');
   });
 
   it.each([
@@ -226,7 +229,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v5/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
+      expect(result.promptRevision).toBe(`prompt-v6/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });
