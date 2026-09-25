@@ -45,7 +45,14 @@ describe('UI/backend configuration parity', () => {
       'open-router-free': 'OpenRouter Free',
     });
     expect(AVAILABLE_MODELS[0]).toBe('qwen-qwen3-30b-a3b-instruct-2507');
-    expect(DEFAULT_WORKFLOWS.every(workflow => workflow.configs.every(config => config.model === 'qwen-qwen3-30b-a3b-instruct-2507'))).toBe(true);
+    for (const workflow of DEFAULT_WORKFLOWS) {
+      expect(workflow.configs).toHaveLength(3);
+      expect(workflow.configs.map(config => config.model)).toEqual([...AVAILABLE_MODELS]);
+      expect(new Set(workflow.configs.map(config => config.id)).size).toBe(3);
+      expect(new Set(workflow.configs.map(config => JSON.stringify(config.options))).size).toBe(3);
+      expect(workflow.configs.every(config => config.enabled)).toBe(true);
+      expect(workflow.configs.every(config => config.aiRoleId === (workflow.name === 'Formal Email' ? 'email_assistant' : 'editor'))).toBe(true);
+    }
     expect(TIER_LIMITS.free).toMatchObject({ maxTextLength: 1000, maxContextLength: 2500 });
     expect(AVAILABLE_AI_ROLES.map(role => role.id).sort()).toEqual(ROLES.map(role => role.id).sort());
 

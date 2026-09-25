@@ -66,8 +66,7 @@ test.describe('Assistant Configuration', () => {
     // Modal should close
     await expect(page.getByRole('dialog')).not.toBeVisible();
     
-    // Changes should not be saved (no new assistant with open-router-free model added)
-    // Note: This assumes the default workflow doesn't have open-router-free
+    // Changes should not be saved.
   });
 
   test('should edit existing assistant', async ({ page }) => {
@@ -332,15 +331,15 @@ test.describe('Assistant Configuration', () => {
     await page.getByTestId('add-assistant-button').click();
     await page.locator('select[name="aiRoleId"]').selectOption('summarizer');
     await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(2);
+    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(4);
     await expect(page.getByRole('heading', { name: 'Summarizer Assistant' })).toBeVisible();
 
     await page.getByTestId('workflow-tab-formal-email').click();
     await page.getByTestId('workflow-tab-quick-fix').click();
-    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(2);
+    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(4);
 
     await page.reload();
-    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(2);
+    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(4);
     await expect(page.getByRole('heading', { name: 'Summarizer Assistant' })).toBeVisible();
   });
 });
