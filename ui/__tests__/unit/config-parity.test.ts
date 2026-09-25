@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   AVAILABLE_AI_ROLES,
   AVAILABLE_MODELS,
@@ -25,6 +27,15 @@ import {
 } from '../../../backend/src/config/transformation-options.config';
 
 describe('UI/backend configuration parity', () => {
+  it('documents the AI-symbol preference in the root README', () => {
+    const readme = readFileSync(resolve(__dirname, '../../../README.md'), 'utf8');
+    expect(readme).toContain('**Avoid common AI symbols**');
+    expect(readme).toContain('enabled by default in the UI and configurable per assistant');
+    expect(readme).toContain('prompt-level preference');
+    expect(readme).toContain('not post-processed or mechanically stripped');
+    expect(readme).toContain('not an AI detector');
+  });
+
   it('keeps models, roles, tiers, and transformation values aligned', () => {
     expect([...AVAILABLE_MODELS].sort()).toEqual(MODELS.map(model => model.id).sort());
     expect(Object.keys(MODEL_NAMES).sort()).toEqual(MODELS.map(model => model.id).sort());
