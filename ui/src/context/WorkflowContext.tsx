@@ -61,8 +61,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     DEFAULT_WORKFLOWS[0].name
   );
 
+  const configs = workflows.find(workflow => workflow.name === selectedWorkflow)?.configs.map(normalizeAiConfig) ?? [];
+
   // Local state
-  const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [results, setResults] = useState<Map<number, Result>>(new Map());
   const [selection, setSelection] = useState<BatchSelection>();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -72,55 +73,21 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   // Ref for AbortController
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  /**
-   * Auto-save workflow when configs change
-   */
-  const autoSaveWorkflow = useCallback((updatedConfigs: AiConfig[]) => {
+  const updateConfigs = useCallback((update: (current: AiConfig[]) => AiConfig[]) => {
     if (!selectedWorkflow) return;
-    
+
     setWorkflows(prevWorkflows => {
-      const newWorkflows = [...prevWorkflows];
-      const workflowIndex = newWorkflows.findIndex(w => w.name === selectedWorkflow);
-      if (workflowIndex > -1) {
-        newWorkflows[workflowIndex] = {
-          ...newWorkflows[workflowIndex],
-          configs: updatedConfigs
-        };
-      }
-      return newWorkflows;
+      return prevWorkflows.map(workflow => workflow.name === selectedWorkflow
+        ? { ...workflow, configs: update(workflow.configs.map(normalizeAiConfig)) }
+        : workflow);
     });
   }, [selectedWorkflow, setWorkflows]);
 
-  /**
-   * Load workflow on mount and when selectedWorkflow changes.
-   * This logic is robustly separated to first validate the selection,
-   * then load the corresponding configuration. This avoids race conditions
-   * on initial hydration.
-   */
   useEffect(() => {
-    const workflowToLoad = workflows.find(w => w.name === selectedWorkflow);
-
-    if (workflowToLoad) {
-      const migratedConfigs = workflowToLoad.configs.map(normalizeAiConfig);
-      setConfigs(migratedConfigs);
-      if (JSON.stringify(migratedConfigs) !== JSON.stringify(workflowToLoad.configs)) {
-        setWorkflows(current => current.map(workflow =>
-          workflow.name === workflowToLoad.name
-            ? { ...workflow, configs: migratedConfigs }
-            : workflow
-        ));
-      }
-    } else if (workflows.length > 0) {
-      // The selected workflow doesn't exist in the list (e.g., stale data).
-      // Reset the selection to the first available workflow.
-      // This will trigger a re-render, and this effect will run again.
-      // The configs will be loaded correctly in the subsequent run.
+    if (workflows.length > 0 && !workflows.some(workflow => workflow.name === selectedWorkflow)) {
       setSelectedWorkflow(workflows[0].name);
-    } else {
-      // Handle the case where there are no workflows at all.
-      setConfigs([]);
     }
-  }, [selectedWorkflow, workflows, setSelectedWorkflow, setWorkflows]);
+  }, [selectedWorkflow, workflows, setSelectedWorkflow]);
 
   /**
    * Create a new workflow
@@ -135,14 +102,11 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     };
     const newWorkflow: Workflow = { name: newWorkflowName, configs: [newConfig] };
 
-    const updatedWorkflows = [...workflows, newWorkflow];
-    setWorkflows(updatedWorkflows);
+    setWorkflows(current => [...current, newWorkflow]);
     setSelectedWorkflow(newWorkflow.name);
-    // No need for deep clone - configs are already new objects
-    setConfigs([{ ...newConfig, options: { ...newConfig.options } }]);
     setResults(new Map());
     setSelection(undefined);
-  }, [workflows, setWorkflows, setSelectedWorkflow]);
+  }, [setWorkflows, setSelectedWorkflow]);
 
   /**
    * Load a workflow by name
@@ -152,8 +116,6 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     setSelection(undefined);
     const workflowToLoad = workflows.find(w => w.name === name) || workflows[0];
     if (workflowToLoad) {
-      const migratedConfigs = workflowToLoad.configs.map(normalizeAiConfig);
-      setConfigs(migratedConfigs);
       setSelectedWorkflow(workflowToLoad.name);
     }
   }, [workflows, setSelectedWorkflow]);
@@ -170,9 +132,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         // Load the first workflow
         const firstWorkflow = updatedWorkflows[0];
         setSelectedWorkflow(firstWorkflow.name);
-        setConfigs(firstWorkflow.configs.map(normalizeAiConfig));
       } else {
-        setConfigs([]);
         setSelectedWorkflow('');
       }
     }
@@ -185,71 +145,46 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
    */
   const handleSaveConfig = useCallback((updatedConfig: AiConfig) => {
     setSelection(undefined);
-    setConfigs(prevConfigs => {
-      const existingIndex = prevConfigs.findIndex(c => c.id === updatedConfig.id);
-      const newConfigs = [...prevConfigs];
-      
-      if (existingIndex > -1) {
-        // Update existing config
-        newConfigs[existingIndex] = updatedConfig;
-      } else {
-        // Add new config
-        newConfigs.push(updatedConfig);
-      }
-      
-      autoSaveWorkflow(newConfigs);
-      return newConfigs;
+    updateConfigs(current => {
+      const existingIndex = current.findIndex(config => config.id === updatedConfig.id);
+      if (existingIndex < 0) return [...current, updatedConfig];
+      return current.map((config, index) => index === existingIndex ? updatedConfig : config);
     });
-  }, [autoSaveWorkflow]);
+  }, [updateConfigs]);
 
   /**
    * Remove a config
    */
   const handleRemoveConfig = useCallback((id: number) => {
     setSelection(undefined);
-    const newConfigs = configs.filter(c => c.id !== id);
-    setConfigs(newConfigs);
-    autoSaveWorkflow(newConfigs);
-  }, [configs, autoSaveWorkflow]);
+    updateConfigs(current => current.filter(config => config.id !== id));
+  }, [updateConfigs]);
 
   /**
    * Toggle assistant enabled/disabled
    */
   const handleToggleAssistant = useCallback((id: number) => {
     setSelection(undefined);
-    const newConfigs = configs.map(c => {
-      if (c.id === id) {
-        return { ...c, enabled: !c.enabled };
-      }
-      return c;
-    });
-    setConfigs(newConfigs);
-    autoSaveWorkflow(newConfigs);
-  }, [configs, autoSaveWorkflow]);
+    updateConfigs(current => current.map(config => config.id === id
+      ? { ...config, enabled: !config.enabled }
+      : config));
+  }, [updateConfigs]);
 
   /**
    * Copy a config
    */
   const handleCopyConfig = useCallback((id: number) => {
     setSelection(undefined);
-    const configToCopy = configs.find(c => c.id === id);
-    if (!configToCopy) return;
-
-    // Clone config with nested options properly
-    const newConfig = {
-      ...configToCopy,
-      id: Date.now(),
-      enabled: true,
-      options: { ...configToCopy.options }
-    };
-    
-    const originalIndex = configs.findIndex(c => c.id === id);
-    const newConfigs = [...configs];
-    newConfigs.splice(originalIndex + 1, 0, newConfig);
-    
-    setConfigs(newConfigs);
-    autoSaveWorkflow(newConfigs);
-  }, [configs, autoSaveWorkflow]);
+    updateConfigs(current => {
+      const originalIndex = current.findIndex(config => config.id === id);
+      if (originalIndex < 0) return current;
+      const configToCopy = current[originalIndex];
+      const newConfig = { ...configToCopy, id: Date.now(), enabled: true, options: { ...configToCopy.options } };
+      const updated = [...current];
+      updated.splice(originalIndex + 1, 0, newConfig);
+      return updated;
+    });
+  }, [updateConfigs]);
 
   /**
    * Generate enhanced text with API integration

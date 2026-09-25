@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Custom hook for managing localStorage with SSR safety
@@ -12,10 +12,14 @@ export function useLocalStorage<T>(
 ): [T, (value: T | ((val: T) => T)) => void] {
   // Match the static server render, then restore browser data after hydration.
   const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const valueRef = useRef(storedValue);
   useEffect(() => {
     try {
       const item = window.localStorage.getItem(key);
-      if (item) setStoredValue(JSON.parse(item));
+      if (item) {
+        valueRef.current = JSON.parse(item);
+        setStoredValue(valueRef.current);
+      }
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
     }
@@ -28,9 +32,10 @@ export function useLocalStorage<T>(
       try {
         // Allow value to be a function so we have same API as useState
         const valueToStore =
-          value instanceof Function ? value(storedValue) : value;
+          value instanceof Function ? value(valueRef.current) : value;
         
         // Save state
+        valueRef.current = valueToStore;
         setStoredValue(valueToStore);
         
         // Save to local storage (SSR safe)
@@ -46,7 +51,7 @@ export function useLocalStorage<T>(
         }
       }
     },
-    [key, storedValue]
+    [key]
   );
 
   // Listen for changes to localStorage from other tabs/windows
@@ -58,7 +63,8 @@ export function useLocalStorage<T>(
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === key && e.newValue !== null) {
         try {
-          setStoredValue(JSON.parse(e.newValue));
+          valueRef.current = JSON.parse(e.newValue);
+          setStoredValue(valueRef.current);
         } catch (error) {
           console.error(`Error parsing storage event for key "${key}":`, error);
         }

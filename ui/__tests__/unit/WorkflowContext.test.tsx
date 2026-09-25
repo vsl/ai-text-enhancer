@@ -282,7 +282,22 @@ describe('WorkflowContext', () => {
         await waitFor(() => {
           const workflow = result.current.workflows.find(w => w.name === currentWorkflowName);
           expect(workflow?.configs.find(c => c.id === 999)).toBeDefined();
+          expect(result.current.configs.find(c => c.id === 999)).toBeDefined();
         });
+      });
+
+      it('keeps consecutive additions in the active workflow', () => {
+        const { result } = renderHook(() => useWorkflow(), { wrapper });
+        const first: AiConfig = { id: 999, model: 'open-router-free', aiRoleId: 'editor', options: { ...DEFAULT_OPTIONS }, enabled: true };
+        const second: AiConfig = { ...first, id: 1000, aiRoleId: 'summarizer' };
+
+        act(() => {
+          result.current.handleSaveConfig(first);
+          result.current.handleSaveConfig(second);
+        });
+
+        expect(result.current.configs.map(config => config.id)).toEqual([1, 999, 1000]);
+        expect(result.current.workflows[0].configs.map(config => config.id)).toEqual([1, 999, 1000]);
       });
     });
 

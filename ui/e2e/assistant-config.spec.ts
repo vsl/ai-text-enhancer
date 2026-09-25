@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { DEFAULT_WORKFLOWS } from '../src/lib/constants';
 
 test.describe('Assistant Configuration', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the text AI assistants page
-    await page.goto('/text-ai-assistants');
+    await page.goto(process.env.E2E_STATIC_EXPORT ? '/text-ai-assistants.html' : '/text-ai-assistants');
     
     // Wait for the page to load
     await page.waitForLoadState('networkidle');
@@ -315,5 +316,31 @@ test.describe('Assistant Configuration', () => {
     
     // Assistant should still be there
     await expect(page.locator('text=Professional Email Assistant').first()).toBeVisible();
+  });
+
+  test('keeps a newly added assistant after migrating an older saved workflow', async ({ page }) => {
+    await page.evaluate((defaults) => {
+      const workflows = structuredClone(defaults);
+      for (const workflow of workflows) {
+        for (const config of workflow.configs) delete (config.options as Partial<typeof config.options>).avoidCommonAiSymbols;
+      }
+      localStorage.setItem('aiTextEnhancerWorkflows', JSON.stringify(workflows));
+    }, DEFAULT_WORKFLOWS);
+    await page.reload();
+    await expect(page.getByTestId('assistant-card-1')).toBeVisible();
+
+    await page.getByTestId('add-assistant-button').click();
+    await page.locator('select[name="aiRoleId"]').selectOption('summarizer');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(2);
+    await expect(page.getByRole('heading', { name: 'Summarizer Assistant' })).toBeVisible();
+
+    await page.getByTestId('workflow-tab-formal-email').click();
+    await page.getByTestId('workflow-tab-quick-fix').click();
+    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(2);
+
+    await page.reload();
+    await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(2);
+    await expect(page.getByRole('heading', { name: 'Summarizer Assistant' })).toBeVisible();
   });
 });
