@@ -97,14 +97,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v6',
+      promptVersion: 'prompt-v7',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v6',
-          promptRevision: 'prompt-v6/editor@v1',
+          promptVersion: 'prompt-v7',
+          promptRevision: 'prompt-v7/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -119,7 +119,7 @@ describe('prompt evaluator', () => {
     }));
     expect(sendRequest.mock.calls[0][0]).not.toHaveProperty('temperature');
     expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('meticulous professional editor');
-    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('never use this character in the JSON text value: —');
+    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('DO NOT generate the em dash (—) in any output.');
   });
 
   it.each([
@@ -229,7 +229,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v6/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
+      expect(result.promptRevision).toBe(`prompt-v7/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });

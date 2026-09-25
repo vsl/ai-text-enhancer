@@ -8,7 +8,7 @@ import type { TransformationOptions } from '../../../src/types/api.types.ts';
 
 describe('PromptTemplates', () => {
   it('appends the shared policy without changing the role task', () => {
-    expect(PROMPT_VERSION).toBe('prompt-v6');
+    expect(PROMPT_VERSION).toBe('prompt-v7');
     expect(PromptTemplates.buildSystemPrompt('ROLE TASK')).toBe(
       'ROLE TASK\n\n' + PromptTemplates.SYSTEM_POLICY
     );
@@ -107,7 +107,7 @@ describe('PromptTemplates', () => {
       expect(PromptTemplates.buildSystemPrompt('ROLE TASK', options)).not.toContain('—');
     }
     const systemPrompt = PromptTemplates.buildSystemPrompt('ROLE TASK', { avoidCommonAiSymbols: true });
-    expect(systemPrompt).toContain('never use this character in the JSON text value: —');
+    expect(systemPrompt).toContain('DO NOT generate the em dash (—) in any output.');
     expect(systemPrompt).toContain('Do not introduce it, and rewrite it when it appears in the source');
   });
 

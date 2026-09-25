@@ -51,7 +51,7 @@ describe('PromptBuilder', () => {
 
     expect(prompt.systemPrompt.startsWith(role.systemPrompt)).toBe(true);
     expect(prompt.userPrompt).toContain("Perform the role's primary task without additional transformations.");
-    expect(prompt.promptRevision).toBe(`prompt-v6/${role.id}@${role.systemPromptVersion}`);
+    expect(prompt.promptRevision).toBe(`prompt-v7/${role.id}@${role.systemPromptVersion}`);
     expect(prompt.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -79,7 +79,7 @@ describe('PromptBuilder', () => {
       userText: 'Source', options: { avoidCommonAiSymbols: true },
     });
     expect(prompt.systemPrompt).toContain(role.systemPrompt);
-    expect(prompt.systemPrompt).toContain('never use this character in the JSON text value: —');
+    expect(prompt.systemPrompt).toContain('DO NOT generate the em dash (—) in any output.');
     expect(prompt.userPrompt).toContain('Avoid common AI-writing symbols and patterns');
     if (role.id === 'email_assistant') expect(prompt.systemPrompt).toContain('"Subject:" line');
   });
