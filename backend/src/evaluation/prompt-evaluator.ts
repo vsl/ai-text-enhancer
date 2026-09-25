@@ -203,7 +203,7 @@ export async function runPromptEvaluation(params: {
         try {
           const role = getRoleById(evaluationCase.roleId);
           if (!role) throw new Error(`Unknown evaluation role: ${evaluationCase.roleId}`);
-          const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt);
+          const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt, evaluationCase.options);
           promptRevision = buildPromptRevision(role.id, role.systemPromptVersion);
           promptFingerprint = await fingerprintPrompt(systemPrompt);
 

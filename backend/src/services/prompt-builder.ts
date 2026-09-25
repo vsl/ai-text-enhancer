@@ -41,7 +41,7 @@ export class PromptBuilder {
     }
 
     // 3. Build system prompt (role + JSON enforcement)
-    const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt);
+    const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt, request.options);
 
     // 4. Build user prompt (instructions from options + context + text)
     const userPrompt = PromptTemplates.buildUserPrompt({
