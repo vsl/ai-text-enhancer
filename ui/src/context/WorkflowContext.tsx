@@ -235,6 +235,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     });
     const request: BatchRequest = { assistants };
 
+    let requestErrorMessage: string | undefined;
     try {
       // Get auth token
       const token = await getAuthToken();
@@ -264,8 +265,10 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           return; // Exit early since page will reload
         }
 
-        const errorBody = await response.text();
-        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+        const errorBody = await response.json().catch(() => null) as { error?: { code?: string } } | null;
+        const code = errorBody?.error?.code || (response.status === 429 ? 'QUOTA_EXCEEDED' : '');
+        requestErrorMessage = AUTH_ERROR_MESSAGES[code] || getErrorMessage(code);
+        throw new Error(`API request failed with status ${response.status}`);
       }
 
       // Parse response
@@ -336,7 +339,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           enabledConfigs.forEach(config => {
             newResults.set(config.id, {
               configId: config.id,
-              text: `An unexpected error occurred: ${caughtError.message}`,
+              text: requestErrorMessage || getErrorMessage(''),
               isLoading: false,
               error: true,
             });

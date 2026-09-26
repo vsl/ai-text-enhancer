@@ -76,6 +76,13 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(screen.getByRole('heading', { name: 'General Assistant' })).toBeInTheDocument();
     });
 
+    it('focuses the dialog title instead of the model select on opening', async () => {
+      render(<ConfigEditorModal isOpen onClose={mockOnClose} onSave={mockOnSave} configData={sampleConfig} mode="edit" />);
+
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'General Assistant' })).toHaveFocus());
+      expect(screen.getByRole('combobox', { name: /model/i })).not.toHaveFocus();
+    });
+
     it('should display correct title in add mode', () => {
       render(
         <ConfigEditorModal

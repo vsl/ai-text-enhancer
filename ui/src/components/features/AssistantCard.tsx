@@ -101,21 +101,21 @@ export function AssistantCard({
             <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground" role="status" aria-label="Assistant is thinking">
               <span className="size-3 animate-pulse rounded-full bg-primary" aria-hidden="true" /> Thinking...
             </div>
+          ) : result.error ? (
+            <p role="alert" className="text-sm leading-6 text-destructive">{result.text}</p>
           ) : (
             <>
               <ResultTextarea value={result.text} aria-label="Generated text" />
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                {!result.error && (
-                  <button
-                    data-testid={`improve-version-${config.id}`}
-                    onClick={() => onImproveVersion(result.text)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground"
-                    title="Use this text as the next input"
-                  >
-                    <WandSparkles className="size-3.5" aria-hidden="true" /> Improve this version
-                    <InfoTooltip text={TOOLTIP_TEXTS.useThisText} position="left" />
-                  </button>
-                )}
+                <button
+                  data-testid={`improve-version-${config.id}`}
+                  onClick={() => onImproveVersion(result.text)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                  title="Use this text as the next input"
+                >
+                  <WandSparkles className="size-3.5" aria-hidden="true" /> Improve this version
+                  <InfoTooltip text={TOOLTIP_TEXTS.useThisText} position="left" />
+                </button>
                 <button
                   data-testid={`copy-result-${config.id}`}
                   onClick={() => onCopyResult(result.text, config.id)}

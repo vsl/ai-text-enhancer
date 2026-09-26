@@ -24,7 +24,7 @@ jest.mock('../../src/context/AuthContext', () => ({
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { WorkflowProvider, useWorkflow } from '@/context/WorkflowContext';
-import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS } from '@/lib/constants';
+import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS, ERROR_MESSAGES } from '@/lib/constants';
 import { AiConfig } from '@/lib/types';
 
 // Destructure mock functions for easier access
@@ -442,6 +442,44 @@ describe('WorkflowContext', () => {
   });
 
   describe('Generation', () => {
+    it('shows the quota message instead of the API response body', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: async () => ({ error: { code: 'QUOTA_EXCEEDED', message: 'private backend details' } }),
+      });
+      const consoleError = jest.spyOn(console, 'error').mockImplementation();
+      const { result } = renderHook(() => useWorkflow(), { wrapper });
+      act(() => result.current.setInputText('Test input'));
+
+      await act(async () => result.current.handleGenerate());
+
+      expect(result.current.results.get(1)).toMatchObject({
+        error: true,
+        text: ERROR_MESSAGES.QUOTA_EXCEEDED,
+      });
+      consoleError.mockRestore();
+    });
+
+    it('shows a safe fallback for an unreadable API error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => { throw new SyntaxError('invalid JSON'); },
+      });
+      const consoleError = jest.spyOn(console, 'error').mockImplementation();
+      const { result } = renderHook(() => useWorkflow(), { wrapper });
+      act(() => result.current.setInputText('Test input'));
+
+      await act(async () => result.current.handleGenerate());
+
+      expect(result.current.results.get(1)).toMatchObject({
+        error: true,
+        text: 'An unexpected error occurred. Please try again.',
+      });
+      consoleError.mockRestore();
+    });
+
     it('sends each assistant\'s AI-symbol setting in both states', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
       const { result } = renderHook(() => useWorkflow(), { wrapper });
