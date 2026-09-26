@@ -85,6 +85,14 @@ describe('Copy Button Feedback', () => {
     });
   });
 
+  it('shows errors as alerts without result actions', () => {
+    render(<AssistantCard config={mockConfig} result={{ ...mockResult, text: 'Usage limit reached.', error: true }} copiedId={null} {...mockHandlers} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Usage limit reached.');
+    expect(screen.queryByLabelText('Generated text')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('copy-result-1')).not.toBeInTheDocument();
+  });
+
   it('reverts back to copy icon after timeout', async () => {
     const { rerender } = render(
       <AssistantCard
