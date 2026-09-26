@@ -63,7 +63,7 @@ Each assistant keeps its distinct role prompt. Enabled transformations add instr
 
 ## Tracing and data handling
 
-LangSmith tracing is optional. `LANGSMITH_TRACING=true` with an API key records operational metadata such as request ID, model, elapsed time, token usage, and failure code. `LANGSMITH_CAPTURE_CONTENT=false` is the default: tracing omits raw source and context, full prompts, provider responses, generated text, and Jev candidate text. Set the server-side flag or repository variable to `true` only for an explicitly sensitive diagnostic session; credential fields remain redacted in both modes. Do not put backend keys in `ui/.env.local`. The frontend includes Google Analytics in production; avoid treating this tracing setting as a blanket privacy guarantee.
+LangSmith tracing is optional. `LANGSMITH_TRACING=true` with an API key records operational metadata such as request ID, model, elapsed time, token usage, and failure code. `LANGSMITH_CAPTURE_CONTENT=false` is the default: tracing omits raw source and context, full prompts, provider responses, generated text, and Jev candidate text. Set the server-side flag or GitHub Actions repository secret to `true` only for an explicitly sensitive diagnostic session; credential fields remain redacted in both modes. Do not put backend keys in `ui/.env.local`. The frontend includes Google Analytics in production; avoid treating this tracing setting as a blanket privacy guarantee.
 
 ## Repository layout
 
