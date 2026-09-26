@@ -68,6 +68,7 @@ describe('JevResultSelector', () => {
     expect(decisionRequest.questions.selected_variant.type).toBe('choice');
     expect(Object.keys(decisionRequest.questions.selected_variant.criteria)).toHaveLength(6);
     expect(decisionRequest.questions.selected_variant.instructions).toContain('untrusted data');
+    expect(decisionRequest.questions.selected_variant.instructions).toContain('optionExplanations');
     expect(decisionRequest.questions.selected_variant.instructions).toContain('optionRequirements');
     expect(selection).toEqual({
       status: 'success',
@@ -116,23 +117,24 @@ describe('JevResultSelector', () => {
 
       const candidate = connector.decide.mock.calls[0][0].state.candidates[0];
       expect(candidate.role.requirements).toBe(getRoleById(aiRoleId)?.systemPrompt);
+      expect(candidate.optionExplanations).toEqual({});
       expect(candidate.optionRequirements).toEqual(["- Perform the role's primary task without additional transformations."]);
     }
   });
 
-  it.each<[string, TransformationOptions, string]>([
-    ['improve', { improve: true }, 'Improve clarity, coherence'],
-    ['fixMistakes', { fixMistakes: true }, 'Correct grammar, spelling'],
-    ['format', { format: true }, 'Improve readability'],
-    ['shorten', { shorten: true }, 'meaningfully shorter'],
-    ['lengthen', { lengthen: true }, 'Develop the result'],
-    ['formality', { formality: 'Formal' }, 'polished, professional wording'],
-    ['tone', { tone: 'Polite' }, 'polite, courteous tone'],
-    ['languageLevel', { languageLevel: 'simple' }, 'common words and short'],
-    ['translateTo', { translateTo: 'es' }, 'natural, idiomatic Spanish'],
-    ['addEmojis', { addEmojis: true }, 'relevant emojis'],
-    ['avoidCommonAiSymbols', { avoidCommonAiSymbols: true }, 'DO NOT generate the em dash (—)'],
-  ])('explains %s to Jev', async (_name, options, requirement) => {
+  it.each<[string, TransformationOptions, string, string]>([
+    ['improve', { improve: true }, 'Make the writing clearer', 'Improve clarity, coherence'],
+    ['fixMistakes', { fixMistakes: true }, 'Fix spelling, grammar', 'Correct grammar, spelling'],
+    ['format', { format: true }, 'Use paragraphs or lists', 'Improve readability'],
+    ['shorten', { shorten: true }, 'fewer words', 'meaningfully shorter'],
+    ['lengthen', { lengthen: true }, 'Add useful detail', 'Develop the result'],
+    ['formality', { formality: 'Formal' }, 'Selected: Formal', 'polished, professional wording'],
+    ['tone', { tone: 'Polite' }, 'Selected: Polite', 'polite, courteous tone'],
+    ['languageLevel', { languageLevel: 'simple' }, 'Selected: simple', 'common words and short'],
+    ['translateTo', { translateTo: 'es' }, 'Selected: Spanish', 'natural, idiomatic Spanish'],
+    ['addEmojis', { addEmojis: true }, 'Add a few fitting emojis', 'relevant emojis'],
+    ['avoidCommonAiSymbols', { avoidCommonAiSymbols: true }, 'Avoid long dashes (—)', 'DO NOT generate the em dash (—)'],
+  ])('explains %s to Jev', async (name, options, explanation, requirement) => {
     const connector = { decide: jest.fn().mockResolvedValue(twoCandidateResponse()) };
     const assistants = [assistant('a'), assistant('b')];
     assistants[0].options = options;
@@ -140,6 +142,7 @@ describe('JevResultSelector', () => {
     await new JevResultSelector(connector).select({ assistants }, [success('a'), success('b')], 'request-1');
 
     const candidate = connector.decide.mock.calls[0][0].state.candidates[0];
+    expect(candidate.optionExplanations).toEqual({ [name]: expect.stringContaining(explanation) });
     expect(candidate.optionRequirements.join(' ')).toContain(requirement);
   });
 
@@ -151,6 +154,8 @@ describe('JevResultSelector', () => {
     await new JevResultSelector(connector).select({ assistants }, [success('a'), success('b')], 'request-1');
 
     const requirements = connector.decide.mock.calls[0][0].state.candidates[0].optionRequirements.join(' ');
+    const explanations = connector.decide.mock.calls[0][0].state.candidates[0].optionExplanations;
+    expect(Object.keys(explanations).sort()).toEqual(['avoidCommonAiSymbols', 'format']);
     expect(requirements).toContain('Improve readability');
     expect(requirements).toContain('DO NOT generate the em dash (—)');
     expect(requirements).toContain('email Subject: line');
