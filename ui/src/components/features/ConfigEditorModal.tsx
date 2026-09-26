@@ -65,7 +65,7 @@ export function ConfigEditorModal({
   const { tierLimits } = useAuth();
   const [editedConfig, setEditedConfig] = useState<AiConfig | null>(null);
   const [isFormDirty, setIsFormDirty] = useState(false);
-  const modelSelectRef = useRef<HTMLSelectElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -162,12 +162,12 @@ export function ConfigEditorModal({
         aria-describedby="editor-modal-description"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
-          modelSelectRef.current?.focus({ preventScroll: true });
+          titleRef.current?.focus({ preventScroll: true });
         }}
       >
         <SheetHeader className="shrink-0 border-b border-border px-6 pb-5 pt-6 sm:px-8">
           <span className="text-sm text-tertiary">{mode === "edit" ? "Edit assistant" : "Add assistant"}</span>
-          <SheetTitle id="editor-modal-title" className="text-2xl font-semibold tracking-tight">
+          <SheetTitle ref={titleRef} tabIndex={-1} id="editor-modal-title" className="text-2xl font-semibold tracking-tight">
             {mode === "edit" ? getAiRoleLabel(configData.aiRoleId) : "New AI Assistant"}
           </SheetTitle>
           <SheetDescription id="editor-modal-description" className="sr-only">
@@ -193,7 +193,6 @@ export function ConfigEditorModal({
                   <select
                     id="model"
                     name="model"
-                    ref={modelSelectRef}
                     value={editedConfig.model}
                     onChange={handleChange}
                     className={selectClassName}
