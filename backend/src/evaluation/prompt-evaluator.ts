@@ -6,6 +6,9 @@ import type { TransformationOptions } from '../types/api.types.ts';
 import type { ModelConfig, StructuredOutputMode } from '../types/config.types.ts';
 import type { LLMConnector } from '../types/llm.types.ts';
 import { buildPromptRevision, fingerprintPrompt } from '../services/prompt-builder.ts';
+import { checkOutput } from '../services/output-checks.ts';
+import { JEV_POLICY_VERSION, type ResultSelector } from '../services/jev-result-selector.ts';
+import type { BatchSelection } from '../types/api.types.ts';
 
 export type EvaluationProvider = 'gemini' | 'openrouter';
 
@@ -38,6 +41,7 @@ export interface CatalogPreflight {
 
 export interface PromptEvaluationReport {
   promptVersion: string;
+  judgePolicyVersion: string | null;
   generatedAt: string;
   candidates: Array<{
     provider: EvaluationProvider;
@@ -54,6 +58,7 @@ export interface PromptEvaluationReport {
     skipReason: string | null;
     cases: Array<{
       caseId: string;
+      attempt: number;
       roleId: string;
       language: string;
       promptVersion: string;
@@ -66,6 +71,7 @@ export interface PromptEvaluationReport {
       modelRevision: string | null;
       deterministicChecks: Array<{ check: string; passed: boolean }>;
       error: string | null;
+      judge: BatchSelection | null;
       humanReview: {
         meaningPreserved: number | null;
         roleFit: number | null;
@@ -135,22 +141,26 @@ export function runDeterministicChecks(
   evaluationCase: PromptEvaluationCase,
   output: string,
 ): Array<{ check: string; passed: boolean }> {
-  return evaluationCase.checks.map((check) => {
-    switch (check.type) {
-      case 'contains':
-        return { check: `contains:${check.value}`, passed: output.includes(check.value) };
-      case 'not-contains':
-        return { check: `not-contains:${check.value}`, passed: !output.includes(check.value) };
-      case 'matches':
-        return { check: `matches:${check.value}`, passed: new RegExp(check.value, check.flags).test(output) };
-      case 'no-emoji':
-        return { check: 'no-emoji', passed: !/\p{Extended_Pictographic}/u.test(output) };
-      case 'max-length-ratio':
-        return { check: `max-length-ratio:${check.value}`, passed: output.length <= evaluationCase.userText.length * check.value };
-      case 'min-length-ratio':
-        return { check: `min-length-ratio:${check.value}`, passed: output.length >= evaluationCase.userText.length * check.value };
-    }
-  });
+  return [
+    ...(evaluationCase.options.avoidCommonAiSymbols === true
+      ? [{ check: 'no-em-dash', passed: checkOutput(evaluationCase.options, output).length === 0 }] : []),
+    ...evaluationCase.checks.map((check) => {
+      switch (check.type) {
+        case 'contains':
+          return { check: `contains:${check.value}`, passed: output.includes(check.value) };
+        case 'not-contains':
+          return { check: `not-contains:${check.value}`, passed: !output.includes(check.value) };
+        case 'matches':
+          return { check: `matches:${check.value}`, passed: new RegExp(check.value, check.flags).test(output) };
+        case 'no-emoji':
+          return { check: 'no-emoji', passed: !/\p{Extended_Pictographic}/u.test(output) };
+        case 'max-length-ratio':
+          return { check: `max-length-ratio:${check.value}`, passed: output.length <= evaluationCase.userText.length * check.value };
+        case 'min-length-ratio':
+          return { check: `min-length-ratio:${check.value}`, passed: output.length >= evaluationCase.userText.length * check.value };
+      }
+    }),
+  ];
 }
 
 export async function runPromptEvaluation(params: {
@@ -160,10 +170,17 @@ export async function runPromptEvaluation(params: {
   connectors: Partial<Record<EvaluationProvider, LLMConnector>>;
   fetchImpl?: typeof fetch;
   now?: () => number;
+  repetitions?: number;
+  selector?: ResultSelector;
 }): Promise<PromptEvaluationReport> {
   const now = params.now ?? Date.now;
+  const repetitions = params.repetitions ?? 1;
+  if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 100) {
+    throw new Error('Repetitions must be an integer from 1 to 100');
+  }
   const report: PromptEvaluationReport = {
     promptVersion: PROMPT_VERSION,
+    judgePolicyVersion: params.selector ? JEV_POLICY_VERSION : null,
     generatedAt: new Date(now()).toISOString(),
     candidates: [],
   };
@@ -189,7 +206,9 @@ export async function runPromptEvaluation(params: {
     };
 
     if (candidateReport.status === 'completed' && connector) {
-      for (const evaluationCase of params.cases) {
+      for (const { evaluationCase, attempt } of params.cases.flatMap(evaluationCase =>
+        Array.from({ length: repetitions }, (_, index) => ({ evaluationCase, attempt: index + 1 }))
+      )) {
         const startedAt = now();
         let output: string | null = null;
         let rawResponse: string | null = null;
@@ -199,6 +218,7 @@ export async function runPromptEvaluation(params: {
         let deterministicChecks: Array<{ check: string; passed: boolean }> = [];
         let promptRevision = PROMPT_VERSION;
         let promptFingerprint = '';
+        let judge: BatchSelection | null = null;
 
         try {
           const role = getRoleById(evaluationCase.roleId);
@@ -211,7 +231,6 @@ export async function runPromptEvaluation(params: {
             model: candidate.model,
             systemPrompt,
             userPrompt: PromptTemplates.buildUserPrompt({
-              options: evaluationCase.options,
               userText: evaluationCase.userText,
               contextText: evaluationCase.contextText,
             }),
@@ -228,13 +247,26 @@ export async function runPromptEvaluation(params: {
             { check: 'valid-json-text-contract', passed: true },
             ...runDeterministicChecks(evaluationCase, output),
           ];
+          if (params.selector) {
+            judge = await params.selector.select({ assistants: [{
+              id: evaluationCase.id,
+              model: candidate.model,
+              aiRoleId: evaluationCase.roleId,
+              userText: evaluationCase.userText,
+              contextText: evaluationCase.contextText,
+              options: evaluationCase.options,
+            }] }, [{ id: evaluationCase.id, status: 'success', enhancedText: output,
+              total_tokens: response.usage.totalTokens }], `eval-${evaluationCase.id}-${attempt}`);
+          }
         } catch (caught) {
           error = (caught as Error).message;
-          deterministicChecks = [{ check: 'valid-json-text-contract', passed: false }];
+          if (output === null) deterministicChecks.push({ check: 'valid-json-text-contract', passed: false });
+          else judge = { status: 'unavailable', reason: 'JUDGE_FAILED' };
         }
 
         candidateReport.cases.push({
           caseId: evaluationCase.id,
+          attempt,
           roleId: evaluationCase.roleId,
           language: evaluationCase.language,
           promptVersion: PROMPT_VERSION,
@@ -247,6 +279,7 @@ export async function runPromptEvaluation(params: {
           modelRevision,
           deterministicChecks,
           error,
+          judge,
           humanReview: {
             meaningPreserved: null,
             roleFit: null,
@@ -261,4 +294,13 @@ export async function runPromptEvaluation(params: {
   }
 
   return report;
+}
+
+export function evaluationPassed(report: PromptEvaluationReport): boolean {
+  return report.candidates.length > 0 && report.candidates.every(candidate =>
+    candidate.status === 'completed' && candidate.cases.length > 0 && candidate.cases.every(item =>
+      !item.error && item.deterministicChecks.length > 0 && item.deterministicChecks.every(check => check.passed)
+      && (report.judgePolicyVersion === null || (item.judge?.status === 'success' && item.judge.selectedResultId !== null))
+    )
+  );
 }

@@ -80,7 +80,7 @@ export const TOOLTIP_TEXTS = {
   shorten: "Condenses the text to be more concise while keeping the core message.",
   lengthen: "Expands on the original text to be more detailed or descriptive.",
   addEmojis: "Adds relevant emojis to make the text more expressive.",
-  avoidCommonAiSymbols: "Avoid punctuation, formatting, and phrasing patterns commonly associated with AI-written text when a simpler alternative works, including em dashes, semicolons, unnecessary formatting, and formulaic sentence structures.",
+  avoidCommonAiSymbols: "Disallow em dashes, including in source quotations or code. Prefer simpler punctuation and phrasing over unnecessary semicolons, formatting, and formulaic sentence structures. Required formatting and enabled emojis are preserved.",
   formality: "Adjusts the language to be casual, neutral, or professional.",
   tone: "Sets the emotional style of the writing (e.g., Confident, Witty, Polite).",
   level: "Adjusts the complexity of the language. When a translation is selected, this adjusts the translated text's level. Otherwise, it adjusts the original language.",

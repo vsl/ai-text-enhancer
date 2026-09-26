@@ -64,14 +64,19 @@ export interface BatchResponse {
   selection?: BatchSelection;
 }
 
+export type RejectionReason = 'INSTRUCTION_FOLLOWING' | 'EM_DASH';
+
 export type BatchSelection =
   | {
       status: 'success';
       judge: 'jev';
       model: string;
-      selectedResultId: string;
+      /** null when every result fails the hard checks. */
+      selectedResultId: string | null;
       confidence: number;
       probabilities: Record<string, number>;
+      /** Optional while older backends are still deployed. Rejected results get exactly zero. */
+      rejectionReasons?: Record<string, RejectionReason[]>;
     }
   | {
       status: 'skipped';

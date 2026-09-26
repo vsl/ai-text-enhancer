@@ -528,10 +528,46 @@ interface TransformationOptions {
 ```typescript
 interface BatchResponse {
   results: BatchResult[];
+  selection?: BatchSelection;
 }
 
 type BatchResult = SuccessResult | ErrorResult;
 ```
+
+### Jev evaluation and selection
+
+Every nonempty successful output, including a single result, receives an independent
+instruction-boundary check. Outputs that answer or obey source/context instructions
+instead of transforming the source are excluded with `INSTRUCTION_FOLLOWING`.
+When `avoidCommonAiSymbols` is true, a deterministic check excludes any decoded
+U+2014 em dash with `EM_DASH`, including quoted or JSON-escaped characters.
+Other punctuation preferences remain contextual; enabled emojis are allowed.
+
+Only passing candidates enter the relative ranking call. Rejected candidates have
+exactly zero probability and a visible reason. These percentages are relative
+selection probabilities, not absolute quality or safety scores. A sole eligible
+candidate gets 1; if none qualify, every probability is 0 and `selectedResultId`
+is null. The generated text remains available for inspection.
+
+```typescript
+type BatchSelection =
+  | {
+      status: 'success';
+      judge: 'jev';
+      model: string;
+      selectedResultId: string | null;
+      confidence: number;
+      probabilities: Record<string, number>;
+      rejectionReasons?: Record<string, ('INSTRUCTION_FOLLOWING' | 'EM_DASH')[]>;
+    }
+  | { status: 'skipped'; reason: 'NOT_ENOUGH_VALID_RESULTS' } // No generated results
+  | { status: 'unavailable'; reason: 'JUDGE_FAILED' };
+```
+
+Missing/malformed judge decisions and judge timeouts produce `unavailable`, with
+no winner or invented score. Evaluation uses one boundary call and, only when at
+least two candidates pass, one ranking call; each call uses `JEV_TIMEOUT_MS`.
+Clients must handle an absent selection or rejectionReasons during rollout.
 
 ### SuccessResult
 

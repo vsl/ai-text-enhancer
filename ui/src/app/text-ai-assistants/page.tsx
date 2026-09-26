@@ -48,7 +48,7 @@ function TextAIAssistantsContent() {
   const hasResults = results.size > 0;
   const selectedResultId = selection?.status === 'success' ? selection.selectedResultId : undefined;
   const selectedResult = selectedResultId ? results.get(Number(selectedResultId)) : undefined;
-  const featuredResultId = selection?.status === 'success' && selectedResult
+  const featuredResultId = selection?.status === 'success' && selection.selectedResultId !== null && selectedResult
     && !selectedResult.error && !selectedResult.isLoading
     && selection.probabilities[selection.selectedResultId] !== undefined
     ? selection.selectedResultId : undefined;
@@ -363,7 +363,7 @@ function TextAIAssistantsContent() {
             {hasResults && (
               <div className="mb-4 flex items-center gap-2">
                 <h2 className="text-base font-semibold">Results</h2>
-                {selection?.status === 'success' && <span className="rounded-full bg-surface-hover px-2.5 py-1 text-xs text-tertiary">Evaluated by Jev</span>}
+                {selection?.status === 'success' && <span className="rounded-full bg-surface-hover px-2.5 py-1 text-xs text-tertiary">{selection.selectedResultId === null ? 'No result passed the checks' : 'Evaluated by Jev'}</span>}
               </div>
             )}
             <ul className={`grid list-none gap-4 ${hasResults ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3'}`} aria-label="Current AI Assistants">

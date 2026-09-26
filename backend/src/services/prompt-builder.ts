@@ -3,7 +3,7 @@
  * 
  * Constructs prompts from AssistantConfiguration by:
  * 1. Looking up the role's system prompt
- * 2. Building user prompt from TransformationOptions + text + context
+ * 2. Keeping trusted transformations in the system prompt and source/context in user data
  * 3. Enforcing JSON response format
  * 
  * Platform-agnostic - no Deno or Node.js specific APIs.
@@ -40,12 +40,11 @@ export class PromptBuilder {
       );
     }
 
-    // 3. Build system prompt (role + JSON enforcement)
+    // 3. Build trusted system prompt (role + transformations + output rules)
     const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt, request.options);
 
-    // 4. Build user prompt (instructions from options + context + text)
+    // 4. Serialize untrusted context and source
     const userPrompt = PromptTemplates.buildUserPrompt({
-      options: request.options,
       userText: request.userText,
       contextText: request.contextText
     });

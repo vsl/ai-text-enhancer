@@ -151,7 +151,7 @@ export class BatchOrchestrator {
     validResults: SuccessResult[],
     requestId: string,
   ): Promise<BatchSelection> {
-    if (validResults.length < 2) {
+    if (validResults.length === 0) {
       return { status: 'skipped', reason: 'NOT_ENOUGH_VALID_RESULTS' };
     }
     if (!this.resultSelector) {

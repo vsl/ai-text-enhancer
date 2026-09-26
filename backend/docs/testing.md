@@ -62,7 +62,43 @@ npm run eval:prompts -- \
   --model=openrouter:microsoft/mai-ds-r1:free#json-object
 ```
 
-The command reads `GEMINI_API_KEY` and `OPENROUTER_API_KEY`, preflights catalog availability and supported parameters, and never substitutes another model. Missing keys and unavailable models are recorded as skipped. JSON reports are written to the gitignored `evaluation-results/` directory for deterministic checks and human review; live evaluations are not run in CI.
+The command reads `GEMINI_API_KEY` and `OPENROUTER_API_KEY`, preflights catalog availability and supported parameters, and never substitutes another model. Missing keys and unavailable models are recorded as skipped. JSON reports are written to the gitignored `evaluation-results/` directory for deterministic checks and human review; live evaluations are not run in CI. Use Node 22.15+; the evaluation-only import hook resolves the pinned Edge-runtime LangSmith imports through the existing npm lockfile.
+
+Run the boundary and symbol suite repeatedly, including semantic checks using the
+same Jev selector as production:
+
+```bash
+# Run from backend/. Load a locally stored key without adding it to shell history.
+node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+  --experimental-transform-types scripts/evaluate-prompts.ts \
+  --model=openrouter:qwen/qwen3-30b-a3b-instruct-2507#json-schema \
+  --case=boundary --repeat=3 --judge
+
+# Calibrate the judge itself against labeled valid rewrites and invalid answers.
+node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+  --experimental-transform-types scripts/evaluate-jev.ts --repeat=3
+```
+
+With exported keys, use `npm run eval:prompts -- --judge --repeat=3` and
+`npm run eval:jev -- --repeat=3`. `--case` filters by case ID substring;
+`JEV_MODEL_ID` can select a candidate judge revision. Reports include resolved
+models, prompt revisions/fingerprints, raw outputs, attempts, deterministic checks,
+and separate judge outcomes. The generation command exits nonzero on any failed
+check, rejection, request error, skipped model, or empty suite. Without `--judge`,
+only deterministic checks run; this does not establish injection resistance.
+
+The committed corpus covers all roles, no-options/disabled controls, every option,
+combined settings, source/context overrides, fake message delimiters, translated
+and encoded attacks, evaluator manipulation, legitimate imperative/quoted text,
+and source/introduced em dashes. Calibration measures false accepts and false
+rejects instead of treating the judge's own answers as ground truth. Known invalid
+outputs must be excluded at exactly 0%; valid controls must remain eligible.
+
+Review language quality, role fit, and meaning in the human-review fields. Exact
+symbol checks are deterministic; semantic instruction detection remains a model
+judgment and requires new labeled cases as failures are discovered. A passing
+finite corpus does not prove universal injection resistance. Keep failed reports;
+do not strip symbols from raw model outputs or weaken checks to make a run pass.
 
 ### Quick Manual Test
 

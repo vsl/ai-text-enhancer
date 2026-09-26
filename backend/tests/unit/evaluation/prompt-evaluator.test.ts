@@ -2,11 +2,13 @@ import {
   preflightCandidate,
   runPromptEvaluation,
   runDeterministicChecks,
+  evaluationPassed,
   type PromptEvaluationCase,
 } from '../../../src/evaluation/prompt-evaluator.ts';
 import type { LLMConnector } from '../../../src/types/llm.types.ts';
 import { ROLES } from '../../../src/config/roles.config.ts';
 import { PROMPT_EVALUATION_CASES } from '../../../evaluations/cases.ts';
+import { BOUNDARY_GENERATION_CASES } from '../../../evaluations/boundary-cases.ts';
 
 const evaluationCase: PromptEvaluationCase = {
   id: 'facts',
@@ -22,6 +24,67 @@ const evaluationCase: PromptEvaluationCase = {
 };
 
 describe('prompt evaluator', () => {
+  it('covers every role and option, with no-options and disabled-symbol controls', () => {
+    for (const role of ROLES) {
+      const cases = BOUNDARY_GENERATION_CASES.filter(item => item.roleId === role.id);
+      expect(cases.some(item => Object.keys(item.options).length === 0)).toBe(true);
+      for (const option of ['improve', 'fixMistakes', 'format', 'shorten', 'lengthen', 'addEmojis',
+        'avoidCommonAiSymbols', 'formality', 'tone', 'languageLevel', 'translateTo']) {
+        expect(cases.some(item => Boolean(item.options[option as keyof typeof item.options]))).toBe(true);
+      }
+      expect(cases.some(item => item.options.avoidCommonAiSymbols === false)).toBe(true);
+    }
+  });
+
+  it('checks symbols for every enabled case even without an explicit fixture assertion', () => {
+    const item = { ...evaluationCase, options: { avoidCommonAiSymbols: true }, checks: [] };
+    expect(runDeterministicChecks(item, 'Ready—done.')).toEqual([{ check: 'no-em-dash', passed: false }]);
+    expect(runDeterministicChecks(item, 'Subject: Ready. ✅')).toEqual([{ check: 'no-em-dash', passed: true }]);
+    expect(runDeterministicChecks({ ...item, options: {} }, 'Ready—done.')).toEqual([]);
+  });
+
+  it('rejects an editor-style sentence for every email option case', () => {
+    for (const item of BOUNDARY_GENERATION_CASES.filter(item => item.id.startsWith('boundary-options-email_assistant'))) {
+      expect(runDeterministicChecks(item, 'I need a random number from 1 to 30.').some(check => !check.passed)).toBe(true);
+      const email = item.options.translateTo === 'es'
+        ? 'Asunto: Número aleatorio\n\nHola,\n\nNecesito un número aleatorio del 1 al 30.\n\nGracias,\n[Tu nombre]'
+        : 'Subject: Random number\n\nHello,\n\nI need a random number from 1 to 30.\n\nThank you,\n[Your Name]';
+      expect(runDeterministicChecks(item, email).every(check => check.passed)).toBe(true);
+      if (item.options.translateTo === 'es') {
+        expect(runDeterministicChecks(item, email.replace('[Tu nombre]', '[Nombre del remitente]')).every(check => check.passed)).toBe(true);
+      }
+    }
+  });
+
+  it('repeats generations, records judge failures separately, and fails the evaluation gate', async () => {
+    const sendRequest = jest.fn().mockResolvedValue({
+      text: '{"text":"Ana will not pay $20 on 4 May."}', usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      model: 'revision', provider: 'gemini',
+    });
+    const select = jest.fn().mockRejectedValueOnce(new Error('Judge unavailable')).mockResolvedValue({
+      status: 'success', judge: 'jev', model: 'judge-revision', selectedResultId: null,
+      confidence: 0, probabilities: { facts: 0 }, rejectionReasons: { facts: ['INSTRUCTION_FOLLOWING'] },
+    });
+    const report = await runPromptEvaluation({
+      candidates: [{ provider: 'gemini', model: 'candidate', structuredOutputMode: 'json-schema' }],
+      cases: [evaluationCase], apiKeys: { gemini: 'key' }, repetitions: 2, selector: { select },
+      connectors: { gemini: { name: 'gemini', supportsStreaming: false, sendRequest } },
+      fetchImpl: jest.fn().mockResolvedValue({ ok: true, json: async () => ({ supportedGenerationMethods: ['generateContent'] }) }),
+    });
+    const cases = report.candidates[0].cases;
+    expect(sendRequest).toHaveBeenCalledTimes(2);
+    expect(cases.map(item => item.attempt)).toEqual([1, 2]);
+    expect(cases[0].deterministicChecks).toContainEqual({ check: 'valid-json-text-contract', passed: true });
+    expect(cases[0].judge).toEqual({ status: 'unavailable', reason: 'JUDGE_FAILED' });
+    expect(cases[1].judge).toMatchObject({ selectedResultId: null });
+    expect(evaluationPassed(report)).toBe(false);
+    expect(evaluationPassed({ ...report, candidates: [] })).toBe(false);
+    expect(evaluationPassed({ ...report, candidates: [{ ...report.candidates[0], status: 'skipped' }] })).toBe(false);
+    expect(evaluationPassed({ ...report, judgePolicyVersion: null, candidates: [{ ...report.candidates[0], cases: [{ ...cases[0],
+      error: null, deterministicChecks: [{ check: 'test', passed: true }],
+    }] }] })).toBe(true);
+  });
+
   it('checks the reported em dash failure when the option is enabled', () => {
     const evaluationCase = PROMPT_EVALUATION_CASES.find(item => item.id === 'editor-avoid-em-dash-from-source')!;
     expect(runDeterministicChecks(evaluationCase, 'Tests: to do. By default — true.').some(check => !check.passed)).toBe(true);
@@ -39,12 +102,22 @@ describe('prompt evaluator', () => {
         reply.replace('Dear Morgan,', 'Dear Ms. Taylor and Mr. Alex,'),
         reply.replace('We do not have another emergency contact for Casey.', 'Please provide us with a second emergency contact.'),
         reply.replace('Thank you,', 'Our family situation is difficult. We will provide details soon. Thank you,'),
+        reply.replace('Thank you,', 'We are working to resolve it. Thank you,'),
         reply.replace(/Alex$/, 'Morgan'),
       ]) {
         expect(runDeterministicChecks(evaluationCase, badReply).some(check => !check.passed)).toBe(true);
       }
     }
   );
+
+  it('accepts equivalent numeric/date formatting while preserving negation', () => {
+    const facts = PROMPT_EVALUATION_CASES.find(item => item.id === 'editor-protected-facts')!;
+    const output = 'On March 14, 2026, Ana Torres said Acme would not raise Plan 42 above $19.50. She would reply by Friday at https://example.com/a?x=1, but approval was uncertain.';
+    expect(runDeterministicChecks(facts, output).every(check => check.passed)).toBe(true);
+    expect(runDeterministicChecks(facts, output.replace('would not', 'would')).some(check => !check.passed)).toBe(true);
+    const translated = PROMPT_EVALUATION_CASES.find(item => item.id === 'translation-ukrainian-to-english')!;
+    expect(runDeterministicChecks(translated, 'Olena reported a budget of 2,500 euros. The decision is not final.').every(check => check.passed)).toBe(true);
+  });
 
   it('preflights catalog availability and supported parameters', async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
@@ -97,14 +170,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v7',
+      promptVersion: 'prompt-v9',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v7',
-          promptRevision: 'prompt-v7/editor@v1',
+          promptVersion: 'prompt-v9',
+          promptRevision: 'prompt-v9/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -119,7 +192,7 @@ describe('prompt evaluator', () => {
     }));
     expect(sendRequest.mock.calls[0][0]).not.toHaveProperty('temperature');
     expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('meticulous professional editor');
-    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('DO NOT generate the em dash (—) in any output.');
+    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('HARD OUTPUT CONSTRAINT: zero em dash characters (Unicode U+2014) anywhere in text.');
   });
 
   it.each([
@@ -229,7 +302,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v7/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
+      expect(result.promptRevision).toBe(`prompt-v9/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });
