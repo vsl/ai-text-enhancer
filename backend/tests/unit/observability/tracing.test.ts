@@ -1,9 +1,10 @@
 jest.mock('langsmith/traceable', () => ({
-  traceable: jest.fn((operation: (...args: any[]) => any) => operation),
+  traceable: jest.fn((operation: (...args: any[]) => any) => jest.fn(operation)),
   getCurrentRunTree: jest.fn(() => { throw new Error('no active trace'); }),
 }));
 
 import { traceable } from 'langsmith/traceable';
+import { JevResultSelector } from '../../../src/services/jev-result-selector.ts';
 import {
   flushTraces,
   isTracingEnabled,
@@ -111,6 +112,36 @@ describe('LangSmith tracing', () => {
     const config = jest.mocked(traceable).mock.calls[0][1]!;
     expect(config.processInputs!({ userText: 'PRIVATE USER', apiKey: 'SECRET' } as never)).toEqual({ userText: 'PRIVATE USER', apiKey: '[REDACTED]' });
     expect(config.processOutputs!({ text: 'PRIVATE OUTPUT' } as never)).toEqual({ text: 'PRIVATE OUTPUT' });
+  });
+
+  it.each([true, false])('captures the Jev request with content capture %s', async (captureContent) => {
+    process.env.LANGSMITH_CAPTURE_CONTENT = String(captureContent);
+    setTracingClientForTests({ awaitPendingTraceBatches: jest.fn() } as never);
+    const connector = { decide: jest.fn().mockResolvedValue({
+      answers: { selected_variant: { type: 'choice', choice: 'candidate_1', confidence: 0.8,
+        probabilities: { candidate_1: 0.8, candidate_2: 0.2 } } },
+    }) };
+    const assistants = ['a', 'b'].map(id => ({
+      id, model: 'model', aiRoleId: 'editor', userText: 'PRIVATE SOURCE', contextText: 'PRIVATE CONTEXT', options: { improve: true },
+    }));
+    const results = ['a', 'b'].map(id => ({ id, status: 'success' as const, enhancedText: `PRIVATE OUTPUT ${id}`, total_tokens: 1 }));
+
+    await new JevResultSelector(connector).select({ assistants }, results, 'request-1');
+
+    const wrapped = jest.mocked(traceable).mock.results[0].value as jest.Mock;
+    const inputs = wrapped.mock.calls[0][0];
+    expect(inputs.request).toEqual(connector.decide.mock.calls[0][0]);
+    const exported = jest.mocked(traceable).mock.calls[0][1]!.processInputs!(inputs);
+    const serialized = JSON.stringify(exported);
+    if (captureContent) {
+      expect(serialized).toContain('PRIVATE SOURCE');
+      expect(serialized).toContain('PRIVATE CONTEXT');
+      expect(serialized).toContain('PRIVATE OUTPUT a');
+      expect(serialized).toContain('Select exactly one candidate');
+    } else {
+      expect(serialized).not.toContain('PRIVATE');
+      expect(serialized).not.toContain('Select exactly one candidate');
+    }
   });
 
   it('builds nested batch, assistant, provider, and parser runs with full content', async () => {

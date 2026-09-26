@@ -76,10 +76,7 @@ export class JevResultSelector {
     return traceRun({
       name: 'jev.selection',
       runType: 'llm',
-      inputs: {
-        candidateCount: candidates.length,
-        candidateIds: candidates.map(candidate => candidate.resultId),
-      },
+      inputs: { request: decisionRequest },
       metadata: { requestId, judge: 'jev', requestedModel: this.model },
       operation: async () => {
         const startedAt = performance.now();
