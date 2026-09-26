@@ -1,5 +1,6 @@
 "use client";
 
+import { ShieldCheck } from "lucide-react";
 import { Options } from "@/lib/types";
 import { LANGUAGE_LEVELS, LANGUAGES } from "@/lib/constants";
 
@@ -34,6 +35,7 @@ export function ConfigSummaryTags({ options, onClick }: ConfigSummaryTagsProps) 
       type="button"
       title="Edit this assistant"
       aria-label="Edit assistant configuration"
+      aria-description={options.avoidCommonAiSymbols ? "Avoid common AI symbols is enabled for this assistant." : undefined}
     >
       <span className="flex flex-wrap gap-1.5">
         {actions.map((tag) => (
@@ -44,6 +46,12 @@ export function ConfigSummaryTags({ options, onClick }: ConfigSummaryTagsProps) 
         {style.map((tag) => (
           <span key={tag} className="rounded-md bg-violet-surface px-2 py-0.5 text-xs text-primary">{tag}</span>
         ))}
+        {options.avoidCommonAiSymbols && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-violet-border bg-violet-surface/50 px-2 py-0.5 text-xs text-primary">
+            <ShieldCheck className="size-3" aria-hidden="true" />
+            Avoid AI symbols
+          </span>
+        )}
       </span>
     </button>
   );
