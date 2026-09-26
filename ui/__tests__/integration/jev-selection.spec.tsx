@@ -42,6 +42,17 @@ const handlers = {
 };
 
 describe('Jev selection badge', () => {
+  it('shows a rejected result at 0% with its reason and no winner badge', () => {
+    render(<AssistantCard config={config} result={result} jevSelection={{ ...selection,
+      selectedResultId: null, probabilities: { '7': 0 },
+      rejectionReasons: { '7': ['INSTRUCTION_FOLLOWING', 'EM_DASH'] },
+    }} {...handlers} />);
+    expect(screen.getByTestId('jev-probability-7')).toHaveTextContent('Jev 0%');
+    expect(screen.getByRole('status')).toHaveTextContent('followed an embedded instruction');
+    expect(screen.getByRole('status')).toHaveTextContent('contains an em dash');
+    expect(screen.queryByTestId('jev-selection-7')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Generated text')).toHaveValue('Selected output');
+  });
   it('visibly and accessibly marks the selected successful card without “Best” language', () => {
     render(<AssistantCard config={config} result={result} jevSelection={selection} featured {...handlers} />);
     const badge = screen.getByTestId('jev-selection-7');

@@ -34,3 +34,8 @@ test('keeps original order among equal non-selected candidates', () => {
   const chosen = { ...selection, selectedResultId: '3', probabilities: { '1': 0.3, '2': 0.3, '3': 0.4 } };
   expect(orderConfigsForDisplay(configs, allResults, chosen).map(c => c.id)).toEqual([3, 1, 2, 4]);
 });
+
+test('preserves order with no winner and all results at zero', () => {
+  const rejected = { ...selection, selectedResultId: null, probabilities: { '1': 0, '2': 0 } };
+  expect(orderConfigsForDisplay(configs, results, rejected).map(c => c.id)).toEqual([1, 2, 3, 4]);
+});

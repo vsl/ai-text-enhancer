@@ -753,7 +753,7 @@ describe('BatchOrchestrator', () => {
       expect(quotaService.reportUsage).toHaveBeenCalledWith(user.userId, 30, 'batch', expect.any(String));
     });
 
-    it.each([1, 0])('skips Jev when %i results are valid', async (validCount) => {
+    it.each([0])('skips Jev when %i results are valid', async (validCount) => {
       sendRequest.mockImplementation(() => validCount
         ? Promise.resolve({ text: '{"text":"Only"}', usage: { totalTokens: 10 } })
         : Promise.reject(new Error('provider failed'))
@@ -763,6 +763,16 @@ describe('BatchOrchestrator', () => {
 
       expect(select).not.toHaveBeenCalled();
       expect(response.selection).toEqual({ status: 'skipped', reason: 'NOT_ENOUGH_VALID_RESULTS' });
+    });
+
+    it('evaluates a single result and preserves an all-rejected outcome', async () => {
+      const rejected = { ...successfulSelection, selectedResultId: null, confidence: 0,
+        probabilities: { 'result-1': 0 }, rejectionReasons: { 'result-1': ['INSTRUCTION_FOLLOWING'] } };
+      const select = jest.fn().mockResolvedValue(rejected);
+      const response = await createSelectorOrchestrator(select).processBatch(user, buildRequest(1));
+      expect(select).toHaveBeenCalledTimes(1);
+      expect(response.selection).toEqual(rejected);
+      expect(response.results[0].status).toBe('success');
     });
 
     it('preserves generated results when Jev fails', async () => {

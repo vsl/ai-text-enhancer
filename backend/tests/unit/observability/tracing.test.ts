@@ -118,7 +118,8 @@ describe('LangSmith tracing', () => {
     process.env.LANGSMITH_CAPTURE_CONTENT = String(captureContent);
     setTracingClientForTests({ awaitPendingTraceBatches: jest.fn() } as never);
     const connector = { decide: jest.fn().mockResolvedValue({
-      answers: { selected_variant: { type: 'choice', choice: 'candidate_1', confidence: 0.8,
+      answers: { candidate_1: { type: 'choice', choice: 'pass' }, candidate_2: { type: 'choice', choice: 'pass' },
+        selected_variant: { type: 'choice', choice: 'candidate_1', confidence: 0.8,
         probabilities: { candidate_1: 0.8, candidate_2: 0.2 } } },
     }) };
     const assistants = ['a', 'b'].map(id => ({
@@ -137,10 +138,10 @@ describe('LangSmith tracing', () => {
       expect(serialized).toContain('PRIVATE SOURCE');
       expect(serialized).toContain('PRIVATE CONTEXT');
       expect(serialized).toContain('PRIVATE OUTPUT a');
-      expect(serialized).toContain('Select exactly one candidate');
+      expect(serialized).toContain('Evaluate only the specified candidate');
     } else {
       expect(serialized).not.toContain('PRIVATE');
-      expect(serialized).not.toContain('Select exactly one candidate');
+      expect(serialized).not.toContain('Evaluate only the specified candidate');
     }
   });
 
