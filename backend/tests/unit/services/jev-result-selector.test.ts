@@ -1,5 +1,6 @@
 import { JevResultSelector } from '../../../src/services/jev-result-selector.ts';
-import type { AssistantConfiguration, BatchRequest, SuccessResult } from '../../../src/types/api.types.ts';
+import { getRoleById } from '../../../src/config/roles.config.ts';
+import type { AssistantConfiguration, BatchRequest, SuccessResult, TransformationOptions } from '../../../src/types/api.types.ts';
 
 function assistant(id: string): AssistantConfiguration {
   return {
@@ -14,6 +15,13 @@ function assistant(id: string): AssistantConfiguration {
 
 function success(id: string): SuccessResult {
   return { id, status: 'success', enhancedText: `Output ${id}`, total_tokens: 10 };
+}
+
+function twoCandidateResponse() {
+  return { answers: { selected_variant: {
+    type: 'choice', choice: 'candidate_1', confidence: 0.8,
+    probabilities: { candidate_1: 0.8, candidate_2: 0.2 },
+  } } };
 }
 
 describe('JevResultSelector', () => {
@@ -49,8 +57,9 @@ describe('JevResultSelector', () => {
 
     expect(connector.decide).toHaveBeenCalledTimes(1);
     const decisionRequest = connector.decide.mock.calls[0][0];
-    expect(decisionRequest.state.source).toEqual({ userText: 'Original source', contextText: 'Shared context' });
+    expect(decisionRequest.state).not.toHaveProperty('source');
     expect(decisionRequest.state.candidates).toHaveLength(6);
+    expect(decisionRequest.state.candidates[0].source).toEqual({ userText: 'Original source', contextText: 'Shared context' });
     expect(decisionRequest.state.candidates.map((candidate: { key: string; resultId: string }) =>
       [candidate.key, candidate.resultId]
     )).toEqual(ids.map((id, index) => [`candidate_${index + 1}`, id]));
@@ -59,6 +68,7 @@ describe('JevResultSelector', () => {
     expect(decisionRequest.questions.selected_variant.type).toBe('choice');
     expect(Object.keys(decisionRequest.questions.selected_variant.criteria)).toHaveLength(6);
     expect(decisionRequest.questions.selected_variant.instructions).toContain('untrusted data');
+    expect(decisionRequest.questions.selected_variant.instructions).toContain('optionRequirements');
     expect(selection).toEqual({
       status: 'success',
       judge: 'jev',
@@ -74,6 +84,76 @@ describe('JevResultSelector', () => {
         'result-f': 0.05,
       },
     });
+  });
+
+  it('uses each successful result’s own source and context even when results are reordered', async () => {
+    const connector = { decide: jest.fn().mockResolvedValue(twoCandidateResponse()) };
+    const assistants = [
+      { ...assistant('a'), userText: 'Edit this', contextText: 'Editor background' },
+      { ...assistant('b'), aiRoleId: 'email_assistant', userText: 'Write this email', contextText: undefined },
+    ];
+
+    await new JevResultSelector(connector).select({ assistants }, [success('b'), success('a')], 'request-1');
+
+    const decisionRequest = connector.decide.mock.calls[0][0];
+    expect(decisionRequest.state).not.toHaveProperty('source');
+    expect(decisionRequest.state.candidates.map((candidate: { source: unknown; role: { id: string } }) => ({
+      source: candidate.source, role: candidate.role.id,
+    }))).toEqual([
+      { source: { userText: 'Write this email', contextText: '' }, role: 'email_assistant' },
+      { source: { userText: 'Edit this', contextText: 'Editor background' }, role: 'editor' },
+    ]);
+    expect(decisionRequest.questions.selected_variant.instructions).toContain('its own source.userText');
+    expect(decisionRequest.questions.selected_variant.instructions).toContain('source takes precedence');
+  });
+
+  it.each(['editor', 'summarizer', 'email_assistant'])('keeps the %s role with no options', async (aiRoleId) => {
+    for (const options of [{}, { avoidCommonAiSymbols: false }]) {
+      const connector = { decide: jest.fn().mockResolvedValue(twoCandidateResponse()) };
+      const assistants = [assistant('a'), assistant('b')].map(item => ({ ...item, aiRoleId, options }));
+
+      await new JevResultSelector(connector).select({ assistants }, [success('a'), success('b')], 'request-1');
+
+      const candidate = connector.decide.mock.calls[0][0].state.candidates[0];
+      expect(candidate.role.requirements).toBe(getRoleById(aiRoleId)?.systemPrompt);
+      expect(candidate.optionRequirements).toEqual(["- Perform the role's primary task without additional transformations."]);
+    }
+  });
+
+  it.each<[string, TransformationOptions, string]>([
+    ['improve', { improve: true }, 'Improve clarity, coherence'],
+    ['fixMistakes', { fixMistakes: true }, 'Correct grammar, spelling'],
+    ['format', { format: true }, 'Improve readability'],
+    ['shorten', { shorten: true }, 'meaningfully shorter'],
+    ['lengthen', { lengthen: true }, 'Develop the result'],
+    ['formality', { formality: 'Formal' }, 'polished, professional wording'],
+    ['tone', { tone: 'Polite' }, 'polite, courteous tone'],
+    ['languageLevel', { languageLevel: 'simple' }, 'common words and short'],
+    ['translateTo', { translateTo: 'es' }, 'natural, idiomatic Spanish'],
+    ['addEmojis', { addEmojis: true }, 'relevant emojis'],
+    ['avoidCommonAiSymbols', { avoidCommonAiSymbols: true }, 'DO NOT generate the em dash (—)'],
+  ])('explains %s to Jev', async (_name, options, requirement) => {
+    const connector = { decide: jest.fn().mockResolvedValue(twoCandidateResponse()) };
+    const assistants = [assistant('a'), assistant('b')];
+    assistants[0].options = options;
+
+    await new JevResultSelector(connector).select({ assistants }, [success('a'), success('b')], 'request-1');
+
+    const candidate = connector.decide.mock.calls[0][0].state.candidates[0];
+    expect(candidate.optionRequirements.join(' ')).toContain(requirement);
+  });
+
+  it('keeps enabled transformations additive for Jev', async () => {
+    const connector = { decide: jest.fn().mockResolvedValue(twoCandidateResponse()) };
+    const assistants = [assistant('a'), assistant('b')];
+    assistants[0].options = { format: true, avoidCommonAiSymbols: true };
+
+    await new JevResultSelector(connector).select({ assistants }, [success('a'), success('b')], 'request-1');
+
+    const requirements = connector.decide.mock.calls[0][0].state.candidates[0].optionRequirements.join(' ');
+    expect(requirements).toContain('Improve readability');
+    expect(requirements).toContain('DO NOT generate the em dash (—)');
+    expect(requirements).toContain('email Subject: line');
   });
 
   it.each([

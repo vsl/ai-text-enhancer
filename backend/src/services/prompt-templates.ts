@@ -51,7 +51,7 @@ export class PromptTemplates {
    * Build instructions array from TransformationOptions
    * Each enabled option adds specific instructions
    */
-  private static buildInstructions(options: TransformationOptions): string[] {
+  static buildInstructions(options: TransformationOptions): string[] {
     const instructions: string[] = [];
 
     // Core Transformations
