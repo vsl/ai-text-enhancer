@@ -154,7 +154,7 @@ npm run dev
 
 Tracing is disabled unless `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are both set. CI enables tracing when `LANGSMITH_API_KEY` is configured and disables it otherwise; it selects `ai-text-enhancer-staging` or `ai-text-enhancer-production`. `APP_RELEASE` is the deployed Git SHA. Keep `LANGSMITH_ENDPOINT=https://api.smith.langchain.com` for the US workspace.
 
-Traces contain complete user source/context, assembled prompts, raw provider responses, and final output. Restrict workspace access accordingly, use the shortest operationally useful retention period, and never enable raw `LOG_LEVEL=debug` payload logging in normal staging or production operation.
+Traces omit user source/context, assembled prompts, raw provider responses, and final output by default. Set the GitHub Actions repository secret `LANGSMITH_CAPTURE_CONTENT=true` only for a sensitive diagnostic deployment; credentials remain redacted. Restrict workspace access and retention accordingly, and never enable raw `LOG_LEVEL=debug` payload logging in normal staging or production operation.
 
 Role prompt text remains versioned in Git. Increment that role's `systemPromptVersion` for a role prompt change. Increment the shared `PROMPT_VERSION` for shared policy or transformation instruction changes. LangSmith stores the resulting composite revision and SHA-256 prompt fingerprint; it is not a prompt registry.
 

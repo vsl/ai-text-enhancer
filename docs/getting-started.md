@@ -148,6 +148,7 @@ organization secrets instead, restrict each secret to this repository.
 | `SUPABASE_ACCESS_TOKEN` | The scoped token created above |
 | `OPENROUTER_API_KEY` | The OpenRouter usage API key |
 | `LANGSMITH_API_KEY` | Optional LangSmith workspace API key; enables tracing when present |
+| `LANGSMITH_CAPTURE_CONTENT` | Optional; set to `true` only during a sensitive diagnostic session (defaults to `false`) |
 | `LLM_TIMEOUT_MS` | Optional; use `30000` or omit it for the default |
 | `MAX_BATCH_SIZE` | Optional; use `10` or omit it for the default |
 | `STAGING_SUPABASE_PROJECT_ID` | Staging project ref |
@@ -168,7 +169,7 @@ to fork pull requests, so use a branch in this repository for deployment PRs.
 
 The workflow derives `LANGSMITH_TRACING`, `LANGSMITH_PROJECT`, `APP_ENV`,
 `APP_RELEASE`, and `LOG_LEVEL`; do not create Actions secrets for those
-values. `LANGSMITH_TRACING` is `true` only when `LANGSMITH_API_KEY` exists; otherwise it is `false`. `LANGSMITH_CAPTURE_CONTENT` defaults to `false` in the deployment workflow. A repository variable set to `true` enables sensitive content capture for a deliberate diagnostic deployment. `LOG_LEVEL` stays at `info`. Do not set it to
+values. `LANGSMITH_TRACING` is `true` only when `LANGSMITH_API_KEY` exists; otherwise it is `false`. `LANGSMITH_CAPTURE_CONTENT` defaults to `false` in the deployment workflow. Set its repository secret to `true` for a deliberate diagnostic deployment. `LOG_LEVEL` stays at `info`. Do not set it to
 `debug` during normal operation. Provider payload debug logs require the explicit content-capture flag.
 
 Protect `main` in **Settings > Branches** (or **Rules**) so production comes
