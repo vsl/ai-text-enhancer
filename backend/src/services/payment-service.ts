@@ -213,7 +213,7 @@ export class PaymentService {
    */
   private async handleRefund(charge: Stripe.Charge): Promise<void> {
     // Validate charge amounts
-    if (!charge.amount || !charge.amount_refunded) {
+    if (charge.amount == null || charge.amount_refunded == null) {
       console.error('Missing amount data in charge:', charge.id);
       return;
     }

@@ -439,6 +439,7 @@ describe('PaymentService', () => {
     });
 
     it('should safely handle zero total amount', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const mockCharge = {
         id: 'ch_test_zero',
         amount: 0,
@@ -455,6 +456,8 @@ describe('PaymentService', () => {
 
       expect(mockQuotaRepository.deductTokensForRefund).not.toHaveBeenCalled();
       expect(mockQuotaRepository.recordRefund).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Charge has zero amount:', 'ch_test_zero');
+      consoleErrorSpy.mockRestore();
     });
 
     it('should safely handle missing charge amounts', async () => {
