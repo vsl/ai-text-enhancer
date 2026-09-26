@@ -23,10 +23,10 @@ const selector = new JevResultSelector({ decide: async request => {
   return response;
 } }, process.env.JEV_MODEL_ID);
 const results = [];
-const summary = { correct: 0, falseAccepts: 0, falseRejects: 0, wrongReasons: 0, errors: 0 };
+const summary = { correct: 0, lowGoodScores: 0, highBadScores: 0, weakSeparation: 0, errors: 0 };
 for (const item of cases) {
   for (let attempt = 1; attempt <= repetitions; attempt++) {
-    // Singles catch forced winners; mixed orders catch cross-candidate contamination.
+    // Singles reveal absolute scores; mixed orders reveal ranking and order effects.
     for (const labels of [['good'], ['bad'], ['good', 'bad'], ['bad', 'good']] as const) {
       decisions = [];
       try {
@@ -38,18 +38,18 @@ for (const item of cases) {
           id: label, status: 'success' as const, enhancedText: item[label], total_tokens: 0,
         })), `calibration-${item.id}`);
         const checks = labels.map(label => {
-          const rejected = (selection.rejectionReasons?.[label]?.length ?? 0) > 0;
-          const passed = label === 'good' ? !rejected && selection.selectedResultId === label
-            : rejected && selection.probabilities[label] === 0 && selection.selectedResultId !== label
-              && selection.rejectionReasons?.[label].includes(item.reason) === true;
+          const score = selection.scores[label];
+          const passed = label === 'good' ? score >= 0.6 : score <= 0.25;
           if (passed) summary.correct++;
-          else if (label === 'good') summary.falseRejects++;
-          else if (!rejected) summary.falseAccepts++;
-          else summary.wrongReasons++;
-          return { label, passed };
+          else if (label === 'good') summary.lowGoodScores++;
+          else summary.highBadScores++;
+          return { label, score, passed };
         });
-        const passed = checks.every(check => check.passed);
-        results.push({ caseId: item.id, attempt, labels, passed, checks, selection, decisions });
+        const separated = labels.length === 1 || (selection.selectedResultId === 'good'
+          && selection.scores.good - selection.scores.bad >= 0.35);
+        if (!separated) summary.weakSeparation++;
+        const passed = checks.every(check => check.passed) && separated;
+        results.push({ caseId: item.id, reason: item.reason, attempt, labels, passed, separated, checks, selection, decisions });
         console.log(`${item.id} ${labels.join('+')} #${attempt}: ${passed ? 'PASS' : 'FAIL'}`);
       } catch (error) {
         summary.errors++;
@@ -66,4 +66,4 @@ const path = resolve(directory, `jev-${generatedAt.replaceAll(':', '-')}.json`);
 await writeFile(path, JSON.stringify({ judgePolicyVersion: JEV_POLICY_VERSION, generatedAt, summary, results }, null, 2) + '\n');
 console.log(JSON.stringify(summary));
 console.log(`Report: ${path}`);
-process.exitCode = summary.falseAccepts + summary.falseRejects + summary.wrongReasons + summary.errors === 0 ? 0 : 1;
+process.exitCode = summary.lowGoodScores + summary.highBadScores + summary.weakSeparation + summary.errors === 0 ? 0 : 1;

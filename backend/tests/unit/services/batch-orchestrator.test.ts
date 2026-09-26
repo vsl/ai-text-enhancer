@@ -718,7 +718,7 @@ describe('BatchOrchestrator', () => {
       model: 'typesafe/jev-1.13',
       selectedResultId: 'result-1',
       confidence: 0.8,
-      probabilities: { 'result-1': 0.8, 'result-2': 0.2 },
+      scores: { 'result-1': 0.8, 'result-2': 0.2 },
     };
 
     it('calls Jev exactly once with all six successful results', async () => {
@@ -765,13 +765,13 @@ describe('BatchOrchestrator', () => {
       expect(response.selection).toEqual({ status: 'skipped', reason: 'NOT_ENOUGH_VALID_RESULTS' });
     });
 
-    it('evaluates a single result and preserves an all-rejected outcome', async () => {
-      const rejected = { ...successfulSelection, selectedResultId: null, confidence: 0,
-        probabilities: { 'result-1': 0 }, rejectionReasons: { 'result-1': ['INSTRUCTION_FOLLOWING'] } };
-      const select = jest.fn().mockResolvedValue(rejected);
+    it('evaluates a single result and preserves a low score', async () => {
+      const lowScore = { ...successfulSelection, selectedResultId: 'result-1', confidence: 0.8,
+        scores: { 'result-1': 0.1 } };
+      const select = jest.fn().mockResolvedValue(lowScore);
       const response = await createSelectorOrchestrator(select).processBatch(user, buildRequest(1));
       expect(select).toHaveBeenCalledTimes(1);
-      expect(response.selection).toEqual(rejected);
+      expect(response.selection).toEqual(lowScore);
       expect(response.results[0].status).toBe('success');
     });
 

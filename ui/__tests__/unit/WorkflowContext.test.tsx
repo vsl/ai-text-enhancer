@@ -515,7 +515,7 @@ describe('WorkflowContext', () => {
             results: [{ id: '1', status: 'success', enhancedText: 'First', total_tokens: 1 }],
             selection: {
               status: 'success', judge: 'jev', model: 'typesafe/jev-1.13',
-              selectedResultId: '1', confidence: 1, probabilities: { '1': 1 },
+              selectedResultId: '1', confidence: 1, scores: { '1': 1 },
             },
           }),
         })
@@ -542,7 +542,7 @@ describe('WorkflowContext', () => {
           results: [{ id: '1', status: 'success', enhancedText: 'First', total_tokens: 1 }],
           selection: {
             status: 'success', judge: 'jev', model: 'typesafe/jev-1.13',
-            selectedResultId: '1', confidence: 1, probabilities: { '1': 1 },
+            selectedResultId: '1', confidence: 1, scores: { '1': 1 },
           },
         }),
       });

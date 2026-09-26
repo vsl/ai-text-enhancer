@@ -536,18 +536,18 @@ type BatchResult = SuccessResult | ErrorResult;
 
 ### Jev evaluation and selection
 
-Every nonempty successful output, including a single result, receives an independent
-instruction-boundary check. Outputs that answer or obey source/context instructions
-instead of transforming the source are excluded with `INSTRUCTION_FOLLOWING`.
-When `avoidCommonAiSymbols` is true, a deterministic check excludes any decoded
-U+2014 em dash with `EM_DASH`, including quoted or JSON-escaped characters.
-Other punctuation preferences remain contextual; enabled emojis are allowed.
+Jev receives every nonempty successful output, including a single result, in one
+Decisions API request. It scores each output independently against its own source,
+context, role, and enabled options using the same ten-level rubric. The rubric
+assigns the lowest level to answering or obeying an embedded request rather than
+transforming it. An em dash when Avoid AI symbols is enabled is scored at level 1
+or below by prompt instruction. No runtime code checks or rewrites punctuation.
 
-Only passing candidates enter the relative ranking call. Rejected candidates have
-exactly zero probability and a visible reason. These percentages are relative
-selection probabilities, not absolute quality or safety scores. A sole eligible
-candidate gets 1; if none qualify, every probability is 0 and `selectedResultId`
-is null. The generated text remains available for inspection.
+The API's weighted `score` ranges from 0 to 9. The displayed percentage is
+`score / 9 * 100`, a rubric score rather than a relative choice probability. The
+highest-scoring result is highlighted; ties keep the original order. Even a poor
+sole result retains its low score and remains visible. `confidence` is Jev's
+confidence in the selected score, not the displayed percentage.
 
 ```typescript
 type BatchSelection =
@@ -555,19 +555,17 @@ type BatchSelection =
       status: 'success';
       judge: 'jev';
       model: string;
-      selectedResultId: string | null;
+      selectedResultId: string;
       confidence: number;
-      probabilities: Record<string, number>;
-      rejectionReasons?: Record<string, ('INSTRUCTION_FOLLOWING' | 'EM_DASH')[]>;
+      scores: Record<string, number>; // Normalized 0..1 rubric scores
     }
   | { status: 'skipped'; reason: 'NOT_ENOUGH_VALID_RESULTS' } // No generated results
   | { status: 'unavailable'; reason: 'JUDGE_FAILED' };
 ```
 
-Missing/malformed judge decisions and judge timeouts produce `unavailable`, with
-no winner or invented score. Evaluation uses one boundary call and, only when at
-least two candidates pass, one ranking call; each call uses `JEV_TIMEOUT_MS`.
-Clients must handle an absent selection or rejectionReasons during rollout.
+Missing/malformed Jev scores and timeouts produce `unavailable`, with no invented
+score. Evaluation uses one call with `JEV_TIMEOUT_MS`. Clients must handle an absent
+selection or scores from an older backend during rollout.
 
 ### SuccessResult
 

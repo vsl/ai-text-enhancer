@@ -2,9 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Bot, Layers3, SlidersHorizontal, Cpu } from "lucide-react";
 
 const examples = [
-  { model: "GPT-5 Nano", percentage: 54, text: "Thank you for the update. I’ve reviewed the revised timeline and it works well on our end — we’re happy to proceed with Thursday’s delivery." },
-  { model: "Qwen3 30B", percentage: 31, text: "Thanks for the update — the new timeline looks good to us. We’ll move forward with Thursday’s delivery and share final assets Wednesday." },
-  { model: "OpenRouter Free", percentage: 15, text: "Appreciate the update. The adjusted timeline is fine. We’ll deliver on Thursday and send assets Wednesday for review." },
+  { model: "GPT-5 Nano", percentage: 88, text: "Thank you for the update. I’ve reviewed the revised timeline and it works well on our end. We’re happy to proceed with Thursday’s delivery." },
+  { model: "Qwen3 30B", percentage: 76, text: "Thanks for the update. The new timeline looks good to us. We’ll move forward with Thursday’s delivery and share final assets Wednesday." },
+  { model: "OpenRouter Free", percentage: 62, text: "Appreciate the update. The adjusted timeline is fine. We’ll deliver on Thursday and send assets Wednesday for review." },
 ];
 
 function PreferenceRow({ model, percentage, text, compact = false }: {
@@ -13,7 +13,7 @@ function PreferenceRow({ model, percentage, text, compact = false }: {
   text?: string;
   compact?: boolean;
 }) {
-  const chosen = percentage === 54;
+  const chosen = percentage === 88;
   return (
     <div className={chosen
       ? "rounded-xl border border-violet-border bg-violet-surface/65 p-4"
@@ -23,7 +23,7 @@ function PreferenceRow({ model, percentage, text, compact = false }: {
           {chosen && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">Chosen by Jev</span>}
           <span className={chosen ? "font-medium text-foreground" : "text-muted-foreground"}>{model}</span>
         </div>
-        <span className={chosen ? "font-medium text-primary" : "text-tertiary"}>{percentage}%</span>
+        <span className={chosen ? "font-medium text-primary" : "text-tertiary"}>Jev score {percentage}%</span>
       </div>
       <div className="mt-3 h-1 overflow-hidden rounded-full bg-border-strong">
         <div className={chosen ? "h-full rounded-full bg-primary" : "h-full rounded-full bg-tertiary/40"} style={{ width: percentage + "%" }} />
@@ -66,7 +66,7 @@ export default function Home() {
           </div>
           <p className="mb-3 mt-5 text-xs font-semibold uppercase tracking-wider text-tertiary">Evaluated alternatives</p>
           <div className="space-y-2.5">{examples.map((example) => <PreferenceRow key={example.model} {...example} compact />)}</div>
-          <p className="mt-4 text-xs text-tertiary">Illustrative preview · relative preference, not confidence</p>
+          <p className="mt-4 text-xs text-tertiary">Illustrative preview · independent rubric scores</p>
         </div>
       </section>
 
@@ -121,7 +121,7 @@ export default function Home() {
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">Compare alternatives</p>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">Results evaluated with Jev</h2>
             <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
-              When at least two assistants return valid results, Jev evaluates the alternatives and returns a selected candidate with relative probabilities. Every result remains available, so you still make the final choice.
+              Jev scores each result against the source, role, and enabled options. The highest score is highlighted, and every result stays available so you make the final choice.
             </p>
             <Link href="/text-ai-assistants" className="mt-6 inline-flex items-center gap-2 font-medium text-primary hover:text-primary-hover">
               Try a workflow <ArrowRight className="size-4" aria-hidden="true" />
@@ -129,7 +129,7 @@ export default function Home() {
           </div>
           <div className="space-y-2.5 rounded-2xl border border-border-strong bg-card p-5" aria-label="Illustrative Jev result examples">
             {examples.map((example) => <PreferenceRow key={example.model} {...example} />)}
-            <p className="pt-1 text-xs text-tertiary">Illustrative examples · relative preference, not confidence</p>
+            <p className="pt-1 text-xs text-tertiary">Illustrative examples · independent rubric scores</p>
           </div>
         </div>
       </section>

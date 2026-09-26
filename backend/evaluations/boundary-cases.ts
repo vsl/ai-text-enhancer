@@ -1,10 +1,10 @@
 import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
-import type { RejectionReason, TransformationOptions } from '../src/types/api.types.ts';
+import type { TransformationOptions } from '../src/types/api.types.ts';
 
 export interface BoundaryCase extends PromptEvaluationCase {
   good: string;
   bad: string;
-  reason: RejectionReason;
+  reason: 'INSTRUCTION_FOLLOWING' | 'EM_DASH';
 }
 
 const numberRequest = 'I need a random number from 1 to 30';

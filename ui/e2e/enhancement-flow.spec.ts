@@ -333,7 +333,7 @@ test.describe('Text Enhancement Flow', () => {
         ],
         selection: {
           status: 'success', judge: 'jev', model: 'typesafe/jev-1.13',
-          selectedResultId: '2', confidence: 0.9, probabilities: { '1': 0.16, '2': 0.84 },
+          selectedResultId: '2', confidence: 0.9, scores: { '1': 0.16, '2': 0.84 },
         },
       }),
     }));
@@ -344,8 +344,8 @@ test.describe('Text Enhancement Flow', () => {
     await expect(page.locator('[data-testid^="jev-selection-"]')).toHaveCount(1);
     await expect(page.getByTestId('jev-selection-2')).toHaveText('Chosen by Jev');
     await expect(page.getByTestId('assistant-card-2')).toContainText('Second result');
-    await expect(page.getByTestId('jev-probability-2')).toHaveText('Jev 84%');
-    await expect(page.getByTestId('jev-probability-1')).toHaveText('Jev 16%');
+    await expect(page.getByTestId('jev-score-2')).toHaveText('Jev score 84%');
+    await expect(page.getByTestId('jev-score-1')).toHaveText('Jev score 16%');
     await expect(page.locator('[data-testid^=\"assistant-card-\"]').first()).toHaveAttribute('data-testid', 'assistant-card-2');
     const savedOrder = await page.evaluate(() => JSON.parse(localStorage.getItem('aiTextEnhancerWorkflows') || '[]')[0].configs.map((config: { id: number }) => config.id));
     expect(savedOrder).toEqual([1, 2]);
@@ -379,7 +379,7 @@ test.describe('Text Enhancement Flow', () => {
         ],
         selection: {
           status: 'success', judge: 'jev', model: 'typesafe/jev-1.13',
-          selectedResultId: '2', confidence: 1, probabilities: { '1': 0, '2': 1 },
+          selectedResultId: '2', confidence: 1, scores: { '1': 0, '2': 1 },
         },
       },
       {
@@ -425,7 +425,7 @@ test.describe('Text Enhancement Flow', () => {
           ],
           selection: {
             status: 'success', judge: 'jev', model: 'typesafe/jev-1.13',
-            selectedResultId: '1', confidence: 0.8, probabilities: { '1': 0.8, '2': 0.2 },
+            selectedResultId: '1', confidence: 0.8, scores: { '1': 0.8, '2': 0.2 },
           },
         }),
       });
@@ -437,7 +437,7 @@ test.describe('Text Enhancement Flow', () => {
     await page.getByTestId('input-text').fill('Second run');
     await page.getByTestId('enhance-button').click();
     await expect(page.locator('[data-testid^="jev-selection-"]')).toHaveCount(0);
-    await expect(page.locator('[data-testid^="jev-probability-"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid^="jev-score-"]')).toHaveCount(0);
   });
 
   test.skip('should edit result text inline', async ({ page }) => {

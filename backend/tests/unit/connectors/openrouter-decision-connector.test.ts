@@ -4,16 +4,16 @@ const request: DecisionRequest = {
   model: 'typesafe/jev-1.13',
   state: { candidates: [{ key: 'candidate_1' }, { key: 'candidate_2' }] },
   questions: {
-    selected_variant: {
-      type: 'choice',
-      instructions: 'Choose one.',
-      criteria: { candidate_1: 'First', candidate_2: 'Second' },
+    candidate_1: {
+      type: 'score',
+      instructions: 'Score candidate_1.',
+      criteria: ['Wrong task', 'Excellent'],
     },
   },
 };
 
 describe('OpenRouterDecisionConnector', () => {
-  it('posts one Choice question and structured state to the Decisions API', async () => {
+  it('posts one Score question and structured state to the Decisions API', async () => {
     const fetchFn = jest.fn().mockResolvedValue(new Response(JSON.stringify({ answers: {} }), { status: 200 }));
     const connector = new OpenRouterDecisionConnector('secret', 5000, fetchFn);
 
@@ -27,8 +27,8 @@ describe('OpenRouterDecisionConnector', () => {
     expect(body.model).toBe('typesafe/jev-1.13');
     expect(body.state).toEqual(request.state);
     expect(typeof body.state).toBe('object');
-    expect(Object.keys(body.questions)).toEqual(['selected_variant']);
-    expect(body.questions.selected_variant.type).toBe('choice');
+    expect(Object.keys(body.questions)).toEqual(['candidate_1']);
+    expect(body.questions.candidate_1.type).toBe('score');
   });
 
   it('cancels a timed-out request', async () => {

@@ -64,19 +64,15 @@ export interface BatchResponse {
   selection?: BatchSelection;
 }
 
-export type RejectionReason = 'INSTRUCTION_FOLLOWING' | 'EM_DASH';
-
 export type BatchSelection =
   | {
       status: 'success';
       judge: 'jev';
       model: string;
-      /** null when every result fails the hard checks. */
-      selectedResultId: string | null;
+      selectedResultId: string;
       confidence: number;
-      probabilities: Record<string, number>;
-      /** Optional while older backends are still deployed. Rejected results get exactly zero. */
-      rejectionReasons?: Record<string, RejectionReason[]>;
+      /** Jev rubric scores normalized to 0..1, independently of other results. */
+      scores: Record<string, number>;
     }
   | {
       status: 'skipped';

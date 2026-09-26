@@ -52,7 +52,7 @@ describe('PromptBuilder', () => {
 
     expect(prompt.systemPrompt).toContain(role.systemPrompt);
     expect(prompt.systemPrompt).toContain("Perform the role's primary task without additional transformations.");
-    expect(prompt.promptRevision).toBe(`prompt-v9/${role.id}@${role.systemPromptVersion}`);
+    expect(prompt.promptRevision).toBe(`prompt-v11/${role.id}@${role.systemPromptVersion}`);
     expect(prompt.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -80,7 +80,7 @@ describe('PromptBuilder', () => {
       userText: 'Source', options: { avoidCommonAiSymbols: true },
     });
     expect(prompt.systemPrompt).toContain(role.systemPrompt);
-    expect(prompt.systemPrompt).toContain('HARD OUTPUT CONSTRAINT: zero em dash characters (Unicode U+2014) anywhere in text.');
+    expect(prompt.systemPrompt).toContain('HARD OUTPUT CONSTRAINT: never put the character — (em dash, Unicode U+2014)');
     expect(prompt.systemPrompt).toContain('Avoid common AI-writing symbols and patterns');
     if (role.id === 'email_assistant') expect(prompt.systemPrompt).toContain('"Subject:" line');
   });
@@ -92,7 +92,7 @@ describe('PromptBuilder', () => {
         userText: 'tests; to do По умолчанию — true', options: { avoidCommonAiSymbols: true },
       });
       expect(prompt.userPrompt).toContain('По умолчанию — true');
-      expect(prompt.systemPrompt).toContain('rewrite it when it appears in the source');
+      expect(prompt.systemPrompt).toContain('Rewrite every em dash into a period, comma, or parentheses');
       expect(prompt.systemPrompt).toContain(role.systemPrompt);
     }
   });

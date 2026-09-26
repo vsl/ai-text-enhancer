@@ -30,12 +30,11 @@ export function AssistantCard({
   config, result, onToggle, onEdit, onCopy, onRemove,
   onCopyResult, onImproveVersion, copiedId, jevSelection, featured = false,
 }: AssistantCardProps) {
-  const probability = result && !result.error && !result.isLoading
-    ? jevSelection?.probabilities[config.id.toString()] : undefined;
-  const selectedByJev = probability !== undefined && jevSelection?.selectedResultId === config.id.toString();
-  const rejectionReasons = probability === undefined ? [] : jevSelection?.rejectionReasons?.[config.id.toString()] ?? [];
-  const percentage = probability === undefined ? undefined : probability > 0 && probability < 0.01
-    ? '<1%' : `${Math.round(probability * 100)}%`;
+  const score = result && !result.error && !result.isLoading
+    ? jevSelection?.scores?.[config.id.toString()] : undefined;
+  const selectedByJev = score !== undefined && jevSelection?.selectedResultId === config.id.toString();
+  const percentage = score === undefined ? undefined : score > 0 && score < 0.01
+    ? '<1%' : `${Math.round(score * 100)}%`;
 
   return (
     <li
@@ -63,11 +62,11 @@ export function AssistantCard({
         </div>
         {percentage !== undefined && (
           <span
-            data-testid={`jev-probability-${config.id}`}
+            data-testid={`jev-score-${config.id}`}
             className={`shrink-0 rounded-lg px-2 py-1 text-xs font-medium ${selectedByJev ? 'bg-primary/15 text-primary' : 'bg-surface-hover text-muted-foreground'}`}
-            title="Jev’s relative preference among results that passed the checks, not an absolute quality score. Rejected results receive 0%."
+            title="Jev’s quality score on a fixed rubric from 0 to 100%, independent of other results."
           >
-            Jev {percentage}
+            Jev score {percentage}
           </span>
         )}
         <DropdownMenu>
@@ -93,9 +92,9 @@ export function AssistantCard({
 
       {result && (
         <div className="mt-4 border-t border-border pt-4">
-          {probability !== undefined && (
+          {score !== undefined && (
             <div className="mb-4 h-1 overflow-hidden rounded-full bg-border-strong" aria-hidden="true">
-              <div className={`h-full rounded-full ${selectedByJev ? 'bg-primary' : 'bg-tertiary/50'}`} style={{ width: `${probability * 100}%` }} />
+              <div className={`h-full rounded-full ${selectedByJev ? 'bg-primary' : 'bg-tertiary/50'}`} style={{ width: `${score * 100}%` }} />
             </div>
           )}
           {result.isLoading ? (
@@ -106,13 +105,6 @@ export function AssistantCard({
             <p role="alert" className="text-sm leading-6 text-destructive">{result.text}</p>
           ) : (
             <>
-              {rejectionReasons.length > 0 && (
-                <p className="mb-3 text-sm text-destructive" role="status">
-                  Excluded: {rejectionReasons.map(reason => reason === 'EM_DASH'
-                    ? 'contains an em dash while Avoid AI symbols is enabled'
-                    : 'followed an embedded instruction instead of transforming the text').join('; ')}.
-                </p>
-              )}
               <ResultTextarea value={result.text} aria-label="Generated text" />
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button

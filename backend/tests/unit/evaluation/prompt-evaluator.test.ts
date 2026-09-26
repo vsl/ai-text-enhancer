@@ -62,8 +62,8 @@ describe('prompt evaluator', () => {
       model: 'revision', provider: 'gemini',
     });
     const select = jest.fn().mockRejectedValueOnce(new Error('Judge unavailable')).mockResolvedValue({
-      status: 'success', judge: 'jev', model: 'judge-revision', selectedResultId: null,
-      confidence: 0, probabilities: { facts: 0 }, rejectionReasons: { facts: ['INSTRUCTION_FOLLOWING'] },
+      status: 'success', judge: 'jev', model: 'judge-revision', selectedResultId: 'facts',
+      confidence: 0.8, scores: { facts: 0.1 },
     });
     const report = await runPromptEvaluation({
       candidates: [{ provider: 'gemini', model: 'candidate', structuredOutputMode: 'json-schema' }],
@@ -76,7 +76,7 @@ describe('prompt evaluator', () => {
     expect(cases.map(item => item.attempt)).toEqual([1, 2]);
     expect(cases[0].deterministicChecks).toContainEqual({ check: 'valid-json-text-contract', passed: true });
     expect(cases[0].judge).toEqual({ status: 'unavailable', reason: 'JUDGE_FAILED' });
-    expect(cases[1].judge).toMatchObject({ selectedResultId: null });
+    expect(cases[1].judge).toMatchObject({ scores: { facts: 0.1 } });
     expect(evaluationPassed(report)).toBe(false);
     expect(evaluationPassed({ ...report, candidates: [] })).toBe(false);
     expect(evaluationPassed({ ...report, candidates: [{ ...report.candidates[0], status: 'skipped' }] })).toBe(false);
@@ -170,14 +170,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v9',
+      promptVersion: 'prompt-v11',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v9',
-          promptRevision: 'prompt-v9/editor@v1',
+          promptVersion: 'prompt-v11',
+          promptRevision: 'prompt-v11/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -192,7 +192,7 @@ describe('prompt evaluator', () => {
     }));
     expect(sendRequest.mock.calls[0][0]).not.toHaveProperty('temperature');
     expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('meticulous professional editor');
-    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('HARD OUTPUT CONSTRAINT: zero em dash characters (Unicode U+2014) anywhere in text.');
+    expect(sendRequest.mock.calls[0][0].systemPrompt).toContain('HARD OUTPUT CONSTRAINT: never put the character — (em dash, Unicode U+2014)');
   });
 
   it.each([
@@ -302,7 +302,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v9/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
+      expect(result.promptRevision).toBe(`prompt-v11/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });

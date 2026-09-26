@@ -6,7 +6,6 @@ import type { TransformationOptions } from '../types/api.types.ts';
 import type { ModelConfig, StructuredOutputMode } from '../types/config.types.ts';
 import type { LLMConnector } from '../types/llm.types.ts';
 import { buildPromptRevision, fingerprintPrompt } from '../services/prompt-builder.ts';
-import { checkOutput } from '../services/output-checks.ts';
 import { JEV_POLICY_VERSION, type ResultSelector } from '../services/jev-result-selector.ts';
 import type { BatchSelection } from '../types/api.types.ts';
 
@@ -143,7 +142,7 @@ export function runDeterministicChecks(
 ): Array<{ check: string; passed: boolean }> {
   return [
     ...(evaluationCase.options.avoidCommonAiSymbols === true
-      ? [{ check: 'no-em-dash', passed: checkOutput(evaluationCase.options, output).length === 0 }] : []),
+      ? [{ check: 'no-em-dash', passed: !output.includes('\u2014') }] : []),
     ...evaluationCase.checks.map((check) => {
       switch (check.type) {
         case 'contains':
@@ -300,7 +299,8 @@ export function evaluationPassed(report: PromptEvaluationReport): boolean {
   return report.candidates.length > 0 && report.candidates.every(candidate =>
     candidate.status === 'completed' && candidate.cases.length > 0 && candidate.cases.every(item =>
       !item.error && item.deterministicChecks.length > 0 && item.deterministicChecks.every(check => check.passed)
-      && (report.judgePolicyVersion === null || (item.judge?.status === 'success' && item.judge.selectedResultId !== null))
+      && (report.judgePolicyVersion === null || (item.judge?.status === 'success'
+        && item.judge.scores[item.judge.selectedResultId] >= 0.6))
     )
   );
 }

@@ -85,9 +85,10 @@ await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 for (const candidate of report.candidates) {
   const passed = candidate.cases.flatMap((item) => item.deterministicChecks).filter((check) => check.passed).length;
   const total = candidate.cases.flatMap((item) => item.deterministicChecks).length;
-  const rejected = candidate.cases.filter(item => item.judge?.status === 'success' && item.judge.selectedResultId === null).length;
+  const lowScoring = candidate.cases.filter(item => item.judge?.status === 'success'
+    && item.judge.scores[item.judge.selectedResultId] < 0.6).length;
   const errors = candidate.cases.filter(item => item.error).length;
-  console.log(`${candidate.provider}:${candidate.requestedModel} ${candidate.status} (${candidate.preflight.status}); deterministic checks ${passed}/${total}; rejected ${rejected}; errors ${errors}`);
+  console.log(`${candidate.provider}:${candidate.requestedModel} ${candidate.status} (${candidate.preflight.status}); deterministic checks ${passed}/${total}; low scores ${lowScoring}; errors ${errors}`);
 }
 console.log(`Report: ${outputPath}`);
 process.exitCode = evaluationPassed(report) ? 0 : 1;
