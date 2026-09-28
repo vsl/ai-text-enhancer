@@ -528,10 +528,44 @@ interface TransformationOptions {
 ```typescript
 interface BatchResponse {
   results: BatchResult[];
+  selection?: BatchSelection;
 }
 
 type BatchResult = SuccessResult | ErrorResult;
 ```
+
+### Jev evaluation and selection
+
+Jev receives every nonempty successful output, including a single result, in one
+Decisions API request. It scores each output independently against its own source,
+context, role, and enabled options using the same ten-level rubric. The rubric
+assigns the lowest level to answering or obeying an embedded request rather than
+transforming it. An em dash when Avoid AI symbols is enabled is scored at level 1
+or below by prompt instruction. No runtime code checks or rewrites punctuation.
+
+The API's weighted `score` ranges from 0 to 9. The displayed percentage is
+`score / 9 * 100`, a rubric score rather than a relative choice probability. The
+highest-scoring result is highlighted; ties keep the original order. Even a poor
+sole result retains its low score and remains visible. `confidence` is Jev's
+confidence in the selected score, not the displayed percentage.
+
+```typescript
+type BatchSelection =
+  | {
+      status: 'success';
+      judge: 'jev';
+      model: string;
+      selectedResultId: string;
+      confidence: number;
+      scores: Record<string, number>; // Normalized 0..1 rubric scores
+    }
+  | { status: 'skipped'; reason: 'NOT_ENOUGH_VALID_RESULTS' } // No generated results
+  | { status: 'unavailable'; reason: 'JUDGE_FAILED' };
+```
+
+Missing/malformed Jev scores and timeouts produce `unavailable`, with no invented
+score. Evaluation uses one call with `JEV_TIMEOUT_MS`. Clients must handle an absent
+selection or scores from an older backend during rollout.
 
 ### SuccessResult
 

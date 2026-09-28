@@ -71,7 +71,8 @@ export type BatchSelection =
       model: string;
       selectedResultId: string;
       confidence: number;
-      probabilities: Record<string, number>;
+      /** Jev rubric scores normalized to 0..1, independently of other results. */
+      scores: Record<string, number>;
     }
   | {
       status: 'skipped';

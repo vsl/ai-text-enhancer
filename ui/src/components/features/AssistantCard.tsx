@@ -30,11 +30,11 @@ export function AssistantCard({
   config, result, onToggle, onEdit, onCopy, onRemove,
   onCopyResult, onImproveVersion, copiedId, jevSelection, featured = false,
 }: AssistantCardProps) {
-  const probability = result && !result.error && !result.isLoading
-    ? jevSelection?.probabilities[config.id.toString()] : undefined;
-  const selectedByJev = probability !== undefined && jevSelection?.selectedResultId === config.id.toString();
-  const percentage = probability === undefined ? undefined : probability > 0 && probability < 0.01
-    ? '<1%' : `${Math.round(probability * 100)}%`;
+  const score = result && !result.error && !result.isLoading
+    ? jevSelection?.scores?.[config.id.toString()] : undefined;
+  const selectedByJev = score !== undefined && jevSelection?.selectedResultId === config.id.toString();
+  const percentage = score === undefined ? undefined : score > 0 && score < 0.01
+    ? '<1%' : `${Math.round(score * 100)}%`;
 
   return (
     <li
@@ -62,11 +62,11 @@ export function AssistantCard({
         </div>
         {percentage !== undefined && (
           <span
-            data-testid={`jev-probability-${config.id}`}
+            data-testid={`jev-score-${config.id}`}
             className={`shrink-0 rounded-lg px-2 py-1 text-xs font-medium ${selectedByJev ? 'bg-primary/15 text-primary' : 'bg-surface-hover text-muted-foreground'}`}
-            title="Jev’s relative preference for this result among successful outputs in this run."
+            title="Jev’s quality score on a fixed rubric from 0 to 100%, independent of other results."
           >
-            Jev {percentage}
+            Jev score {percentage}
           </span>
         )}
         <DropdownMenu>
@@ -92,9 +92,9 @@ export function AssistantCard({
 
       {result && (
         <div className="mt-4 border-t border-border pt-4">
-          {probability !== undefined && (
+          {score !== undefined && (
             <div className="mb-4 h-1 overflow-hidden rounded-full bg-border-strong" aria-hidden="true">
-              <div className={`h-full rounded-full ${selectedByJev ? 'bg-primary' : 'bg-tertiary/50'}`} style={{ width: `${Math.max(probability * 100, 0.5)}%` }} />
+              <div className={`h-full rounded-full ${selectedByJev ? 'bg-primary' : 'bg-tertiary/50'}`} style={{ width: `${score * 100}%` }} />
             </div>
           )}
           {result.isLoading ? (

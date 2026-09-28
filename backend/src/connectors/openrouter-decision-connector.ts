@@ -3,11 +3,10 @@ const DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisions';
 export interface DecisionRequest {
   model: string;
   state: Record<string, unknown>;
-  questions: Record<string, {
-    type: 'choice';
-    instructions: string;
-    criteria: Record<string, string>;
-  }>;
+  questions: Record<string,
+    | { type: 'choice'; instructions: string; criteria: Record<string, string> }
+    | { type: 'score'; instructions: string; criteria: string[] }
+  >;
 }
 export interface DecisionConnector {
   decide(request: DecisionRequest): Promise<unknown>;

@@ -25,7 +25,7 @@ const selection = {
   model: 'typesafe/jev-1.13',
   selectedResultId: '7',
   confidence: 0.9,
-  probabilities: { '7': 0.8 },
+  scores: { '7': 0.8 },
 };
 const handlers = {
   onToggle: jest.fn(),

@@ -6,7 +6,7 @@ export function orderConfigsForDisplay(configs: AiConfig[], results: Map<number,
   if (selection?.status !== 'success') return configs;
   const rank = (config: AiConfig) => {
     const result = results.get(config.id);
-    return result && !result.error && !result.isLoading && selection.probabilities[config.id.toString()] !== undefined
+    return result && !result.error && !result.isLoading && selection.scores?.[config.id.toString()] !== undefined
       ? 0 : result && !result.isLoading ? 1 : 2;
   };
   return [...configs].sort((a, b) => {
@@ -15,7 +15,7 @@ export function orderConfigsForDisplay(configs: AiConfig[], results: Map<number,
     if (rank(a) === 0) {
       if (a.id.toString() === selection.selectedResultId) return -1;
       if (b.id.toString() === selection.selectedResultId) return 1;
-      return selection.probabilities[b.id.toString()] - selection.probabilities[a.id.toString()];
+      return selection.scores[b.id.toString()] - selection.scores[a.id.toString()];
     }
     return 0;
   });

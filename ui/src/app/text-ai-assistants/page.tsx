@@ -50,7 +50,7 @@ function TextAIAssistantsContent() {
   const selectedResult = selectedResultId ? results.get(Number(selectedResultId)) : undefined;
   const featuredResultId = selection?.status === 'success' && selectedResult
     && !selectedResult.error && !selectedResult.isLoading
-    && selection.probabilities[selection.selectedResultId] !== undefined
+    && selection.scores?.[selection.selectedResultId] !== undefined
     ? selection.selectedResultId : undefined;
   const workflowSubtitle = selectedWorkflow === 'Quick Fix'
     ? 'Clean up and improve everyday text'

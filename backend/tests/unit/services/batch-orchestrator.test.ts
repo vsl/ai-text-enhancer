@@ -718,7 +718,7 @@ describe('BatchOrchestrator', () => {
       model: 'typesafe/jev-1.13',
       selectedResultId: 'result-1',
       confidence: 0.8,
-      probabilities: { 'result-1': 0.8, 'result-2': 0.2 },
+      scores: { 'result-1': 0.8, 'result-2': 0.2 },
     };
 
     it('calls Jev exactly once with all six successful results', async () => {
@@ -753,7 +753,7 @@ describe('BatchOrchestrator', () => {
       expect(quotaService.reportUsage).toHaveBeenCalledWith(user.userId, 30, 'batch', expect.any(String));
     });
 
-    it.each([1, 0])('skips Jev when %i results are valid', async (validCount) => {
+    it.each([0])('skips Jev when %i results are valid', async (validCount) => {
       sendRequest.mockImplementation(() => validCount
         ? Promise.resolve({ text: '{"text":"Only"}', usage: { totalTokens: 10 } })
         : Promise.reject(new Error('provider failed'))
@@ -763,6 +763,16 @@ describe('BatchOrchestrator', () => {
 
       expect(select).not.toHaveBeenCalled();
       expect(response.selection).toEqual({ status: 'skipped', reason: 'NOT_ENOUGH_VALID_RESULTS' });
+    });
+
+    it('evaluates a single result and preserves a low score', async () => {
+      const lowScore = { ...successfulSelection, selectedResultId: 'result-1', confidence: 0.8,
+        scores: { 'result-1': 0.1 } };
+      const select = jest.fn().mockResolvedValue(lowScore);
+      const response = await createSelectorOrchestrator(select).processBatch(user, buildRequest(1));
+      expect(select).toHaveBeenCalledTimes(1);
+      expect(response.selection).toEqual(lowScore);
+      expect(response.results[0].status).toBe('success');
     });
 
     it('preserves generated results when Jev fails', async () => {

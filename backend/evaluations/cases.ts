@@ -1,6 +1,8 @@
 import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
+import { BOUNDARY_GENERATION_CASES } from './boundary-cases.ts';
 
 export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
+  ...BOUNDARY_GENERATION_CASES,
   ...[{}, { improve: true, fixMistakes: true, format: true, lengthen: true, formality: 'Formal', tone: 'Worried' } satisfies PromptEvaluationCase['options']]
     .map((options, index): PromptEvaluationCase => ({
       id: index === 0 ? 'email-source-priority-no-options' : 'email-source-priority-lengthened-worried',
@@ -13,8 +15,8 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
         { type: 'matches', value: '^Subject:', flags: 'm' },
         { type: 'matches', value: '^(?:Dear|Hi|Hello) Morgan[,!]', flags: 'm' },
         { type: 'matches', value: 'Alex[.\\s]*$' },
-        { type: 'matches', value: '(?:do not|don[’\u0027]t) (?:currently )?have (?:another|an additional|a second) emergency contact', flags: 'i' },
-        { type: 'matches', value: '^(?![\\s\\S]*(?:Dear Ms\\.|family (?:situation|circumstances)|(?:we|I) (?:will|promise to) (?:provide|send)|actively working))[\\s\\S]*$', flags: 'i' },
+        { type: 'matches', value: '(?:(?:do not|don[’\u0027]t) (?:currently )?have|unable to provide) (?:another|an additional|a second) emergency contact', flags: 'i' },
+        { type: 'matches', value: '^(?![\\s\\S]*(?:Dear Ms\\.|family (?:situation|circumstances)|(?:we|I) (?:will|promise to) (?:provide|send)|(?:actively |are )working|working to resolve))[\\s\\S]*$', flags: 'i' },
       ],
     })),
   {
@@ -23,8 +25,12 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
     language: 'en',
     userText: 'On 14 March 2026, Ana Torres said Acme will not raise Plan 42 above $19.50. She committed to reply by Friday at https://example.com/a?x=1, but said approval was uncertain.',
     options: { improve: true, fixMistakes: true },
-    checks: ['14 March 2026', 'Ana Torres', 'Plan 42', '$19.50', 'will not', 'Friday', 'https://example.com/a?x=1', 'uncertain']
-      .map((value) => ({ type: 'contains' as const, value })),
+    checks: [
+      ...['Ana Torres', 'Plan 42', '$19.50', 'Friday', 'https://example.com/a?x=1', 'uncertain']
+        .map((value) => ({ type: 'contains' as const, value })),
+      { type: 'matches', value: '14 March 2026|March 14,? 2026' },
+      { type: 'matches', value: '(?:will|would) not' },
+    ],
   },
   {
     id: 'editor-avoid-em-dash-from-source',
@@ -121,7 +127,7 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
     userText: 'Олена повідомила, що бюджет становить 2500 євро, але рішення ще не остаточне.',
     options: { translateTo: 'en' },
     checks: [
-      { type: 'contains', value: '2500' },
+      { type: 'matches', value: '\\b2[ ,]?500\\b' },
       { type: 'matches', value: 'Olena|Олена', flags: 'i' },
     ],
   },
