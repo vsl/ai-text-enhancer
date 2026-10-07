@@ -148,6 +148,10 @@ export class OpenRouterConnector implements LLMConnector {
         nativeFinishReason: choice.native_finish_reason,
         providerError,
         latencyMs: result.latencyMs,
+        reportedUsage: Object.entries({ inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens,
+          totalTokens: usage.total_tokens, reasoningTokens: usage.completion_tokens_details?.reasoning_tokens,
+          cachedTokens: usage.prompt_tokens_details?.cached_tokens, cost: usage.cost })
+          .filter(([, value]) => typeof value === 'number' && Number.isFinite(value)).map(([key]) => key),
       };
       const response: LLMResponse = {
         text: choice.message?.content ?? '',

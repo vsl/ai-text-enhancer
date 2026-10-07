@@ -1,11 +1,11 @@
 import { parseTextOutput } from '../config/output-contract.config.ts';
 import { getRoleById } from '../config/roles.config.ts';
 import { MODELS } from '../config/models.config.ts';
-import { PromptTemplates, PROMPT_VERSION } from '../services/prompt-templates.ts';
+import { PROMPT_VERSION } from '../services/prompt-templates.ts';
 import type { TransformationOptions } from '../types/api.types.ts';
 import type { ModelConfig, StructuredOutputMode } from '../types/config.types.ts';
 import type { LLMConnector } from '../types/llm.types.ts';
-import { buildPromptRevision, fingerprintPrompt } from '../services/prompt-builder.ts';
+import { constructPrompt } from '../services/prompt-builder.ts';
 import { JEV_POLICY_VERSION, type ResultSelector } from '../services/jev-result-selector.ts';
 import type { BatchSelection } from '../types/api.types.ts';
 
@@ -30,6 +30,10 @@ export interface PromptEvaluationCase {
   contextText?: string;
   options: TransformationOptions;
   checks: EvaluationCheck[];
+  tags?: string[];
+  critical?: boolean;
+  judge?: boolean;
+  expectations?: string[];
 }
 
 export interface CatalogPreflight {
@@ -222,17 +226,15 @@ export async function runPromptEvaluation(params: {
         try {
           const role = getRoleById(evaluationCase.roleId);
           if (!role) throw new Error(`Unknown evaluation role: ${evaluationCase.roleId}`);
-          const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt, evaluationCase.options);
-          promptRevision = buildPromptRevision(role.id, role.systemPromptVersion);
-          promptFingerprint = await fingerprintPrompt(systemPrompt);
+          const built = await constructPrompt({ ...evaluationCase, aiRoleId: role.id }, role);
+          const { systemPrompt } = built;
+          promptRevision = built.promptRevision;
+          promptFingerprint = built.promptFingerprint;
 
           const response = await connector.sendRequest({
             model: candidate.model,
             systemPrompt,
-            userPrompt: PromptTemplates.buildUserPrompt({
-              userText: evaluationCase.userText,
-              contextText: evaluationCase.contextText,
-            }),
+            userPrompt: built.userPrompt,
             structuredOutputMode: candidate.structuredOutputMode,
             reasoningEffort,
             maxTokens: MAX_TOKENS,
@@ -241,7 +243,7 @@ export async function runPromptEvaluation(params: {
           tokenUsage = response.usage;
           modelRevision = response.model;
           candidateReport.modelRevision ??= response.model;
-          output = parseTextOutput(response.text);
+          output = parseTextOutput(response.text, response.diagnostics);
           deterministicChecks = [
             { check: 'valid-json-text-contract', passed: true },
             ...runDeterministicChecks(evaluationCase, output),

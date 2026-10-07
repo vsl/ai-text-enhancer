@@ -47,6 +47,8 @@ export interface LLMProviderDiagnostics {
   nativeFinishReason?: string;
   providerError?: unknown;
   latencyMs: number;
+  /** Metric names reported before connector numeric fallbacks. Internal only. */
+  reportedUsage?: string[];
 }
 
 export interface LLMConnector {

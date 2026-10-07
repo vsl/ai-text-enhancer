@@ -2,6 +2,9 @@
 
 # Testing Guide
 
+For current model/prompt comparisons, Jev metrics, Langfuse review and baseline
+approval, see [Evaluation workspace](evaluations.md).
+
 Complete guide for testing the AI Text Enhancer backend, including unit tests, integration tests, and manual testing scenarios.
 
 **Last Updated:** January 2025

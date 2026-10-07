@@ -40,7 +40,7 @@ function isOneOf<T extends string>(value: unknown, allowed: readonly T[]): value
   return typeof value === 'string' && allowed.includes(value as T);
 }
 
-function validateOptions(value: unknown, path: string): TransformationOptions {
+export function validateOptions(value: unknown, path: string = 'options'): TransformationOptions {
   if (!isRecord(value)) fail(`${path} must be an object`);
   rejectUnknownKeys(value, TRANSFORMATION_OPTION_KEYS, path);
 

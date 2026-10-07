@@ -15,6 +15,7 @@ import type {
   ConstructedPrompt 
 } from '../types/prompt.types.ts';
 import { getRoleById } from '../config/roles.config.ts';
+import type { RoleConfig } from '../types/config.types.ts';
 
 export class PromptBuilder {
   /**
@@ -40,23 +41,23 @@ export class PromptBuilder {
       );
     }
 
-    // 3. Build trusted system prompt (role + transformations + output rules)
-    const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt, request.options);
-
-    // 4. Serialize untrusted context and source
-    const userPrompt = PromptTemplates.buildUserPrompt({
-      userText: request.userText,
-      contextText: request.contextText
-    });
-
-    // 5. Return constructed prompt
-    return {
-      systemPrompt,
-      userPrompt,
-      promptRevision: buildPromptRevision(request.aiRoleId, role.systemPromptVersion),
-      promptFingerprint: await fingerprintPrompt(systemPrompt),
-    };
+    return constructPrompt(request, role);
   }
+}
+
+/** Composition shared with offline experiments; public model access stays above. */
+export async function constructPrompt(
+  request: Pick<PromptBuildRequest, 'aiRoleId' | 'userText' | 'contextText' | 'options'>,
+  role: RoleConfig | null = getRoleById(request.aiRoleId),
+): Promise<ConstructedPrompt> {
+  if (!role) throw new Error(`Unknown AI role: ${request.aiRoleId}`);
+  const systemPrompt = PromptTemplates.buildSystemPrompt(role.systemPrompt, request.options);
+  return {
+    systemPrompt,
+    userPrompt: PromptTemplates.buildUserPrompt(request),
+    promptRevision: buildPromptRevision(role.id, role.systemPromptVersion),
+    promptFingerprint: await fingerprintPrompt(systemPrompt),
+  };
 }
 
 export function buildPromptRevision(roleId: string, systemPromptVersion: string): string {

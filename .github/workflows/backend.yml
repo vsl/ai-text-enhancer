@@ -35,6 +35,8 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run type-check
+      - run: npm run type-check:evaluations
+      - run: npm run test:evaluation-export
       - run: npm test -- --runInBand
       - run: npm run lint:portability
 

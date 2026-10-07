@@ -1,0 +1,10 @@
+{
+  "decision": "approved",
+  "candidateId": "qwen",
+  "reviewer": "REPLACE_WITH_REPOSITORY_OWNER",
+  "notes": "REPLACE_WITH_HUMAN_REVIEW_AND_CALIBRATION_EVIDENCE",
+  "humanReviewUrl": "https://REPLACE_WITH_LANGFUSE_INSTANCE_AND_REVIEW_URL",
+  "semanticGatesApproved": false,
+  "exceptions": [],
+  "runIds": {}
+}

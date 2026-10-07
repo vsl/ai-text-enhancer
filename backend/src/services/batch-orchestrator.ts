@@ -19,6 +19,7 @@ import type {
 } from '../types/api.types.ts';
 import type { AssistantProcessingResult } from '../types/orchestration.types.ts';
 import { PromptBuilder } from './prompt-builder.ts';
+import { generationSettings } from './generation-settings.ts';
 import { LLMConnectorFactory } from '../connectors/llm-connectors/factory.ts';
 import type { LLMConnector } from '../types/llm.types.ts';
 import { QuotaService } from './quota-service.ts';
@@ -343,11 +344,7 @@ export class BatchOrchestrator {
         requestId,
         systemPrompt,
         userPrompt,
-        structuredOutputMode: model.structuredOutputMode,
-        serviceTier: model.serviceTier,
-        reasoningEffort: model.reasoningEffort,
-        maxTokens: getLimitsForTier(user.tier).maxTokensPerRequest,
-        timeout: this.taskTimeoutMs
+        ...generationSettings(model, user.tier, this.taskTimeoutMs),
       });
 
       // 5. Require the provider's structured response contract
