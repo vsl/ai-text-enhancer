@@ -3,7 +3,7 @@ import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { propagateAttributes, startObservation } from '@langfuse/tracing';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { fingerprintPrompt } from '../../src/services/prompt-builder.ts';
-import { caseTags, type AttemptRecord, type ExperimentReport } from '../../src/evaluation/experiments.ts';
+import { caseTags, type AttemptRecord, type ExperimentReport, type ReuseSource } from '../../src/evaluation/experiments.ts';
 import { summarizeCandidate, tokenBuckets } from '../../src/evaluation/experiment-review.ts';
 import type { CalibrationControl } from '../../evaluations/calibration-cases.ts';
 import type { JudgeEvaluation } from '../../src/evaluation/jev-evaluator.ts';
@@ -18,36 +18,41 @@ export function scoresForRecord(record: AttemptRecord | undefined): Evaluation[]
   if (!record) return [{ name: 'request_complete', value: 0, comment: 'Missing attempted result' }];
   return [
     { name: 'request_complete', value: record.error || record.output === null ? 0 : 1, comment: record.error?.message },
+    { name: 'generation_reused', value: record.reuse?.generation ? 1 : 0 },
+    { name: 'judge_reused', value: record.reuse?.judge ? 1 : 0 },
     ...record.checks.map(c => ({ name: `code.${c.check}`, value: c.passed ? 1 : 0 })),
     ...(record.judge?.metrics ?? []).map(m => ({ name: `semantic.${m.name}`, value: m.value,
       metadata: { type: m.type, rawValue: m.rawValue, scale: m.scale, probabilities: m.probabilities, confidence: m.confidence,
         interpretation: m.type === 'noul' ? 'Probability of true, not a rubric grade' : 'Ordered rubric grade normalized to 0..1' } })),
-    ...(record.generation ? [{ name: 'generation_latency_ms', value: record.generation.latencyMs }] : []),
-    ...(record.judge ? [{ name: 'judge_latency_ms', value: record.judge.latencyMs }] : []),
+    ...(record.generation ? [{ name: 'generation_latency_ms', value: record.generation.latencyMs, comment: record.reuse?.generation ? 'Historical cached measurement, not a fresh call' : undefined }] : []),
+    ...(record.judge ? [{ name: 'judge_latency_ms', value: record.judge.latencyMs, comment: record.reuse?.judge ? 'Historical cached measurement, not a fresh call' : undefined }] : []),
   ];
 }
 function publishObservations(record: AttemptRecord) {
   if (record.generation && record.request) {
     const generation = startObservation('generator', { model: record.response?.model ?? record.request.model,
-      input: record.request, output: record.response?.text ?? null, usageDetails: tokenBuckets(record.response?.usage ?? null, record.response?.diagnostics.reportedUsage, record.response?.provider !== 'gemini'),
-      ...(record.response?.usage.cost !== undefined ? { costDetails: { total: record.response.usage.cost } } : {}),
+      input: record.request, output: record.response?.text ?? null,
+      usageDetails: record.reuse?.generation ? { input: 0, output: 0, total: 0 } : tokenBuckets(record.response?.usage ?? null, record.response?.diagnostics.reportedUsage, record.response?.provider !== 'gemini'),
+      ...(record.reuse?.generation ? { costDetails: { total: 0 } } : record.response?.usage.cost !== undefined ? { costDetails: { total: record.response.usage.cost } } : {}),
       level: record.error && record.error.stage !== 'judge' ? 'ERROR' : 'DEFAULT', statusMessage: record.error?.message,
       metadata: { requestedModel: record.request.model, resolvedModel: record.response?.model ?? null,
         provider: record.response?.provider ?? null, providerReportedCost: record.response?.usage.cost ?? null,
         diagnostics: record.response?.diagnostics ?? null, prompt: record.prompt, latencyMs: record.generation.latencyMs,
-        usage: record.response?.usage ?? null, failure: record.error } },
+        usage: record.response?.usage ?? null, failure: record.error, reused: !!record.reuse?.generation,
+        reuseSource: record.reuse?.generation ?? null, measurements: record.reuse?.generation ? 'historical-reference' : 'fresh-call' } },
     { asType: 'generation', startTime: new Date(record.generation.startedAt) });
     generation.end(new Date(record.generation.endedAt));
   }
-  if (record.judge) publishJudgeObservation(record.judge);
+  if (record.judge) publishJudgeObservation(record.judge, record.reuse?.judge);
 }
-function publishJudgeObservation(result: JudgeEvaluation) {
+function publishJudgeObservation(result: JudgeEvaluation, reused?: ReuseSource) {
   const judge = startObservation('judge', { model: result.model ?? result.request.model,
-    input: result.request, output: result.rawResponse, usageDetails: tokenBuckets(result.usage),
-    ...(result.usage?.cost !== undefined ? { costDetails: { total: result.usage.cost } } : {}),
+    input: result.request, output: result.rawResponse, usageDetails: reused ? { input: 0, output: 0, total: 0 } : tokenBuckets(result.usage),
+    ...(reused ? { costDetails: { total: 0 } } : result.usage?.cost !== undefined ? { costDetails: { total: result.usage.cost } } : {}),
     level: result.status === 'error' ? 'ERROR' : 'DEFAULT', statusMessage: result.error ?? undefined,
     metadata: { provider: result.provider, generationId: result.generationId, metrics: result.metrics,
-      providerReportedCost: result.usage?.cost ?? null, latencyMs: result.latencyMs } },
+      providerReportedCost: result.usage?.cost ?? null, latencyMs: result.latencyMs, usage: result.usage,
+      reused: !!reused, reuseSource: reused ?? null, measurements: reused ? 'historical-reference' : 'fresh-call' } },
   { asType: 'generation', startTime: new Date(result.startedAt) });
   judge.end(new Date(result.endedAt));
 }
@@ -98,6 +103,12 @@ export async function publishExperiment(report: ExperimentReport, checkpoint?: (
         evaluators: [async ({ metadata }) => scoresForRecord(lookup(metadata))],
         runEvaluators: [async () => { const summary = summarizeCandidate(report, candidate.id);
           return [{ name: 'complete_rate', value: summary.complete / summary.expected },
+            { name: 'new_generation_calls', value: summary.generation.newCalls },
+            { name: 'reused_generations', value: summary.generation.reused },
+            { name: 'new_judge_calls', value: summary.judging.newCalls },
+            { name: 'reused_judgments', value: summary.judging.reused },
+            ...(summary.generation.newCostUsd.complete && summary.judging.newCostUsd.complete
+              ? [{ name: 'new_cost_usd', value: (summary.generation.newCostUsd.reportedTotal ?? 0) + (summary.judging.newCostUsd.reportedTotal ?? 0) }] : []),
             ...(summary.semanticMean !== null ? [{ name: 'semantic_mean', value: summary.semanticMean }] : [])]; }],
       });
       if (result.itemResults.some(item => item.evaluations.length === 0) || result.itemResults.length !== data.length) throw new Error('Incomplete Langfuse experiment publication');

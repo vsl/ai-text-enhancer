@@ -28,7 +28,9 @@ set_secret() {
         echo "⚠️  Skipping $key (not set)"
     else
         echo "✅ Setting $key"
-        supabase secrets set $key="$value" --env-file .env.local 2>/dev/null || echo "   (using value from environment)"
+        # Only deploy the explicitly selected runtime key, never the entire
+        # local file (which may also contain evaluation-only Langfuse keys).
+        supabase secrets set "$key=$value" 2>/dev/null || echo "   (using value from environment)"
     fi
 }
 
@@ -42,13 +44,16 @@ echo ""
 echo "Setting secrets..."
 echo ""
 
-# Set secrets
-set_secret "OPENROUTER_API_KEY" "$OPENROUTER_API_KEY"
-set_secret "USER_SERVICE_URL" "$USER_SERVICE_URL"
-set_secret "USER_SERVICE_API_KEY" "$USER_SERVICE_API_KEY"
-set_secret "LM_STUDIO_BASE_URL" "$LM_STUDIO_BASE_URL"
-set_secret "LLM_TIMEOUT_MS" "$LLM_TIMEOUT_MS"
-set_secret "MAX_BATCH_SIZE" "$MAX_BATCH_SIZE"
+# Explicit runtime allowlist: keep app configuration without uploading local
+# evaluation credentials or CLI access tokens. SUPABASE_URL is platform-provided.
+for runtime_key in \
+    APP_SUPABASE_SERVICE_ROLE_KEY APP_SUPABASE_JWT_SECRET BOOTSTRAP_SECRET_KEY \
+    OPENROUTER_API_KEY GEMINI_API_KEY USER_SERVICE_URL USER_SERVICE_API_KEY \
+    LM_STUDIO_BASE_URL LLM_TIMEOUT_MS MAX_BATCH_SIZE JEV_MODEL_ID JEV_TIMEOUT_MS \
+    LOG_LEVEL EXPOSE_ERROR_DETAILS LANGSMITH_TRACING LANGSMITH_API_KEY \
+    LANGSMITH_PROJECT LANGSMITH_ENDPOINT LANGSMITH_CAPTURE_CONTENT APP_ENV APP_RELEASE; do
+    set_secret "$runtime_key" "${!runtime_key}"
+done
 
 echo ""
 echo "✨ Environment setup complete!"

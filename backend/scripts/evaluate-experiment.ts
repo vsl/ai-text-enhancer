@@ -5,23 +5,22 @@ import { pathToFileURL } from 'node:url';
 import { GeminiConnector } from '../src/connectors/llm-connectors/gemini-connector.ts';
 import { OpenRouterConnector } from '../src/connectors/llm-connectors/openrouter-connector.ts';
 import { OpenRouterDecisionConnector } from '../src/connectors/openrouter-decision-connector.ts';
-import { caseTags, createExperimentReport, runExperiment, validateExperiment, type ExperimentDefinition, type ExperimentReport } from '../src/evaluation/experiments.ts';
+import { caseTags, createExperimentReport, runExperiment, validateExperiment, prepareExperiment, plannedCalls, type ExperimentDefinition, type ExperimentReport } from '../src/evaluation/experiments.ts';
 import { createReview, evaluateGates, validateStoredReport, type ReviewArtifact } from '../src/evaluation/experiment-review.ts';
-import { DEVELOPMENT_CASES } from '../evaluations/development-cases.ts';
+import { executionFingerprint, loadSuite } from './lib/evaluation-files.ts';
 import { CALIBRATION_CONTROLS } from '../evaluations/calibration-cases.ts';
 import { evaluateWithJev } from '../src/evaluation/jev-evaluator.ts';
 import { publishExperiment, publishCalibration, type Publication } from './lib/langfuse-export.ts';
-import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
 import { fingerprintPrompt } from '../src/services/prompt-builder.ts';
 
 const args = process.argv.slice(2);
-const allowed = ['experiment', 'case', 'tag', 'repeat', 'baseline', 'report', 'review', 'output', 'dry-run', 'publish', 'help', 'calibrate', 'judge-controls'];
+const allowed = ['experiment', 'suite', 'reuse', 'case', 'tag', 'repeat', 'baseline', 'report', 'review', 'output', 'dry-run', 'publish', 'help', 'calibrate', 'judge-controls'];
 for (const arg of args) if (!arg.startsWith('--') || !allowed.includes(arg.slice(2).split('=')[0])) throw new Error(`Unknown argument: ${arg}`);
 const flags = ['dry-run', 'publish', 'help', 'calibrate', 'judge-controls'];
 for (const arg of args) {
   const name = arg.slice(2).split('=')[0];
   if (flags.includes(name) ? arg.includes('=') : !arg.includes('=')) throw new Error(`Invalid argument syntax: ${arg}`);
-  if (name !== 'tag' && args.filter(a => a.slice(2).split('=')[0] === name).length > 1) throw new Error(`Duplicate argument: ${name}`);
+  if (!['tag', 'reuse'].includes(name) && args.filter(a => a.slice(2).split('=')[0] === name).length > 1) throw new Error(`Duplicate argument: ${name}`);
 }
 const option = (name: string) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const flag = (name: string) => args.includes(`--${name}`);
@@ -52,7 +51,7 @@ async function publish(report: ExperimentReport, path: string) {
 }
 
 if (flag('help')) {
-  console.log('eval:compare --experiment=evaluations/experiments/models.ts [--dry-run] [--case=substring] [--tag=tag] [--repeat=3] [--baseline=approved.json] [--publish]\neval:publish --report=evaluation-results/<comparison>/report.json\neval:review --report=... --review=review-input.json --output=evaluations/baselines/<name>.json\neval:calibrate [--judge-controls] [--output=evaluation-results/calibration.json]');
+  console.log('eval:compare --experiment=evaluations/experiments/models.ts [--suite=base|all|development] [--reuse=saved-report.json] [--dry-run] [--case=substring] [--tag=tag] [--repeat=1] [--baseline=approved.json] [--publish]\neval:publish --report=evaluation-results/<comparison>/report.json\neval:review --report=... --review=review-input.json --output=evaluations/baselines/<name>.json\neval:calibrate [--judge-controls] [--output=evaluation-results/calibration.json]');
 } else if (flag('calibrate')) {
   if (flag('judge-controls') && !process.env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY required for paid calibration');
   const connector = process.env.OPENROUTER_API_KEY ? new OpenRouterDecisionConnector(process.env.OPENROUTER_API_KEY) : null;
@@ -93,22 +92,40 @@ if (flag('help')) {
   if (!modulePath.startsWith(trustedDirectory) || !modulePath.endsWith('.ts')) throw new Error('Experiment must be a trusted local TypeScript module under evaluations/experiments/');
   const definition: ExperimentDefinition = (await import(pathToFileURL(modulePath).href)).default;
   const overrides: Record<string, unknown> = {};
+  if (option('suite')) { definition.suite = option('suite') as ExperimentDefinition['suite']; overrides.suite = definition.suite; }
+  if (definition.suite !== undefined && !['base', 'all', 'acceptance', 'development'].includes(definition.suite)) throw new Error('Unknown suite');
   if (option('repeat')) { definition.repetitions = Number(option('repeat')); overrides.repetitions = definition.repetitions; }
-  const allCases = definition.suite === 'development' ? DEVELOPMENT_CASES : await load<PromptEvaluationCase[]>('evaluations/acceptance.json');
+  const allCases = await loadSuite(definition.suite);
   const tags = args.filter(arg => arg.startsWith('--tag=')).map(arg => arg.slice(6));
   const cases = allCases.filter(item => (!option('case') || item.id.includes(option('case')!)) && tags.every(tag => caseTags(item).includes(tag)));
   validateExperiment(definition, cases);
-  const generationCalls = cases.length * (definition.repetitions ?? 3) * 2;
-  const judgeCalls = (definition.judge?.enabled ?? true) ? cases.filter(c => c.judge !== false).length * (definition.repetitions ?? 3) * 2 : 0;
-  console.log(`${definition.id}: ${cases.length} cases, ${definition.repetitions ?? 3} repetitions; at most ${generationCalls} generation + ${judgeCalls} judge calls, plus 2 catalog checks. Publication adds 0 AI calls.`);
+  const report = await createExperimentReport(definition, cases, {
+    revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+    dirty: execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0,
+  });
+  report.executionHash = await executionFingerprint();
+  const sources: ExperimentReport[] = [];
+  for (const arg of args.filter(a => a.startsWith('--reuse='))) {
+    const source = await loadReport(arg.slice(8));
+    await validateStoredReport(source);
+    // Older clean reports can be fingerprinted from their exact committed code.
+    // Dirty/unavailable historical code cannot be reconstructed safely.
+    if (!source.executionHash && !source.git.dirty) {
+      try { source.executionHash = await executionFingerprint(source.git.revision); }
+      catch { console.warn(`Cannot reconstruct production code for ${source.comparisonId}; no results will be reused.`); }
+    }
+    sources.push(source);
+  }
+  const prepared = await prepareExperiment(definition, report, sources);
+  const calls = plannedCalls(report, prepared);
+  console.log(`${definition.id} (${definition.suite ?? 'base'}): ${cases.length} cases, ${report.definition.repetitions} repetitions; at most ${calls.generations} new generation + ${calls.judgments} new judge calls, plus ${calls.catalogChecks} catalog checks. Reuse: ${calls.reusedGenerations} generations + ${calls.reusedJudgments} judgments. Publication adds 0 AI calls.`);
+  const promptErrors = prepared.filter(p => p.record.error);
+  if (promptErrors.length) throw new Error(`Prompt preparation failed before paid calls: ${promptErrors.map(p => `${p.record.candidateId}/${p.record.caseId}: ${p.record.error!.message}`).join('; ')}`);
   if (!flag('dry-run')) {
-    const report = await createExperimentReport(definition, cases, {
-      revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
-      dirty: execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0,
-    });
     report.partialSuite = cases.length !== allCases.length;
     report.overrides = { ...overrides, filters: { case: option('case') ?? null, tags }, generation: definition.settings ?? {},
-      candidateGeneration: [definition.baseline, definition.candidate].map(c => ({ id: c.id, overrides: c.settings ?? {} })) };
+      candidateGeneration: [definition.baseline, definition.candidate].map(c => ({ id: c.id, overrides: c.settings ?? {} })),
+      reuseSources: sources.map(s => ({ comparisonId: s.comparisonId, git: s.git })), plannedCalls: calls };
     const path = resolve('evaluation-results', report.comparisonId, 'report.json');
     await save(path, report);
     const approved = option('baseline') ? await load<ReviewArtifact>(option('baseline')!) : undefined;
@@ -117,7 +134,7 @@ if (flag('help')) {
       if (mismatches.length) throw new Error(mismatches.join('; '));
     }
     const keys = { openrouter: process.env.OPENROUTER_API_KEY, gemini: process.env.GEMINI_API_KEY };
-    try { await runExperiment(definition, report, { keys, connectors: {
+    try { await runExperiment(definition, report, { keys, prepared, connectors: {
       ...(keys.openrouter ? { openrouter: new OpenRouterConnector(keys.openrouter) } : {}),
       ...(keys.gemini ? { gemini: new GeminiConnector(keys.gemini) } : {}),
     }, judge: keys.openrouter ? new OpenRouterDecisionConnector(keys.openrouter, report.definition.judge.timeoutMs) : undefined,
@@ -125,7 +142,7 @@ if (flag('help')) {
       // The append-only journal checkpoints each result without rewriting a
       // growing full report thousands of times. One snapshot retains preflights.
       if (report.records.length === 1) await save(path, report);
-      console.log(`${record.candidateId}/${record.caseId}/${record.attempt}: ${record.error?.stage ?? 'complete'}`); } }); }
+      console.log(`${record.candidateId}/${record.caseId}/${record.attempt}: ${record.error?.stage ?? 'complete'}${record.reuse ? ` (reused generation${record.reuse.judge ? ' + judge' : ''})` : ''}`); } }); }
     finally { await save(path, report); }
     const gate = evaluateGates(report, approved);
     await save(resolve(dirname(path), 'summary.json'), gate);

@@ -24,21 +24,28 @@ export function tokenBuckets(usage: LLMResponse['usage'] | null, reported?: stri
 function measurements(records: AttemptRecord[], judge: boolean) {
   const attempts = records.filter(r => judge ? r.judge !== null : r.generation !== null);
   const usages = attempts.map(r => judge ? r.judge?.usage : r.response?.usage);
-  const sum = (key: 'inputTokens' | 'outputTokens' | 'totalTokens' | 'cost') => {
+  const isReused = (r: AttemptRecord) => judge ? !!r.reuse?.judge : !!r.reuse?.generation;
+  const freshAttempts = attempts.filter(r => !isReused(r));
+  const sum = (key: 'inputTokens' | 'outputTokens' | 'totalTokens' | 'cost', freshOnly = false) => {
     const values = usages.map((u, i) => !judge && attempts[i].response?.diagnostics.reportedUsage && !attempts[i].response!.diagnostics.reportedUsage!.includes(key) ? undefined
       : key === 'outputTokens' && !judge && attempts[i].response?.provider === 'gemini' && u ? u.outputTokens + (('reasoningTokens' in u ? u.reasoningTokens : 0) ?? 0) : u?.[key])
-      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
-    return { reportedTotal: values.length ? values.reduce((a, b) => a + b, 0) : null,
-      available: values.length, attempted: attempts.length, complete: values.length === attempts.length && attempts.length > 0 };
+      .filter((v, i): v is number => (!freshOnly || !isReused(attempts[i])) && typeof v === 'number' && Number.isFinite(v));
+    const count = freshOnly ? freshAttempts.length : attempts.length;
+    return { reportedTotal: values.length ? values.reduce((a, b) => a + b, 0) : freshOnly && count === 0 ? 0 : null,
+      available: values.length, attempted: count, complete: values.length === count && (count > 0 || freshOnly) };
   };
   const latencies = attempts.map(r => judge ? r.judge!.latencyMs : r.generation!.latencyMs);
+  const freshLatencies = freshAttempts.map(r => judge ? r.judge!.latencyMs : r.generation!.latencyMs);
   const optionalTokens = (key: 'cachedTokens' | 'reasoningTokens') => {
     const values = attempts.map(r => judge ? r.judge?.usage?.[key] : r.response?.diagnostics.reportedUsage && !r.response.diagnostics.reportedUsage.includes(key) ? undefined : r.response?.usage[key]).filter((n): n is number => n !== undefined);
     return { reportedTotal: values.length ? values.reduce((a, b) => a + b, 0) : null, available: values.length };
   };
   return { latency: { medianMs: percentile(latencies, .5), p95Ms: percentile(latencies, .95), minMs: latencies.length ? Math.min(...latencies) : null,
     maxMs: latencies.length ? Math.max(...latencies) : null }, inputTokens: sum('inputTokens'), outputTokens: sum('outputTokens'),
-    totalTokens: sum('totalTokens'), costUsd: sum('cost'), cachedTokens: optionalTokens('cachedTokens'), reasoningTokens: optionalTokens('reasoningTokens') };
+    totalTokens: sum('totalTokens'), costUsd: sum('cost'), cachedTokens: optionalTokens('cachedTokens'), reasoningTokens: optionalTokens('reasoningTokens'),
+    reused: attempts.length - freshAttempts.length, newCalls: freshAttempts.length,
+    newCostUsd: sum('cost', true), newTokens: sum('totalTokens', true),
+    freshLatency: { medianMs: percentile(freshLatencies, .5), p95Ms: percentile(freshLatencies, .95) } };
 }
 export function summarizeCandidate(report: ExperimentReport, id: string) {
   const records = report.records.filter(r => r.candidateId === id);
@@ -145,7 +152,7 @@ export async function createReview(report: ExperimentReport, input: Pick<ReviewA
   const candidate = report.definition.candidates.find(c => c.id === input.candidateId);
   if (!candidate) throw new Error('Unknown reviewed candidate');
   if (input.decision === 'approved') {
-    if (report.definition.suite !== 'acceptance' || report.partialSuite) throw new Error('Only a complete frozen acceptance suite can become a baseline');
+    if (!['all', 'acceptance'].includes(report.definition.suite) || report.partialSuite) throw new Error('Only a complete frozen acceptance suite can become a baseline');
     if (!report.definition.judge.enabled || report.fixtures.some(f => f.judge === false)) throw new Error('Baseline approval requires semantic evaluation of every acceptance case');
     if (Object.keys(input.runIds).length !== 2 || report.definition.candidates.some(c => !input.runIds[c.id])) throw new Error('Approval requires both published run IDs');
     const gates = evaluateGates(report, approved);

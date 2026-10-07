@@ -43,6 +43,7 @@ The `ui/` app exports static files. Secrets, quota checks, provider calls, and J
 | Data and auth | Supabase Postgres and anonymous Auth |
 | AI | OpenRouter model calls; TypeSafe Jev via OpenRouter Decisions API |
 | Observability | LangSmith traces and request-scoped IDs/logs |
+| AI evaluation | Langfuse model/prompt comparisons and human review; repository code assertions and Jev quality scores |
 | CI/CD | GitHub Actions checks and backend deployment; Cloudflare Git integration for UI |
 | Testing | Jest, Playwright, prompt evaluations |
 | Development | Node.js 22; optional Docker or Podman shell |
@@ -103,6 +104,14 @@ npm --prefix backend run lint:portability
 ```
 
 Jest covers UI state and service boundaries, including structured output parsing, partial failures, timeouts, quota validation, Jev candidate mapping, invalid decisions, and judge fallback. Playwright covers browser flows; it is a separate suite and is not run by the current GitHub Actions checks. Prompt evaluation cases in `backend/evaluations/` are an additional AI-specific regression layer. GitHub Actions runs `npm ci`, Jest, backend type and portability checks, and the Next.js static build. Backend pull requests deploy to staging and `main` deploys to production; Cloudflare Pages builds previews and production from Git.
+
+We use **Langfuse for comparing models and prompts and for human evaluation review**.
+The thin TypeScript runner uses production prompts/connectors, runs code assertions
+and independent Jev quality checks, and retains local JSON results. A small base
+suite and exact-match reuse of saved results keep development evaluations cheaper;
+the full English-focused acceptance suite is run deliberately. See the
+[evaluation guide](backend/docs/evaluations.md). Paid evaluations are manually
+triggered and do not run in ordinary unit-test CI.
 
 ## Monetization status and license
 

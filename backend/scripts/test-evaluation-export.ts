@@ -26,6 +26,8 @@ report.records = ['a', 'b'].map(candidateId => ({ candidateId, caseId: 'f', atte
     diagnostics: { httpStatus: 200, providerModel: candidateId, latencyMs: 123 } },
   generation: { startedAt: '2026-01-01T00:00:00.000Z', endedAt: '2026-01-01T00:00:00.123Z', latencyMs: 123 }, preparationMs: 1, checksMs: 1,
   checks: [{ check: 'valid-json-text-contract', passed: true }], judge, error: null }));
+report.records[1].reuse = { generation: { comparisonId: 'saved-comparison', candidateId: 'old', caseId: 'f', attempt: 1, git: report.git },
+  judge: { comparisonId: 'saved-comparison', candidateId: 'old', caseId: 'f', attempt: 1, git: report.git } };
 let flushes = 0, tasks = 0;
 const failExport = process.argv.includes('--fail-export');
 const client = {
@@ -50,4 +52,10 @@ const generation = spans.find(s => s.name === 'generator')!;
 assert.equal((generation.endTime[0] - generation.startTime[0]) * 1000 + (generation.endTime[1] - generation.startTime[1]) / 1e6, 123);
 assert.ok(JSON.stringify(generation.attributes).includes('input_cached_tokens'));
 assert.ok(JSON.stringify(generation.attributes).includes('output_reasoning_tokens'));
-console.log(`Langfuse ${failExport ? 'export failure' : 'export'} verified: two generator + two judge observations, original timing, token buckets, scores, flush; zero AI calls.`);
+for (const name of ['generator', 'judge']) {
+  const cached = spans.find(s => s.name === name && JSON.stringify(s.attributes).includes('historical-reference'))!;
+  assert.ok(cached, `Missing cached ${name} provenance`);
+  assert.ok(Object.values(cached.attributes).includes('{"total":0}'), `Cached ${name} double-counted cost`);
+  assert.ok(Object.values(cached.attributes).includes('{"input":0,"output":0,"total":0}'), `Cached ${name} double-counted tokens`);
+}
+console.log(`Langfuse ${failExport ? 'export failure' : 'export'} verified: separate generator/judge observations, original timing, token buckets, scores, flush; cached references add zero tokens/cost and zero AI calls.`);

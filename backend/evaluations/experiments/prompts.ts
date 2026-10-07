@@ -10,7 +10,7 @@ const checklist: PromptVariant = {
   },
 };
 export default {
-  id: 'production-vs-final-checklist', mode: 'prompts', suite: 'acceptance',
+  id: 'production-vs-final-checklist', mode: 'prompts', suite: 'base', repetitions: 1,
   baseline: { id: 'production', provider: 'openrouter', model: 'openai/gpt-5-nano', structuredOutputMode: 'json-schema', prompt: PRODUCTION_PROMPT },
   candidate: { id: 'checklist', provider: 'openrouter', model: 'openai/gpt-5-nano', structuredOutputMode: 'json-schema', prompt: checklist },
 } satisfies ExperimentDefinition;

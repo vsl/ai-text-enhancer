@@ -16,7 +16,7 @@ npm run eval:compare -- --experiment=evaluations/experiments/prompts.ts --dry-ru
 
 # Small paid smoke test: two generations and at most two Jev calls.
 # Existing exported environment variables also work; --env-file never prints keys.
-node --env-file=.env --import ./scripts/register-npm-imports.mjs \
+node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
   --experimental-transform-types scripts/evaluate-experiment.ts \
   --experiment=evaluations/experiments/models.ts --case=editor-protected-facts --repeat=1 --publish
 
@@ -28,14 +28,18 @@ Generation needs `OPENROUTER_API_KEY` or `GEMINI_API_KEY`; Jev needs OpenRouter.
 Publication additionally needs `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and
 `LANGFUSE_BASE_URL`. Use an existing configured instance. Provisioning, hosted
 evaluator configuration and observability migration are outside this change.
+Both backend env templates include blank Langfuse settings. Copy the template to
+your private `.env.local` and fill them in; Node requires `--env-file=.env.local`
+to load it. Existing `.env` files also work with `--env-file=.env`.
 Never commit `.env` or provider keys. Fixtures/outputs may contain sensitive data:
 use synthetic/anonymized cases and an appropriately secured Langfuse project.
 
 Existing `eval:prompts` and `eval:jev` commands remain available. The new comparison
 runner uses production tier limits, service tier, reasoning effort, timeout,
 prompt composition, provider connectors and strict output parsing directly; it
-does not invoke HTTP handlers, authentication or quotas. Default tier is free and
-default repetitions are three. All CLI and per-candidate settings overrides are
+does not invoke HTTP handlers, authentication or quotas. Default tier is free.
+The committed examples default to the base suite and one repetition; custom
+definitions without a repetition count still default to three. All overrides are
 stored. Provider failures are preserved and never retried into passes. OpenRouter
 routing models such as `openrouter/free` may resolve to different models: inspect
 requested **and resolved** identities; use pinned providers/models for approvals.
@@ -53,19 +57,92 @@ Edit a trusted TypeScript module under `evaluations/experiments/`. `models.ts` a
   Supply identical explicit common overrides where needed; unequal settings fail
   validation rather than silently confounding the comparison.
 
-`--case=substring` and repeatable `--tag=role:editor` filters select cases; tags are
-ANDed. Filtered runs cannot be approved as acceptance baselines. `--repeat=N`
-changes repetitions and is recorded. Complete acceptance execution is 248 × 2 × 3
-= **1,488 generations plus up to 1,488 Jev calls**. Check the dry run before paying.
-Runs are sequential and candidate order alternates between repetitions.
+`--suite=base|all|development` selects a case list; `acceptance` remains an alias
+for `all`. `--case=substring` and repeatable `--tag=role:editor` filter that list;
+tags are ANDed. Filters, suite and repetitions are recorded. Runs are sequential
+and candidate order alternates between repetitions. Check `--dry-run` before paying.
+
+| Suite | Cases | New generations + maximum Jev calls, without reuse |
+| --- | --- | --- |
+| `base`, one repetition (example default) | 32 | 64 + 64 |
+| `all`, one repetition | 199 | 398 + 398 |
+| `all`, three repetitions | 199 | 1,194 + 1,194 |
+
+The base list in `base-case-ids.json` references frozen acceptance fixtures rather
+than duplicating them. It covers all roles, no-options behavior, disabled controls,
+combinations, facts, tone, symbols, context attacks/conflicts and input sizes.
+It is an inexpensive development signal, not complete UI-option coverage.
+Only the full, unfiltered `all` suite can become an approved acceptance baseline.
+
+```bash
+npm run eval:compare -- --suite=base --dry-run
+npm run eval:compare -- --suite=all --repeat=3 --dry-run
+```
 
 `evaluations/acceptance.json` is a frozen snapshot, separate from
-`development-cases.ts` (`suite: 'development'`). It preserves the original 71
-regressions and adds all supported UI enum values, every boolean enabled/disabled,
-no-options controls, combinations, context conflicts, non-English sources and
-small/large inputs. Change acceptance fixtures deliberately in a reviewed PR;
+`development-cases.ts` (`suite: 'development'`). The paid acceptance list contains
+196 English cases plus one Spanish translation, one Portuguese translation and
+one Ukrainian-to-English case. English coverage includes known regressions, all
+non-language UI enum values, every boolean enabled/disabled, no-options controls,
+combinations, context conflicts and small/large inputs. The exhaustive language
+matrix remains in development cases and offline prompt-parity unit tests, not in
+the default paid suites. Change acceptance fixtures deliberately in a reviewed PR;
 changing them invalidates baseline hashes. Development edits do not silently
 change the frozen acceptance suite. Add minimized real failures as regressions.
+
+## Reuse saved results instead of paying again
+
+Reuse is **opt-in**, using one or more explicit saved reports, not whichever run
+happened to finish last. After changing a comparison's candidate to a new model:
+
+```bash
+# Inspect hits and exact maximum NEW paid call counts first; no keys required.
+npm run eval:compare -- --suite=base \
+  --reuse=evaluation-results/PREVIOUS_COMPARISON_ID/report.json --dry-run
+
+# With keys exported, only unmatched generations/judgments make paid calls.
+npm run eval:compare -- --suite=base \
+  --reuse=evaluation-results/PREVIOUS_COMPARISON_ID/report.json --publish
+```
+
+If all 32 baseline cases match, only the new model needs 32 generations and up to
+32 Jev calls. Repeating the exact comparison can make zero AI calls. Repeat
+`--reuse=...` to supply several reports; the first successful exact match wins.
+Local journal checkpoints are loaded as well. A base run can supply matching
+cases to an `all` run; missing cases/repetitions are generated normally.
+
+A generation hit requires the same provider/model, exact system and user prompts,
+prompt identity/version, generation settings, source/context/role/options/case ID and repetition
+index, and a hash of the production connector/output-contract implementation and
+lockfile. Candidate labels, comparison IDs and whole-dataset hashes need not
+match. Each repetition uses its own saved sample: one sample is never cloned
+into three independent repetitions. Invalid JSON, failed attempts and OpenRouter
+routing aliases (`openrouter/free`, `openrouter/auto`) are not reused. Existing
+clean legacy reports can be fingerprinted from their saved Git revision; reports
+without reconstructable code provenance are misses.
+
+Jev reuse additionally requires the same evaluator hash, judge model/config and
+exact atomic question request. Stored raw answers are parsed again. Changing the
+judge/rubric or semantic expectations reuses generation but pays for fresh judging.
+Deterministic code assertions always run again, including newly added assertions,
+without paying to regenerate the same output. Cached deterministic failures
+remain failures. Tags and critical flags affect reporting/gates, not generation.
+
+Records retain original timestamps, requested/resolved providers/models, outputs,
+tokens/cost and source comparison/attempt/Git identity. `summary.json` separates
+`newCalls`, `reused`, `newCostUsd`, `newTokens` and `freshLatency` from historical
+benchmark measurements. Missing fresh cost remains unavailable, not zero; fully
+reused calls cost zero **in this comparison**, not zero for the model itself.
+Performance/cost release budgets use the original benchmark measurements, not the
+cache's zero marginal spend. Run without `--reuse` for fresh performance evidence:
+cache hits are not new latency tests and provider/model behavior can change over time.
+
+Langfuse receives reuse markers/provenance and original measurements as metadata.
+Cached observations have zero newly consumed tokens/cost so publication does not
+double-count paid usage. Their latency scores are explicitly marked historical.
+The local reports, not a separate cache service, are the cache; preserve them or
+download CI artifacts before reusing results on another machine. Ordinary CI
+workers do not automatically have your local reports.
 
 ## Inspect results
 
@@ -114,7 +191,7 @@ under the same run name, but never performs additional AI calls.
 # 54 realistic proposed controls, blank human labels; no AI calls.
 npm run eval:calibrate
 # Optionally judge controls and publish a review experiment (54 paid Jev calls).
-node --env-file=.env --import ./scripts/register-npm-imports.mjs \
+node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
   --experimental-transform-types scripts/evaluate-experiment.ts \
   --calibrate --judge-controls --publish
 ```
@@ -146,7 +223,7 @@ npm run eval:review -- --report=evaluation-results/COMPARISON_ID/report.json \
   --output=evaluations/baselines/approved-v1.json
 # Subsequent comparisons explicitly reference the approved artifact.
 npm run eval:compare -- --experiment=evaluations/experiments/models.ts \
-  --baseline=evaluations/baselines/approved-v1.json --publish
+  --suite=all --repeat=3 --baseline=evaluations/baselines/approved-v1.json --publish
 ```
 
 The approval artifact freezes run IDs, identity/settings, hashes, thresholds,
@@ -161,7 +238,7 @@ pre-approved by this implementation.
 ## CI and verification
 
 The **Paid evaluation experiments** workflow is manually dispatched only. Its
-default is one case, three repetitions. Configure provider/Langfuse credentials as
+default is one base case, one repetition. Configure provider/Langfuse credentials as
 repository secrets and `LANGFUSE_BASE_URL` as a repository variable. Artifacts are
 uploaded even on failures; run links and gate state appear in the step summary.
 Ordinary backend CI checks evaluator types and an in-memory Langfuse exporter,
