@@ -1,11 +1,10 @@
 import type { DecisionConnector, DecisionRequest } from '../connectors/openrouter-decision-connector.ts';
 import type { PromptEvaluationCase } from './prompt-evaluator.ts';
 
-export const EVALUATOR_VERSION = 'text-quality-v2';
+export const EVALUATOR_VERSION = 'text-quality-v3';
 // Deliberately independent of generator templates: candidate edits cannot lower the standard.
 export const ROLE_EXPECTATIONS: Record<string, string> = {
   editor: 'Act as a professional editor. Correct grammar, spelling, punctuation and usage; improve clarity, coherence and natural flow. Preserve intent, voice, perspective, terminology, facts and supported detail. Make proportionate edits without commentary.',
-  summarizer: 'Produce a concise, self-contained summary of the central purpose and essential information. Preserve important names, numbers, dates, decisions, causal links, caveats, uncertainty, attribution and action items. Distinguish facts, opinions and proposals. Remove repetition and tangents without changing the viewpoint or inventing conclusions.',
   email_assistant: 'Produce a complete ready-to-send email with a specific subject, appropriate greeting, clear body, natural closing and sender signature or minimal placeholder. Preserve source sender and recipient, purpose, facts, requests and commitments. Context may clarify a reply but must not reverse sender and recipient or invent commitments.',
 };
 export const OPTION_EXPECTATIONS: Record<string, string> = {
@@ -68,6 +67,7 @@ export interface JudgeEvaluation {
 }
 
 export function buildJudgeRequest(item: PromptEvaluationCase, output: string, model: string): DecisionRequest {
+  if (!Object.hasOwn(ROLE_EXPECTATIONS, item.roleId)) throw new Error(`Unknown evaluator role: ${item.roleId}`);
   const questions: DecisionRequest['questions'] = Object.fromEntries(Object.entries(QUALITY).map(([name, criterion]) =>
     [name, { type: 'score', instructions: `${POLICY}\n${criterion}`, criteria: LEVELS }],
   ));

@@ -14,7 +14,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "AI Text Enhancer",
   description: "Turn repeated text-editing prompts into reusable multi-model workflows.",
-  keywords: ["AI", "text enhancer", "summarization", "translation", "grammar", "paraphrasing"],
+  keywords: ["AI", "text enhancer", "editing", "translation", "grammar", "paraphrasing"],
 };
 
 export default function RootLayout({

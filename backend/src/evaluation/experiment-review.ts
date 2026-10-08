@@ -1,5 +1,4 @@
 import { fingerprintPrompt } from '../services/prompt-builder.ts';
-import { buildJudgeRequest } from './jev-evaluator.ts';
 import type { AttemptRecord, ExperimentReport, GatePolicy } from './experiments.ts';
 import type { LLMResponse } from '../types/llm.types.ts';
 
@@ -112,9 +111,10 @@ export function evaluateGates(report: ExperimentReport, approved?: ReviewArtifac
     if (r.fixture.critical && r.checks.some(c => !c.passed)) failures.push(`${key}: critical deterministic failure`);
     if (report.definition.judge.enabled && r.fixture.judge !== false) {
       // Historical runs retain their original rubric, not newly added criteria.
-      const names = Object.keys(r.judge?.request.questions ?? buildJudgeRequest(r.fixture, r.output ?? '', report.definition.judge.model).questions);
-      if (r.judge?.status !== 'success' || names.some(name => !r.judge!.metrics.some(m => m.name === name && Number.isFinite(m.value)))) failures.push(`${key}: required judge scores missing`);
-      else if (r.judge.metrics.some(m => m.value < report.definition.gates.semanticMinimum)) semanticIssues.push(`${key}: semantic minimum not met`);
+      const missing = r.judge?.status !== 'success' || Object.keys(r.judge.request.questions)
+        .some(name => !r.judge!.metrics.some(m => m.name === name && Number.isFinite(m.value)));
+      if (missing) failures.push(`${key}: required judge scores missing`);
+      else if (r.judge!.metrics.some(m => m.value < report.definition.gates.semanticMinimum)) semanticIssues.push(`${key}: semantic minimum not met`);
     }
     const matching = report.records.find(b => b.candidateId === report.definition.candidates[0].id && b.caseId === r.caseId && b.attempt === r.attempt);
     if (r.candidateId !== report.definition.candidates[0].id) for (const check of r.checks) {

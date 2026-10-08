@@ -3,7 +3,7 @@ import { BOOLEAN_TRANSFORMATION_KEYS, FORMALITY_VALUES, TONE_VALUES, LANGUAGE_LE
 import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
 
 const source = 'Hi Morgan, the shipment for order 887 is delayed until Friday. The refund is $20. Approval is still uncertain. Please confirm whether the revised date works. Thanks, Alex.';
-const roles = ['editor', 'summarizer', 'email_assistant'];
+const roles = ['editor', 'email_assistant'];
 const options: Array<{ label: string; options: PromptEvaluationCase['options'] }> = [
   { label: 'no-options', options: {} },
   ...BOOLEAN_TRANSFORMATION_KEYS.flatMap(key => [true, false].map(value => ({ label: `${key}-${value}`, options: { [key]: value } }))),

@@ -13,7 +13,7 @@ General-purpose AI chats are flexible, but recurring writing tasks often require
 ## What it does
 
 - Runs multiple assistants against one source text, with reference context kept in a separate field.
-- Offers editor, summarizer, and professional email roles, each with distinct prompts.
+- Offers editor and professional email roles, each with distinct prompts.
 - Configures improvements, corrections, formatting, length, tone, formality, language level, translation, and emojis per assistant.
 - **Avoid common AI symbols** — optionally discourages em dashes, semicolons, unnecessary formatting, and other frequently overused AI-writing patterns when simpler phrasing works.
 - Lets assistants use different currently configured OpenRouter models and returns partial results when an individual model fails.

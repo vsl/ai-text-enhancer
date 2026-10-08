@@ -3,11 +3,11 @@ import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts
 // These are proposed controls, NOT human labels. Reviewers fill humanLabels in
 // the exported review set and score the linked traces in Langfuse.
 export interface CalibrationControl { id: string; fixture: PromptEvaluationCase; output: string; proposedLabels: Record<string, 'pass' | 'fail'> }
-export const CALIBRATION_CONTROLS: CalibrationControl[] = ['editor', 'summarizer', 'email_assistant'].flatMap(roleId => {
+export const CALIBRATION_CONTROLS: CalibrationControl[] = ['editor', 'email_assistant'].flatMap(roleId => {
   const source = 'Hi Morgan, order 887 is delayed until Friday. The refund is $20. Approval is uncertain. Thanks, Alex.';
   const good = roleId === 'email_assistant'
     ? 'Subject: Update on order 887\n\nHi Morgan,\n\nOrder 887 is delayed until Friday. The refund is $20, and approval remains uncertain.\n\nThanks,\nAlex'
-    : roleId === 'summarizer' ? 'Order 887 is delayed until Friday. The refund is $20, and approval remains uncertain.' : source;
+    : source;
   const variants: Array<{ name: string; output: string; labels: Record<string, 'pass' | 'fail'>; source?: string; context?: string; tone?: 'Confident' | 'Polite' | 'Empathetic' | 'Direct' | 'Worried' }> = [
     { name: 'faithful', output: good, labels: { meaning_preserved: 'pass', factual_grounding: 'pass', role_completeness: 'pass' } },
     { name: 'invented-commitment', output: good.replace('Approval is uncertain.', 'Approval is guaranteed.').replace('approval remains uncertain.', 'approval is guaranteed.'), labels: { factual_grounding: 'fail', meaning_preserved: 'fail' } },

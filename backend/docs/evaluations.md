@@ -5,6 +5,12 @@ independent Jev rubrics, policies and approval artifacts. Local JSON is always r
 There is no custom HTML dashboard and no change to production LangSmith tracing or
 the product's intentional judging of one valid output.
 
+The supported roles are Editor (General Assistant in the UI) and Email Assistant.
+Saved configs with a retired role fall back to Editor while preserving options;
+Shorten remains an optional transformation. Historical reports are not rewritten.
+Role removal uses `prompt-v12`, `jev-v5` and the `text-quality-v3` evaluator; dataset
+and evaluator hashes change, so earlier acceptance approvals cannot be reused.
+
 ## Start here
 
 Run from `backend/` with Node 22 and `npm ci`:
@@ -52,7 +58,7 @@ Edit a trusted TypeScript module under `evaluations/experiments/`. `models.ts` a
 ### GLM 5.3 Flash versus Qwen
 
 `evaluations/experiments/glm.ts` runs `z-ai/glm-5.3-flash` against the pinned
-Qwen3 baseline on **all 199 acceptance cases**, with identical production prompts
+Qwen3 baseline on **all 140 acceptance cases**, with identical production prompts
 and generation settings, code assertions and Jev quality judging. It defaults to
 one repetition to limit cost; this does not add GLM to the production model catalog.
 
@@ -68,11 +74,11 @@ node --env-file=.env --import ./scripts/register-npm-imports.mjs \
   --experiment=evaluations/experiments/glm.ts --suite=all --repeat=1
 ```
 
-This makes at most **398 generations plus 398 Jev calls** without result reuse.
+This makes at most **280 generations plus 280 Jev calls** without result reuse.
 Add `--publish` when all three Langfuse settings are configured, or publish the
 saved report later without further AI calls. Add `--reuse=.../report.json` to reuse
 matching baseline samples; preview savings by adding it to the dry-run command.
-Use `--repeat=3` for a more stable comparison (1,194 generations plus up to 1,194
+Use `--repeat=3` for a more stable comparison (840 generations plus up to 840
 Jev calls without reuse). If your credentials are in `.env.local`, change the env
 file flag accordingly. Keep the credentials private and never commit them.
 
@@ -95,9 +101,9 @@ and candidate order alternates between repetitions. Check `--dry-run` before pay
 
 | Suite | Cases | New generations + maximum Jev calls, without reuse |
 | --- | --- | --- |
-| `base`, one repetition (example default) | 32 | 64 + 64 |
-| `all`, one repetition | 199 | 398 + 398 |
-| `all`, three repetitions | 199 | 1,194 + 1,194 |
+| `base`, one repetition (example default) | 26 | 52 + 52 |
+| `all`, one repetition | 140 | 280 + 280 |
+| `all`, three repetitions | 140 | 840 + 840 |
 
 The base list in `base-case-ids.json` references frozen acceptance fixtures rather
 than duplicating them. It covers all roles, no-options behavior, disabled controls,
@@ -112,7 +118,7 @@ npm run eval:compare -- --suite=all --repeat=3 --dry-run
 
 `evaluations/acceptance.json` is a frozen snapshot, separate from
 `development-cases.ts` (`suite: 'development'`). The paid acceptance list contains
-196 English cases plus one Spanish translation, one Portuguese translation and
+137 English cases plus one Spanish translation, one Portuguese translation and
 one Ukrainian-to-English case. English coverage includes known regressions, all
 non-language UI enum values, every boolean enabled/disabled, no-options controls,
 combinations, context conflicts and small/large inputs. The exhaustive language
@@ -136,8 +142,8 @@ npm run eval:compare -- --suite=base \
   --reuse=evaluation-results/PREVIOUS_COMPARISON_ID/report.json --publish
 ```
 
-If all 32 baseline cases match, only the new model needs 32 generations and up to
-32 Jev calls. Repeating the exact comparison can make zero AI calls. Repeat
+If all 26 baseline cases match, only the new model needs 26 generations and up to
+26 Jev calls. Repeating the exact comparison can make zero AI calls. Repeat
 `--reuse=...` to supply several reports; the first successful exact match wins.
 Local journal checkpoints are loaded as well. A base run can supply matching
 cases to an `all` run; missing cases/repetitions are generated normally.
@@ -219,9 +225,9 @@ under the same run name, but never performs additional AI calls.
 ## Calibrate and approve (repository owner)
 
 ```bash
-# 54 realistic proposed controls, blank human labels; no AI calls.
+# 40 realistic proposed controls, blank human labels; no AI calls.
 npm run eval:calibrate
-# Optionally judge controls and publish a review experiment (54 paid Jev calls).
+# Optionally judge controls and publish a review experiment (40 paid Jev calls).
 node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
   --experimental-transform-types scripts/evaluate-experiment.ts \
   --calibrate --judge-controls --publish

@@ -33,26 +33,6 @@ Quality standard: The result is fluent, accurate, internally consistent, easy to
     ],
   },
   {
-    id: 'summarizer',
-    name: 'Summarizer',
-    systemPromptVersion: 'v1',
-    systemPrompt: `You are an expert summarizer and analyst. Produce a concise, self-contained summary that gives the reader the source's essential meaning without requiring the original.
-
-Primary task:
-- Identify the central purpose, thesis, or outcome and select the information needed to understand it.
-- Preserve important names, figures, dates, decisions, causal links, caveats, uncertainty, and action items when present.
-- Preserve attribution and the distinction between facts, opinions, proposals, and conclusions.
-- Remove repetition, tangents, and examples that do not materially improve understanding.
-- Organize the selected information in a coherent order instead of compressing the source sentence by sentence.
-
-Quality standard: The result is concise but not cryptic, accurate, balanced, and proportional to the source unless an additional length transformation is requested.`,
-    allowedModels: [
-      'open-router-free',
-      'openai-gpt-5-nano',
-      'qwen-qwen3-30b-a3b-instruct-2507',
-    ],
-  },
-  {
     id: 'email_assistant',
     name: 'Email Assistant',
     systemPromptVersion: 'v2',

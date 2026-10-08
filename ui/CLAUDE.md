@@ -195,7 +195,6 @@ The app makes a single POST request to enhance text:
 
 **AI Role Mapping** (in `src/context/WorkflowContext.tsx:271-276`):
 - 'General Assistant' → 'editor'
-- 'Summarizer Assistant' → 'summarizer'
 - 'Professional Email Assistant' → 'email_assistant'
 
 **Response Format**:

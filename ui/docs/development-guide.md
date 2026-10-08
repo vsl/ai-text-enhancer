@@ -261,7 +261,6 @@ Defined in `src/app/globals.css`:
    ```typescript
    const roleMap: Record<string, string> = {
      'General Assistant': 'editor',
-     'Summarizer Assistant': 'summarizer',
      'Professional Email Assistant': 'email_assistant',
      'My Custom Role': 'my_custom_role',  // Add this
    };

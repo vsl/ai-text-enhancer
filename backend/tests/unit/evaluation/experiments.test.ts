@@ -66,6 +66,8 @@ describe('evaluation experiments', () => {
     expect(() => validateExperiment(definition, [{ ...fixture, options: { shorten: true, lengthen: true } }])).toThrow();
     expect(() => validateExperiment(definition, [{ ...fixture, checks: [{ type: 'matches', value: '[' }] }])).toThrow();
     expect(() => validateExperiment(definition, [])).toThrow('Dataset');
+    expect(() => validateExperiment(definition, [{ ...fixture, roleId: 'summarizer' }])).toThrow('Unknown role');
+    expect(() => buildJudgeRequest({ ...fixture, roleId: 'summarizer' }, 'Output', 'judge')).toThrow('Unknown evaluator role');
   });
   it('preserves six attempts, exact settings, raw outputs and separate judge usage without retries', async () => {
     const { report, sendRequest, decide } = await run();
@@ -96,6 +98,14 @@ describe('evaluation experiments', () => {
     const gate = evaluateGates(report);
     expect(gate.summaries[0].generation.costUsd.complete).toBe(false);
     expect(gate.failures).toContain('baseline: cost limit exceeded or cost unavailable');
+  });
+  it('reports historical generation failures for retired roles without reconstructing current judge questions', async () => {
+    const { report } = await run({ generationError: true });
+    report.fixtures = report.fixtures.map(f => ({ ...f, roleId: 'summarizer' }));
+    for (const r of report.records) r.fixture = report.fixtures[0];
+    const gates = evaluateGates(report);
+    expect(gates.eligible).toBe(false);
+    expect(gates.failures.some(f => f.includes('required judge scores missing'))).toBe(true);
   });
   it('detects incomplete, duplicated and newly failing protected results', async () => {
     const { report } = await run();
@@ -199,10 +209,10 @@ describe('evaluation experiments', () => {
   });
   it('frozen acceptance fixtures focus on English with one spot check per selected language', () => {
     const cases = JSON.parse(readFileSync(resolve('evaluations/acceptance.json'), 'utf8')) as PromptEvaluationCase[];
-    validateExperiment(definition, cases); expect(cases).toHaveLength(199);
-    expect(cases.filter(c => c.language === 'en')).toHaveLength(196);
+    validateExperiment(definition, cases); expect(cases).toHaveLength(140);
+    expect(cases.filter(c => c.language === 'en')).toHaveLength(137);
     expect(cases.filter(c => c.language !== 'en').map(c => c.options.translateTo)).toEqual(['es', 'pt', 'en']);
-    for (const role of ['editor', 'summarizer', 'email_assistant']) {
+    for (const role of ['editor', 'email_assistant']) {
       const rows = cases.filter(c => c.roleId === role);
       for (const [key, values] of Object.entries({ formality: FORMALITY_VALUES, tone: TONE_VALUES, languageLevel: LANGUAGE_LEVEL_VALUES }))
         for (const value of values) expect(rows.some(r => r.options[key as keyof typeof r.options] === value)).toBe(true);
@@ -212,11 +222,11 @@ describe('evaluation experiments', () => {
     // The exhaustive language matrix is still checked offline, not paid per run.
     for (const language of LANGUAGE_VALUES) expect(DEVELOPMENT_CASES.some(c => c.options.translateTo === language)).toBe(true);
     const ids = JSON.parse(readFileSync(resolve('evaluations/base-case-ids.json'), 'utf8')) as string[];
-    expect(ids).toHaveLength(32); expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(26); expect(new Set(ids).size).toBe(ids.length);
     const base = ids.map(id => cases.find(c => c.id === id)!);
     expect(base.every(Boolean)).toBe(true); validateExperiment({ ...definition, suite: 'base' }, base);
     expect(base.filter(c => c.language !== 'en')).toHaveLength(3);
-    for (const role of ['editor', 'summarizer', 'email_assistant']) expect(base.some(c => c.roleId === role && !Object.keys(c.options).length)).toBe(true);
+    for (const role of ['editor', 'email_assistant']) expect(base.some(c => c.roleId === role && !Object.keys(c.options).length)).toBe(true);
   });
 
   it('reuses an unchanged baseline across comparison/candidate labels, paying only for the new model', async () => {

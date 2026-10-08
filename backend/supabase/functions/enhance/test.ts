@@ -76,8 +76,8 @@ async function testBatch() {
       {
         id: 'task-2',
         model: 'open-router-free',
-        aiRoleId: 'summarizer',
-        userText: 'make it fancy',
+        aiRoleId: 'email_assistant',
+        userText: 'Ask Dana to send the report by Tuesday.',
         options: {
           improve: true,
           formality: 'Formal'

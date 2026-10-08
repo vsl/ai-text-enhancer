@@ -7,7 +7,7 @@ The user writes one source text, configures one or more AI assistants, and recei
 An **assistant** is one saved combination of:
 
 - a **model**: which AI service processes the request;
-- a **role**: the assistant's primary job, such as editing, summarizing, or writing an email;
+- a **role**: the assistant's primary job, such as editing or writing an email;
 - **options**: extra changes such as shortening, tone, formality, translation, or emojis;
 - an **enabled** switch: only enabled assistants run.
 

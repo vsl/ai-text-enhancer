@@ -14,7 +14,6 @@ export const MODEL_NAMES: Record<string, string> = {
 
 export const AVAILABLE_AI_ROLES: readonly { id: AiRoleId; label: string }[] = [
   { id: 'editor', label: 'General Assistant' },
-  { id: 'summarizer', label: 'Summarizer Assistant' },
   { id: 'email_assistant', label: 'Professional Email Assistant' },
 ] as const;
 
@@ -72,7 +71,7 @@ export const TOOLTIP_TEXTS = {
   aiPipelines: "Select a workflow to see its AI Assistants. Each assistant in the active workflow will run in parallel to process your text.",
   addConfig: "Add a new AI Assistant to the workflow below.",
   model: "Choose the underlying AI model. Different models have different capabilities and speeds.",
-  aiRole: "The AI Role sets the AI's primary job or personality, like a Summarizer or a Professional Email Writer.",
+  aiRole: "The AI Role sets the AI's primary job: general text editing or professional email writing.",
   configOptions: "Fine-tune the behavior of the currently selected AI configuration from your pipeline.",
   improve: "Rewrites sentences for better clarity, flow, and engagement.",
   fixMistakes: "Corrects spelling, grammar, and punctuation errors.",
@@ -117,7 +116,6 @@ export const DEFAULT_OPTIONS: Options = {
 
 const LEGACY_ROLE_IDS: Record<string, AiRoleId> = {
   'General Assistant': 'editor',
-  'Summarizer Assistant': 'summarizer',
   'Professional Email Assistant': 'email_assistant',
 };
 

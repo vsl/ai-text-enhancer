@@ -269,7 +269,7 @@ describe('WorkflowContext', () => {
         const newConfig: AiConfig = {
           id: 999,
           model: 'open-router-free',
-          aiRoleId: 'summarizer',
+          aiRoleId: 'email_assistant',
           options: { ...DEFAULT_OPTIONS },
           enabled: true,
         };
@@ -289,7 +289,7 @@ describe('WorkflowContext', () => {
       it('keeps consecutive additions in the active workflow', () => {
         const { result } = renderHook(() => useWorkflow(), { wrapper });
         const first: AiConfig = { id: 999, model: 'open-router-free', aiRoleId: 'editor', options: { ...DEFAULT_OPTIONS }, enabled: true };
-        const second: AiConfig = { ...first, id: 1000, aiRoleId: 'summarizer' };
+        const second: AiConfig = { ...first, id: 1000, aiRoleId: 'email_assistant' };
 
         act(() => {
           result.current.handleSaveConfig(first);
@@ -392,7 +392,7 @@ describe('WorkflowContext', () => {
         const newConfig: AiConfig = {
           id: 999,
           model: 'open-router-free',
-          aiRoleId: 'summarizer',
+          aiRoleId: 'email_assistant',
           options: { ...DEFAULT_OPTIONS },
           enabled: true,
         };

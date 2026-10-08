@@ -70,19 +70,6 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
     ],
   },
   {
-    id: 'summarizer-role-overlap',
-    roleId: 'summarizer',
-    language: 'en',
-    userText: 'The board met for two hours. Marta proposed delaying launch to 8 May because testing might not finish. Lee disagreed. After discussion, the board approved the delay by 6 votes to 2 and asked Marta to publish the revised plan.',
-    options: { shorten: true, tone: 'Direct' },
-    checks: [
-      { type: 'contains', value: '8 May' },
-      { type: 'contains', value: '6' },
-      { type: 'contains', value: '2' },
-      { type: 'max-length-ratio', value: 0.85 },
-    ],
-  },
-  {
     id: 'email-role-required-structure',
     roleId: 'email_assistant',
     language: 'en',
@@ -122,7 +109,7 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
   },
   {
     id: 'translation-ukrainian-to-english',
-    roleId: 'summarizer',
+    roleId: 'editor',
     language: 'uk-to-en',
     userText: 'Олена повідомила, що бюджет становить 2500 євро, але рішення ще не остаточне.',
     options: { translateTo: 'en' },
