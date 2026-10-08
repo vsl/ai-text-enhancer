@@ -5,6 +5,7 @@ import { PromptBuilder } from '../../../src/services/prompt-builder.ts';
 import { generationSettings } from '../../../src/services/generation-settings.ts';
 import { MODELS } from '../../../src/config/models.config.ts';
 import { DEVELOPMENT_CASES } from '../../../evaluations/development-cases.ts';
+import { CALIBRATION_CONTROLS } from '../../../evaluations/calibration-cases.ts';
 import { BOOLEAN_TRANSFORMATION_KEYS, FORMALITY_VALUES, LANGUAGE_LEVEL_VALUES, LANGUAGE_VALUES, TONE_VALUES } from '../../../src/config/transformation-options.config.ts';
 import type { PromptEvaluationCase } from '../../../src/evaluation/prompt-evaluator.ts';
 import { readFileSync } from 'node:fs';
@@ -135,6 +136,39 @@ describe('evaluation experiments', () => {
     expect(tokenBuckets(null)).toBeUndefined(); expect(tokenBuckets({ inputTokens: 1, outputTokens: 1, totalTokens: 2, cachedTokens: 2 })).toBeUndefined();
     expect(tokenBuckets({ inputTokens: 100, outputTokens: 5, reasoningTokens: 20, totalTokens: 125 }, undefined, false)).toEqual({ input: 100, output: 5, output_reasoning_tokens: 20, total: 125 });
     expect(tokenBuckets({ inputTokens: 0, outputTokens: 0, totalTokens: 0 }, [])).toBeUndefined();
+  });
+  it('judges email perspective independently and includes observed failures in calibration controls', () => {
+    const f = DEVELOPMENT_CASES.find(c => c.id === 'coverage-email_assistant-context-conflict')!;
+    const request = buildJudgeRequest(f, 'Hi Alex, thanks for the update. Thanks, Morgan', 'judge');
+    expect(request.state).toMatchObject({ source: f.userText, context: f.contextText, expectations: f.expectations });
+    expect(request.questions.source_perspective).toMatchObject({ type: 'noul', instructions: expect.stringContaining('from Alex to Morgan') });
+    expect(request.questions.meaning_preserved.instructions).toContain('invented confirmation');
+    const response = judgeResponse(request);
+    response.answers.source_perspective = { type: 'noul', noul: .02, probabilities: { true: .02, false: .98 } };
+    expect(parseJudgeResponse(request, response).metrics.find(m => m.name === 'source_perspective')).toMatchObject({ value: .02, scale: null });
+    delete response.answers.source_perspective;
+    expect(() => parseJudgeResponse(request, response)).toThrow('source_perspective');
+    expect(buildJudgeRequest(fixture, 'Output', 'judge').questions.source_perspective).toBeUndefined();
+    for (const name of ['perspective-faithful', 'perspective-reversed', 'confirmation-request-faithful', 'invented-confirmation']) {
+      const control = CALIBRATION_CONTROLS.find(c => c.id === `email_assistant-${name}`)!;
+      expect(control).toBeDefined();
+      const questions = buildJudgeRequest(control.fixture, control.output, 'judge').questions;
+      for (const metric of Object.keys(control.proposedLabels)) expect(questions[metric]).toBeDefined();
+    }
+  });
+  it('checks required metrics against the rubric actually used, preserving historical runs', async () => {
+    const email = DEVELOPMENT_CASES.find(c => c.id === 'coverage-email_assistant-context-conflict')!;
+    const { report } = await run({ fixtures: [email], text: '{"text":"Subject: Update\\n\\nHi Morgan,\\nFriday delivery, $20 refund, approval uncertain.\\n\\nThanks,\\nAlex"}' });
+    expect(evaluateGates(report).eligible).toBe(true);
+    report.records[0].judge!.metrics = report.records[0].judge!.metrics.filter(m => m.name !== 'source_perspective');
+    expect(evaluateGates(report).failures).toContain('baseline/coverage-email_assistant-context-conflict/1: required judge scores missing');
+    // A saved v1 request did not ask this question; v2 must not rewrite history.
+    report.evaluator = { ...report.evaluator, version: 'text-quality-v1' };
+    for (const r of report.records) {
+      delete r.judge!.request.questions.source_perspective;
+      r.judge!.metrics = r.judge!.metrics.filter(m => m.name !== 'source_perspective');
+    }
+    expect(evaluateGates(report).eligible).toBe(true);
   });
   it('supports the prompt axis without changing request settings', async () => {
     const variant = { id: 'experiment', version: 'v1', build: async (input: Parameters<typeof PRODUCTION_PROMPT.build>[0]) => {

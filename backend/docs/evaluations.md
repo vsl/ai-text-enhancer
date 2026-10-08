@@ -49,6 +49,37 @@ requested **and resolved** identities; use pinned providers/models for approvals
 Edit a trusted TypeScript module under `evaluations/experiments/`. `models.ts` and
 `prompts.ts` are working examples, not endorsed replacements for production.
 
+### GLM 5.3 Flash versus Qwen
+
+`evaluations/experiments/glm.ts` runs `z-ai/glm-5.3-flash` against the pinned
+Qwen3 baseline on **all 199 acceptance cases**, with identical production prompts
+and generation settings, code assertions and Jev quality judging. It defaults to
+one repetition to limit cost; this does not add GLM to the production model catalog.
+
+From `backend/` with Node 22:
+
+```bash
+# No network or paid calls: validate all cases and inspect the call count.
+npm run eval:compare -- --experiment=evaluations/experiments/glm.ts --dry-run
+
+# Paid full comparison, reading your existing private .env file.
+node --env-file=.env --import ./scripts/register-npm-imports.mjs \
+  --experimental-transform-types scripts/evaluate-experiment.ts \
+  --experiment=evaluations/experiments/glm.ts --suite=all --repeat=1
+```
+
+This makes at most **398 generations plus 398 Jev calls** without result reuse.
+Add `--publish` when all three Langfuse settings are configured, or publish the
+saved report later without further AI calls. Add `--reuse=.../report.json` to reuse
+matching baseline samples; preview savings by adding it to the dry-run command.
+Use `--repeat=3` for a more stable comparison (1,194 generations plus up to 1,194
+Jev calls without reuse). If your credentials are in `.env.local`, change the env
+file flag accordingly. Keep the credentials private and never commit them.
+
+For the manually triggered workflow, select experiment `glm`, suite `all`, clear
+the case filter and choose one repetition. A nonempty case filter still limits the
+run even when the suite is `all`.
+
 - Model mode: different provider/model identities, identical builder ID/version,
   builder function, rendered prompts and generation settings.
 - Prompt mode: identical model/settings, distinct versioned builders receiving

@@ -111,7 +111,8 @@ export function evaluateGates(report: ExperimentReport, approved?: ReviewArtifac
     if (r.error || r.output === null || !r.checks.some(c => c.check === 'valid-json-text-contract' && c.passed)) failures.push(`${key}: incomplete result${r.error ? ` (${r.error.stage})` : ''}`);
     if (r.fixture.critical && r.checks.some(c => !c.passed)) failures.push(`${key}: critical deterministic failure`);
     if (report.definition.judge.enabled && r.fixture.judge !== false) {
-      const names = Object.keys(buildJudgeRequest(r.fixture, r.output ?? '', report.definition.judge.model).questions);
+      // Historical runs retain their original rubric, not newly added criteria.
+      const names = Object.keys(r.judge?.request.questions ?? buildJudgeRequest(r.fixture, r.output ?? '', report.definition.judge.model).questions);
       if (r.judge?.status !== 'success' || names.some(name => !r.judge!.metrics.some(m => m.name === name && Number.isFinite(m.value)))) failures.push(`${key}: required judge scores missing`);
       else if (r.judge.metrics.some(m => m.value < report.definition.gates.semanticMinimum)) semanticIssues.push(`${key}: semantic minimum not met`);
     }

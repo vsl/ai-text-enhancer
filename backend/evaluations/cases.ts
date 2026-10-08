@@ -15,8 +15,8 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
         { type: 'matches', value: '^Subject:', flags: 'm' },
         { type: 'matches', value: '^(?:Dear|Hi|Hello) Morgan[,!]', flags: 'm' },
         { type: 'matches', value: 'Alex[.\\s]*$' },
-        { type: 'matches', value: '(?:(?:do not|don[’\u0027]t) (?:currently )?have|unable to provide) (?:another|an additional|a second) emergency contact', flags: 'i' },
-        { type: 'matches', value: '^(?![\\s\\S]*(?:Dear Ms\\.|family (?:situation|circumstances)|(?:we|I) (?:will|promise to) (?:provide|send)|(?:actively |are )working|working to resolve))[\\s\\S]*$', flags: 'i' },
+        { type: 'matches', value: '(?:(?:do not|don[’\u0027]t) (?:currently )?have|unable to provide) (?:another|an additional|a second) (?:emergency )?contact\\b', flags: 'i' },
+        { type: 'matches', value: '^(?![\\s\\S]*(?:Dear Ms\\.|family (?:situation|circumstances)|(?:we|I) (?:will|promise to) (?:provide|send|update)|(?:we|I)[’\u0027]ll (?:provide|send|update)|(?:actively |are |am |[’\u0027]re )working|working to resolve))[\\s\\S]*$', flags: 'i' },
       ],
     })),
   {

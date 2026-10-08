@@ -210,6 +210,35 @@ describe('OpenRouterConnector', () => {
       ).rejects.toThrow(LLMTimeoutError);
     });
 
+    it.each(['text', 'json'])('classifies a timeout while reading the %s body after headers arrive', async method => {
+      jest.useFakeTimers();
+      (global.fetch as jest.Mock).mockImplementation(async (_url, options) => ({
+        ok: true, status: 200,
+        [method]: () => new Promise((_resolve, reject) => {
+          options.signal.addEventListener('abort', () => reject(new DOMException('This operation was aborted', 'AbortError')), { once: true });
+        }),
+      }));
+      const assertion = expect(connector.sendRequest({
+        model: 'test-model', systemPrompt: 'System', userPrompt: 'User', timeout: 1000,
+      })).rejects.toMatchObject({ code: 'PROVIDER_TIMEOUT', statusCode: 408, message: 'Request timeout after 1000ms' });
+      await jest.advanceTimersByTimeAsync(1000);
+      await assertion;
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('classifies body-read network errors and clears the timeout without retrying', async () => {
+      jest.useFakeTimers();
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true, status: 200, text: async () => { throw new TypeError('connection terminated'); },
+      });
+      await expect(connector.sendRequest({
+        model: 'test-model', systemPrompt: 'System', userPrompt: 'User',
+      })).rejects.toMatchObject({ code: 'PROVIDER_NETWORK_ERROR', message: 'connection terminated' });
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
     it('should use custom temperature and maxTokens', async () => {
       const mockResponse = {
         ok: true,
