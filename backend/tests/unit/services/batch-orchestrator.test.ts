@@ -141,17 +141,19 @@ describe('BatchOrchestrator', () => {
   });
 
   describe('Validation', () => {
-    it('forwards model service tier and reasoning effort to its connector', async () => {
+    it.each([
+      { id: 'openai-gpt-5-nano', providerModelId: 'openai/gpt-5-nano', serviceTier: 'flex' as const, reasoningEffort: 'minimal' as const },
+      { id: 'anthropic-claude-haiku-5.5', providerModelId: 'anthropic/claude-haiku-5.5', reasoningEffort: 'low' as const, reasoningEnabled: false },
+    ])('forwards model generation settings to its production connector: $id', async ({ id, providerModelId, ...settings }) => {
       user.tier = 'free';
       const { getModelById } = require('../../../src/config/models.config.ts');
       const { getRoleById } = require('../../../src/config/roles.config.ts');
       getModelById.mockReturnValue({
-        id: 'openai-gpt-5-nano',
+        id,
         provider: 'openrouter',
-        providerModelId: 'openai/gpt-5-nano',
+        providerModelId,
         structuredOutputMode: 'json-schema',
-        serviceTier: 'flex',
-        reasoningEffort: 'minimal',
+        ...settings,
         displayName: 'GPT-5 Nano',
         contextWindow: 400000,
         costPer1kTokens: { input: 0, output: 0 },
@@ -160,13 +162,13 @@ describe('BatchOrchestrator', () => {
         id: 'grammar-corrector',
         name: 'Grammar Corrector',
         systemPrompt: 'You are a grammar correction expert.',
-        allowedModels: ['openai-gpt-5-nano'],
+        allowedModels: [id],
       });
 
       await orchestrator.processBatch(user, {
         assistants: [{
           id: 'gpt',
-          model: 'openai-gpt-5-nano',
+          model: id,
           aiRoleId: 'grammar-corrector',
           userText: 'test',
           options: { improve: true },
@@ -174,9 +176,8 @@ describe('BatchOrchestrator', () => {
       });
 
       expect(sendRequest).toHaveBeenCalledWith(expect.objectContaining({
-        model: 'openai/gpt-5-nano',
-        serviceTier: 'flex',
-        reasoningEffort: 'minimal',
+        model: providerModelId,
+        ...settings,
         maxTokens: 3500,
       }));
     });

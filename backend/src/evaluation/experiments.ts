@@ -39,7 +39,6 @@ export interface ExperimentDefinition {
   baseline: ExperimentCandidate;
   candidate: ExperimentCandidate;
   tier?: UserTier;
-  settings?: GenerationSettings;
   repetitions?: number;
   judge?: { enabled: boolean; model?: string; timeoutMs?: number };
   gates?: Partial<GatePolicy>;
@@ -94,9 +93,7 @@ export interface ExperimentReport {
 
 export function resolvedSettings(candidate: ExperimentCandidate, definition: ExperimentDefinition): GenerationSettings {
   const configured = MODELS.find(m => m.provider === candidate.provider && m.providerModelId === candidate.model);
-  return { ...generationSettings({ structuredOutputMode: candidate.structuredOutputMode,
-    serviceTier: configured?.serviceTier, reasoningEffort: configured?.reasoningEffort }, definition.tier ?? 'free'),
-    ...definition.settings, ...candidate.settings };
+  return { ...generationSettings(configured ?? candidate, definition.tier ?? 'free'), ...candidate.settings };
 }
 export function caseTags(item: PromptEvaluationCase): string[] {
   return [...new Set([`role:${item.roleId}`, `language:${item.language}`, ...(item.tags ?? []),
@@ -108,6 +105,7 @@ function requireString(value: unknown, name: string): asserts value is string {
 }
 export function validateExperiment(definition: ExperimentDefinition, cases: PromptEvaluationCase[]): void {
   requireString(definition.id, 'Experiment id');
+  if ('settings' in definition) throw new Error('Shared generation settings are not supported; use candidate.settings');
   if (!['models', 'prompts'].includes(definition.mode)) throw new Error('mode must be models or prompts');
   if (definition.suite !== undefined && !['base', 'all', 'acceptance', 'development'].includes(definition.suite)) throw new Error('Unknown suite');
   if (definition.tier !== undefined && !['free', 'plus', 'premium'].includes(definition.tier)) throw new Error('Unknown user tier');
@@ -123,23 +121,24 @@ export function validateExperiment(definition: ExperimentDefinition, cases: Prom
     if (typeof prompt.build !== 'function') throw new Error('Prompt variant requires a build function');
     const settings = resolvedSettings(candidate, definition);
     const allowed = ['structuredOutputMode', 'serviceTier', 'reasoningEffort', 'reasoningEnabled', 'temperature', 'maxTokens', 'timeout'];
-    if ([...Object.keys(candidate.settings ?? {}), ...Object.keys(definition.settings ?? {})].some(k => !allowed.includes(k))) throw new Error('Unknown generation setting');
+    if (Object.keys(candidate.settings ?? {}).some(k => !allowed.includes(k))) throw new Error('Unknown generation setting');
     if (!['json-schema', 'json-object'].includes(settings.structuredOutputMode ?? '')) throw new Error('Unsupported output mode');
     if (candidate.provider === 'gemini' && settings.structuredOutputMode !== 'json-schema') throw new Error('Gemini requires json-schema');
     if (settings.serviceTier !== undefined && settings.serviceTier !== 'flex') throw new Error('Unsupported service tier');
     if (settings.reasoningEffort !== undefined && !['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(settings.reasoningEffort)) throw new Error('Unsupported reasoning effort');
     if (settings.reasoningEnabled !== undefined && typeof settings.reasoningEnabled !== 'boolean') throw new Error('reasoningEnabled must be boolean');
+    if (settings.reasoningEnabled === true && settings.reasoningEffort === 'none') throw new Error('reasoningEnabled cannot be true with effort none');
     if (candidate.provider !== 'openrouter' && settings.reasoningEnabled !== undefined) throw new Error('reasoningEnabled requires OpenRouter');
     for (const key of ['maxTokens', 'timeout'] as const) if (!Number.isSafeInteger(settings[key]) || settings[key]! <= 0) throw new Error(`${key} must be a positive integer`);
     if (settings.temperature !== undefined && (!Number.isFinite(settings.temperature) || settings.temperature < 0 || settings.temperature > 2)) throw new Error('temperature must be 0 to 2');
   }
   if (candidates[0].id === candidates[1].id) throw new Error('Candidate IDs must be different');
-  if (json(resolvedSettings(candidates[0], definition)) !== json(resolvedSettings(candidates[1], definition))) throw new Error('Comparison must use identical generation settings; set common explicit overrides');
+  const sameSettings = canonical(resolvedSettings(candidates[0], definition)) === canonical(resolvedSettings(candidates[1], definition));
   const promptIdentity = (c: ExperimentCandidate) => `${(c.prompt ?? PRODUCTION_PROMPT).id}@${(c.prompt ?? PRODUCTION_PROMPT).version}`;
   const sameModel = candidates[0].provider === candidates[1].provider && candidates[0].model === candidates[1].model;
-  if (definition.mode === 'models' && (sameModel || promptIdentity(candidates[0]) !== promptIdentity(candidates[1])
-    || (candidates[0].prompt ?? PRODUCTION_PROMPT).build !== (candidates[1].prompt ?? PRODUCTION_PROMPT).build)) throw new Error('Model comparison requires different models and the same prompt builder');
-  if (definition.mode === 'prompts' && (!sameModel || promptIdentity(candidates[0]) === promptIdentity(candidates[1]))) throw new Error('Prompt comparison requires the same model and distinct prompt versions');
+  if (definition.mode === 'models' && ((sameModel && sameSettings) || promptIdentity(candidates[0]) !== promptIdentity(candidates[1])
+    || (candidates[0].prompt ?? PRODUCTION_PROMPT).build !== (candidates[1].prompt ?? PRODUCTION_PROMPT).build)) throw new Error('Model comparison requires different models or settings and the same prompt builder');
+  if (definition.mode === 'prompts' && (!sameModel || !sameSettings || promptIdentity(candidates[0]) === promptIdentity(candidates[1]))) throw new Error('Prompt comparison requires the same model, identical generation settings and distinct prompt versions');
   if (definition.judge && typeof definition.judge.enabled !== 'boolean') throw new Error('judge.enabled must be a boolean');
   if (definition.judge?.model !== undefined) requireString(definition.judge.model, 'Judge model');
   if (definition.judge?.timeoutMs !== undefined && (!Number.isSafeInteger(definition.judge.timeoutMs) || definition.judge.timeoutMs < 1)) throw new Error('Judge timeout must be a positive integer');
@@ -283,9 +282,10 @@ export async function runExperiment(definition: ExperimentDefinition, report: Ex
     if (!prepared.some(p => p.record.candidateId === candidate.id && !p.record.error && !p.cached)) continue;
     const settings = resolvedSettings(candidate, definition);
     report.preflights[candidate.id] = dependencies.keys[candidate.provider] ? await preflightCandidate({ ...candidate,
-      structuredOutputMode: settings.structuredOutputMode! }, dependencies.keys[candidate.provider], dependencies.fetchImpl)
+      ...settings, structuredOutputMode: settings.structuredOutputMode! }, dependencies.keys[candidate.provider], dependencies.fetchImpl)
       : { status: 'missing-api-key', supportedParameters: [], message: `${candidate.provider} key is missing` };
   }
+  const failedPreflight = Object.entries(report.preflights).find(([, result]) => result.status !== 'available');
   let checkpoint = Promise.resolve();
   let stopped = false;
   const runAttempt = async (p: PreparedAttempt) => {
@@ -294,6 +294,7 @@ export async function runExperiment(definition: ExperimentDefinition, report: Ex
     let stage: NonNullable<AttemptRecord['error']>['stage'] = 'preflight';
     try {
       if (record.error) { stage = record.error.stage; throw new Error(record.error.message); }
+      if (failedPreflight) throw new Error(`Comparison preflight failed for ${failedPreflight[0]}: ${failedPreflight[1].message ?? failedPreflight[1].status}`);
       if (p.cached) {
         const old = p.cached;
         record.response = structuredClone(old.record.response);

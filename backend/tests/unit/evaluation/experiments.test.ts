@@ -24,7 +24,8 @@ function judgeResponse(request: ReturnType<typeof buildJudgeRequest>, grade = 3)
 }
 async function run(options: { text?: string; grade?: number; generationError?: boolean; judgeError?: boolean; judge?: boolean;
   concurrency?: number; beforeGeneration?: () => Promise<void>; beforeJudge?: () => Promise<void>; onRecord?: (record: AttemptRecord) => Promise<void>;
-  definition?: ExperimentDefinition; fixtures?: PromptEvaluationCase[]; sources?: ExperimentReport[]; executionHash?: string } = {}) {
+  definition?: ExperimentDefinition; fixtures?: PromptEvaluationCase[]; sources?: ExperimentReport[]; executionHash?: string;
+  catalog?: Array<{ id: string; supported_parameters: string[]; reasoning?: unknown }> } = {}) {
   const def = { ...definition, judge: { enabled: options.judge ?? true }, ...options.definition };
   const report = await createExperimentReport(def, options.fixtures ?? [fixture], { revision: 'commit', dirty: false });
   report.executionHash = options.executionHash ?? 'execution-v1';
@@ -42,7 +43,9 @@ async function run(options: { text?: string; grade?: number; generationError?: b
     if (options.judgeError) throw new Error('Judge failed');
     return judgeResponse(request, options.grade);
   });
-  const fetchImpl = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [def.baseline.model, def.candidate.model].map(id => ({ id, supported_parameters: ['response_format'] })) }) });
+  const fetchImpl = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: options.catalog ?? [def.baseline.model, def.candidate.model].map(id => ({ id,
+    supported_parameters: ['response_format', 'reasoning', 'reasoning_effort'],
+    reasoning: { mandatory: id === 'openai/gpt-5-nano', supported_efforts: id === 'anthropic/claude-haiku-5.5' ? ['low', 'medium', 'high', 'xhigh', 'max'] : ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] } })) }) });
   await runExperiment(def, report, { keys: { openrouter: 'key' }, prepared, concurrency: options.concurrency, onRecord: options.onRecord,
     connectors: { openrouter: { name: 'openrouter', supportsStreaming: false, sendRequest } }, judge: { decide }, fetchImpl });
   return { report, sendRequest, decide, fetchImpl, calls };
@@ -59,18 +62,20 @@ describe('evaluation experiments', () => {
   });
   it('uses production tier, reasoning, service tier and timeout defaults', () => {
     const model = MODELS.find(m => m.providerModelId === 'openai/gpt-5-nano')!;
-    const candidate = { ...definition.baseline, model: model.providerModelId };
+    const candidate = { ...definition.baseline, model: model.providerModelId, structuredOutputMode: 'json-object' as const };
     expect(resolvedSettings(candidate, { ...definition, tier: 'premium' })).toEqual(generationSettings(model, 'premium'));
     expect(resolvedSettings(candidate, definition)).toMatchObject({ maxTokens: 3500, timeout: 30000, serviceTier: 'flex', reasoningEffort: 'minimal' });
   });
   it('rejects undeclared axes and validates fixtures before paid calls', () => {
     expect(() => validateExperiment(definition, [fixture])).not.toThrow();
-    expect(() => validateExperiment({ ...definition, candidate: { ...definition.candidate, settings: { maxTokens: 10 } } }, [fixture])).toThrow('identical generation');
+    expect(() => validateExperiment({ ...definition, candidate: { ...definition.candidate, settings: { maxTokens: 10 } } }, [fixture])).not.toThrow();
     expect(() => validateExperiment({ ...definition, mode: 'prompts' }, [fixture])).toThrow('same model');
     expect(() => validateExperiment({ ...definition, repetitions: 0 }, [fixture])).toThrow('repetitions');
-    expect(() => validateExperiment({ ...definition, settings: { reasoningEnabled: 'false' as never } }, [fixture])).toThrow('reasoningEnabled must be boolean');
-    expect(() => validateExperiment({ ...definition, settings: { reasoningEnabled: false },
-      candidate: { ...definition.candidate, provider: 'gemini' } }, [fixture])).toThrow('requires OpenRouter');
+    expect(() => validateExperiment({ ...definition, candidate: { ...definition.candidate, settings: { reasoningEnabled: 'false' as never } } }, [fixture])).toThrow('reasoningEnabled must be boolean');
+    expect(() => validateExperiment({ ...definition, candidate: { ...definition.candidate, provider: 'gemini', settings: { reasoningEnabled: false } } }, [fixture])).toThrow('requires OpenRouter');
+    expect(() => validateExperiment({ ...definition, settings: {} } as ExperimentDefinition, [fixture])).toThrow('Shared generation settings');
+    expect(() => validateExperiment({ ...definition, candidate: { ...definition.candidate,
+      settings: { reasoningEnabled: true, reasoningEffort: 'none' } } }, [fixture])).toThrow('cannot be true');
     expect(() => validateExperiment(definition, [{ ...fixture, options: { shorten: true, lengthen: true } }])).toThrow();
     expect(() => validateExperiment(definition, [{ ...fixture, checks: [{ type: 'matches', value: '[' }] }])).toThrow();
     expect(() => validateExperiment(definition, [])).toThrow('Dataset');
@@ -86,13 +91,66 @@ describe('evaluation experiments', () => {
     expect(gates.summaries[0].generation.totalTokens.reportedTotal).toBe(390);
     expect(gates.summaries[0].judging.totalTokens.reportedTotal).toBe(114);
   });
-  it('runs the Luna/Haiku comparison with identical reasoning-off settings recorded in requests and reports', async () => {
+  it('runs Luna/Haiku with their individual proposed production settings recorded in requests and reports', async () => {
     const { report, sendRequest } = await run({ definition: lunaVsHaiku, concurrency: 5 });
     expect(sendRequest).toHaveBeenCalledTimes(2);
     expect(report.definition.candidates.map(c => c.model)).toEqual(['openai/gpt-6-luna', 'anthropic/claude-haiku-5.5']);
-    for (const candidate of report.definition.candidates) expect(candidate.settings).toMatchObject({ reasoningEffort: 'low', reasoningEnabled: false });
-    for (const record of report.records) expect(record.request).toMatchObject({ reasoningEffort: 'low', reasoningEnabled: false, structuredOutputMode: 'json-schema' });
+    expect(report.definition.candidates[0].settings).toMatchObject({ reasoningEffort: 'none' });
+    expect(report.definition.candidates[0].settings).not.toHaveProperty('reasoningEnabled');
+    expect(report.definition.candidates[1].settings).toMatchObject({ reasoningEffort: 'low', reasoningEnabled: false });
+    for (const record of report.records) expect(record.request).toMatchObject(report.definition.candidates.find(c => c.id === record.candidateId)!.settings);
     expect(evaluateGates(report).eligible).toBe(true);
+  });
+  it('compares production Nano and Qwen without overriding their different defaults', async () => {
+    const { report, sendRequest } = await run({ definition: { ...definition, repetitions: 1,
+      baseline: { ...definition.baseline, model: 'openai/gpt-5-nano' },
+      candidate: { ...definition.candidate, model: 'qwen/qwen3-30b-a3b-instruct-2507' } } });
+    expect(sendRequest).toHaveBeenCalledTimes(2);
+    for (const candidate of report.definition.candidates) {
+      const production = MODELS.find(m => m.providerModelId === candidate.model)!;
+      expect(candidate.settings).toEqual(generationSettings(production));
+      expect(report.records.find(r => r.candidateId === candidate.id)!.request).toMatchObject(generationSettings(production));
+    }
+    expect(report.records[0].request).toMatchObject({ reasoningEffort: 'minimal', serviceTier: 'flex' });
+    expect(report.records[1].request?.reasoningEffort).toBeUndefined();
+  });
+  it('compares the same model with different settings and reuses only unchanged configurations', async () => {
+    const def: ExperimentDefinition = { ...definition, repetitions: 1,
+      baseline: { ...definition.baseline, model: 'openai/gpt-5-nano' },
+      candidate: { ...definition.candidate, model: 'openai/gpt-5-nano', settings: { reasoningEffort: 'low' } } };
+    const previous = await run({ definition: def });
+    expect(previous.sendRequest.mock.calls.map(c => c[0].reasoningEffort)).toEqual(['minimal', 'low']);
+    expect(previous.report.definition.candidates.map(c => c.settings.reasoningEffort)).toEqual(['minimal', 'low']);
+    const current = await run({ sources: [previous.report], definition: { ...def,
+      candidate: { ...def.candidate, settings: { reasoningEffort: 'medium' } } } });
+    expect(current.calls).toMatchObject({ reusedGenerations: 1, reusedJudgments: 1, generations: 1, judgments: 1 });
+    expect(current.sendRequest).toHaveBeenCalledTimes(1);
+    expect(current.sendRequest.mock.calls[0][0]).toMatchObject({ reasoningEffort: 'medium', serviceTier: 'flex' });
+    expect(() => validateExperiment({ ...def, candidate: { ...def.candidate, settings: undefined } }, [fixture])).toThrow('different models or settings');
+  });
+  it('requires identical settings for prompt comparisons', () => {
+    const def: ExperimentDefinition = { ...definition, mode: 'prompts', candidate: { ...definition.candidate,
+      model: definition.baseline.model, prompt: { ...PRODUCTION_PROMPT, id: 'other', version: 'v2' } } };
+    expect(() => validateExperiment(def, [fixture])).not.toThrow();
+    expect(() => validateExperiment({ ...def,
+      baseline: { ...def.baseline, settings: { temperature: .2, reasoningEnabled: true } },
+      candidate: { ...def.candidate, settings: { reasoningEnabled: true, temperature: .2 } } }, [fixture])).not.toThrow();
+    expect(() => validateExperiment({ ...def, candidate: { ...def.candidate, settings: { maxTokens: 10 } } }, [fixture])).toThrow('identical generation settings');
+  });
+  it.each([
+    { settings: { reasoningEnabled: false }, reasoning: { mandatory: true, supported_efforts: ['minimal', 'low'] }, message: 'mandatory' },
+    { settings: { reasoningEffort: 'none' as const }, reasoning: { mandatory: true, supported_efforts: ['minimal', 'low'] }, message: 'mandatory' },
+    { settings: { reasoningEffort: 'minimal' as const }, reasoning: { mandatory: false, supported_efforts: ['low'] }, message: 'not supported' },
+    { settings: { reasoningEnabled: false }, reasoning: undefined, message: 'unknown' },
+  ])('blocks all paid calls when a candidate reasoning configuration fails preflight: $message', async ({ settings, reasoning, message }) => {
+    const { report, sendRequest, decide } = await run({ concurrency: 5,
+      definition: { ...definition, candidate: { ...definition.candidate, settings } },
+      catalog: [{ id: 'model-a', supported_parameters: ['response_format'] },
+        { id: 'model-b', supported_parameters: ['response_format', 'reasoning'], reasoning }] });
+    expect(sendRequest).not.toHaveBeenCalled(); expect(decide).not.toHaveBeenCalled();
+    expect(report.preflights.candidate).toMatchObject({ status: 'unsupported', message: expect.stringContaining(message) });
+    expect(report.records.every(r => r.error?.stage === 'preflight')).toBe(true);
+    expect(evaluateGates(report).eligible).toBe(false);
   });
   it('checks decoded forbidden symbols and never repairs malformed JSON', async () => {
     const escaped = await run({ text: '{"text":"Ana will not pay $20\\u2014today."}' });
@@ -360,7 +418,7 @@ describe('evaluation experiments', () => {
     if (change === 'source') changedFixture = { ...fixture, userText: `${fixture.userText} Thanks.` };
     if (change === 'context') changedFixture = { ...fixture, contextText: 'Background.' };
     if (change === 'options') changedFixture = { ...fixture, options: { ...fixture.options, formality: 'Formal' } };
-    if (change === 'settings') def = { ...definition, settings: { temperature: .1 } };
+    if (change === 'settings') def = { ...definition, baseline: { ...definition.baseline, settings: { temperature: .1 } }, candidate: { ...definition.candidate, settings: { temperature: .1 } } };
     if (change === 'prompt') {
       const prompt = { ...PRODUCTION_PROMPT, build: async (input: Parameters<typeof PRODUCTION_PROMPT.build>[0]) => {
         const p = await PRODUCTION_PROMPT.build(input); return { ...p, systemPrompt: `${p.systemPrompt}\nCheck facts.` };

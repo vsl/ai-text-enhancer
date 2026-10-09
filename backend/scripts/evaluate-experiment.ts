@@ -126,7 +126,7 @@ if (flag('help')) {
   if (promptErrors.length) throw new Error(`Prompt preparation failed before paid calls: ${promptErrors.map(p => `${p.record.candidateId}/${p.record.caseId}: ${p.record.error!.message}`).join('; ')}`);
   if (!flag('dry-run')) {
     report.partialSuite = cases.length !== allCases.length;
-    report.overrides = { ...overrides, filters: { case: option('case') ?? null, tags }, generation: definition.settings ?? {},
+    report.overrides = { ...overrides, filters: { case: option('case') ?? null, tags },
       candidateGeneration: [definition.baseline, definition.candidate].map(c => ({ id: c.id, overrides: c.settings ?? {} })),
       reuseSources: sources.map(s => ({ comparisonId: s.comparisonId, git: s.git })), plannedCalls: calls };
     const path = resolve('evaluation-results', report.comparisonId, 'report.json');

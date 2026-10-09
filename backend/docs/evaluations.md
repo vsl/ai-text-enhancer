@@ -59,7 +59,7 @@ Edit a trusted TypeScript module under `evaluations/experiments/`. `models.ts` a
 
 `evaluations/experiments/luna-vs-haiku.ts` compares `openai/gpt-6-luna` and
 `anthropic/claude-haiku-5.5` with the same production prompts, strict JSON schema,
-one repetition and reasoning explicitly disabled. It defaults to the 26-case base
+one repetition and individual proposed production settings. It defaults to the 26-case base
 suite and does not add the models to the application's model catalog.
 
 Verified against the OpenRouter catalog on October 9, 2026: both support reasoning
@@ -67,9 +67,11 @@ controls and structured outputs; neither lists `minimal` effort. Luna supports
 `none`, `low`, `medium`, `high`, `xhigh`, `max`; Haiku lists `low`, `medium`,
 `high`, `xhigh`, `max`. Both default to `medium` effort, and Haiku thinking is on
 by default. Omitting the reasoning setting does not disable it.
-The comparison sends `reasoning: { effort: 'low', enabled: false }` to both models;
-explicit disablement turns thinking off, while low effort keeps Haiku's response
-effort low. Jev judging remains enabled and uses additional tokens.
+Luna sends `reasoning: { effort: 'none' }`; Haiku sends
+`reasoning: { effort: 'low', enabled: false }`. These settings belong to each
+candidate because neither model is in the production catalog yet. When promoting
+a model, preserve its evaluated settings in `models.config.ts`. Jev judging
+remains enabled and uses additional tokens.
 See [OpenAI's Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna),
 [Haiku on OpenRouter](https://openrouter.ai/anthropic/claude-haiku-5.5/), and
 [OpenRouter's reasoning controls](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
@@ -97,7 +99,7 @@ when running a complete suite.
 
 `evaluations/experiments/glm.ts` runs `z-ai/glm-5.3-flash` against the pinned
 Qwen3 baseline on **all 140 acceptance cases**, with identical production prompts
-and generation settings, code assertions and Jev quality judging. It defaults to
+and each model's own generation settings, code assertions and Jev quality judging. It defaults to
 one repetition to limit cost; this does not add GLM to the production model catalog.
 
 From `backend/` with Node 22:
@@ -124,13 +126,36 @@ For the manually triggered workflow, select experiment `glm`, suite `all`, clear
 the case filter and choose one repetition. A nonempty case filter still limits the
 run even when the suite is `all`.
 
-- Model mode: different provider/model identities, identical builder ID/version,
-  builder function, rendered prompts and generation settings.
+- Model mode: compare different models with their own settings, or the same model
+  with different settings. Keep builder ID/version, builder function and rendered
+  prompts identical. Give each candidate a distinct ID.
 - Prompt mode: identical model/settings, distinct versioned builders receiving
   only role, source, context and UI options. Production composition is the default.
-- A model family's production defaults can differ (Nano uses flex/minimal).
-  Supply identical explicit common overrides where needed; unequal settings fail
-  validation rather than silently confounding the comparison.
+- Each catalog model inherits its production output format, service tier and
+  reasoning controls through the same `generationSettings` helper as production.
+  Token limits follow the experiment's user tier. Candidate `settings` override
+  only that candidate; shared experiment generation settings are rejected.
+  Unlisted models declare proposed production settings on their own candidate.
+- Before any generation or judging calls, catalog preflight verifies requested
+  reasoning controls against `reasoning.supported_efforts` and `mandatory`.
+  Mandatory reasoning cannot be disabled. Missing capability metadata is unknown,
+  so explicit reasoning settings fail preflight; omitting reasoning controls keeps
+  provider defaults. Catalog defaults/capabilities are recorded without silently
+  modifying requests. A failed comparison preflight blocks all paid calls.
+
+For example, compare Nano's production `minimal` effort with `low`:
+
+```ts
+baseline: { id: 'nano-minimal', provider: 'openrouter',
+  model: 'openai/gpt-5-nano', structuredOutputMode: 'json-schema' },
+candidate: { id: 'nano-low', provider: 'openrouter',
+  model: 'openai/gpt-5-nano', structuredOutputMode: 'json-schema',
+  settings: { reasoningEffort: 'low' } },
+```
+
+Use `mode: 'models'`. Both inherit Nano's `flex` service tier; only the second
+candidate overrides effort. Reports and saved-result reuse use the exact resolved
+settings for each candidate.
 
 `--suite=base|all|development` selects a case list; `acceptance` remains an alias
 for `all`. `--case=substring` and repeatable `--tag=role:editor` filter that list;
