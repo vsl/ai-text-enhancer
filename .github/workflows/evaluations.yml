@@ -5,7 +5,7 @@ on:
       experiment:
         description: Committed comparison definition
         type: choice
-        options: [models, prompts]
+        options: [models, prompts, luna-vs-haiku]
         default: models
       case:
         description: Optional case ID substring (filtered runs cannot become baselines)
@@ -17,7 +17,11 @@ on:
         options: [base, all]
         default: base
       repetitions:
-        description: Generation repetitions per model/prompt (base 32 cases, all 199)
+        description: Generation repetitions per model/prompt (base 26 cases, all 140)
+        type: number
+        default: 1
+      concurrency:
+        description: Maximum simultaneous generation-and-judge attempts (1 to 10)
         type: number
         default: 1
       publish:
@@ -48,6 +52,7 @@ jobs:
           EVAL_CASE: ${{ inputs.case }}
           EVAL_SUITE: ${{ inputs.suite }}
           EVAL_REPETITIONS: ${{ inputs.repetitions }}
+          EVAL_CONCURRENCY: ${{ inputs.concurrency }}
           EVAL_PUBLISH: ${{ inputs.publish }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -57,7 +62,7 @@ jobs:
         run: |
           publish_flag=()
           if [ "$EVAL_PUBLISH" = 'true' ]; then publish_flag=(--publish); fi
-          npm run eval:compare -- "--experiment=evaluations/experiments/$EVAL_EXPERIMENT.ts" "--suite=$EVAL_SUITE" "--case=$EVAL_CASE" "--repeat=$EVAL_REPETITIONS" "${publish_flag[@]}"
+          npm run eval:compare -- "--experiment=evaluations/experiments/$EVAL_EXPERIMENT.ts" "--suite=$EVAL_SUITE" "--case=$EVAL_CASE" "--repeat=$EVAL_REPETITIONS" "--concurrency=$EVAL_CONCURRENCY" "${publish_flag[@]}"
       - name: Preserve all attempted outputs, errors and comparison links
         if: always()
         uses: actions/upload-artifact@v4

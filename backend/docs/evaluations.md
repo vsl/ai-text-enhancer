@@ -55,11 +55,51 @@ requested **and resolved** identities; use pinned providers/models for approvals
 Edit a trusted TypeScript module under `evaluations/experiments/`. `models.ts` and
 `prompts.ts` are working examples, not endorsed replacements for production.
 
+### GPT-6 Luna versus Claude Haiku 5.5
+
+`evaluations/experiments/luna-vs-haiku.ts` compares `openai/gpt-6-luna` and
+`anthropic/claude-haiku-5.5` with the same production prompts, strict JSON schema,
+one repetition and each model's production settings from `models.config.ts`. It defaults
+to the 26-case base suite. Both models are available in the application for both
+roles and all tiers.
+
+Verified against the OpenRouter catalog on October 9, 2026: both support reasoning
+controls and structured outputs; neither lists `minimal` effort. Luna supports
+`none`, `low`, `medium`, `high`, `xhigh`, `max`; Haiku lists `low`, `medium`,
+`high`, `xhigh`, `max`. Both default to `medium` effort, and Haiku thinking is on
+by default. Omitting the reasoning setting does not disable it.
+Luna sends `reasoning: { effort: 'none' }`; Haiku sends
+`reasoning: { effort: 'low', enabled: false }`. These settings are stored in
+`models.config.ts` and inherited by the experiment. Jev judging
+remains enabled and uses additional tokens.
+See [OpenAI's Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna),
+[Haiku on OpenRouter](https://openrouter.ai/anthropic/claude-haiku-5.5/), and
+[OpenRouter's reasoning controls](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+
+From `backend/` with Node 22 and `OPENROUTER_API_KEY` in your private `.env.local`:
+
+```bash
+# Validate without paid calls.
+npm run eval:compare -- --experiment=evaluations/experiments/luna-vs-haiku.ts \
+  --concurrency=5 --dry-run
+
+# Paid base comparison: 52 generations plus at most 52 Jev calls.
+node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+  --experimental-transform-types scripts/evaluate-experiment.ts \
+  --experiment=evaluations/experiments/luna-vs-haiku.ts --concurrency=5
+```
+
+Add `--case=editor-protected-facts` for a two-generation smoke test, or `--suite=all`
+for 140 cases (280 generations plus at most 280 Jev calls). Add `--publish` to
+export to your configured Langfuse instance. In GitHub Actions select
+`luna-vs-haiku`, set concurrency to 5 or 10, and clear the default case filter
+when running a complete suite.
+
 ### GLM 5.3 Flash versus Qwen
 
 `evaluations/experiments/glm.ts` runs `z-ai/glm-5.3-flash` against the pinned
 Qwen3 baseline on **all 140 acceptance cases**, with identical production prompts
-and generation settings, code assertions and Jev quality judging. It defaults to
+and each model's own generation settings, code assertions and Jev quality judging. It defaults to
 one repetition to limit cost; this does not add GLM to the production model catalog.
 
 From `backend/` with Node 22:
@@ -86,18 +126,51 @@ For the manually triggered workflow, select experiment `glm`, suite `all`, clear
 the case filter and choose one repetition. A nonempty case filter still limits the
 run even when the suite is `all`.
 
-- Model mode: different provider/model identities, identical builder ID/version,
-  builder function, rendered prompts and generation settings.
+- Model mode: compare different models with their own settings, or the same model
+  with different settings. Keep builder ID/version, builder function and rendered
+  prompts identical. Give each candidate a distinct ID.
 - Prompt mode: identical model/settings, distinct versioned builders receiving
   only role, source, context and UI options. Production composition is the default.
-- A model family's production defaults can differ (Nano uses flex/minimal).
-  Supply identical explicit common overrides where needed; unequal settings fail
-  validation rather than silently confounding the comparison.
+- Each catalog model inherits its production output format, service tier and
+  reasoning controls through the same `generationSettings` helper as production.
+  Token limits follow the experiment's user tier. Candidate `settings` override
+  only that candidate; shared experiment generation settings are rejected.
+  Unlisted models declare proposed production settings on their own candidate.
+- Before any generation or judging calls, catalog preflight verifies requested
+  reasoning controls against `reasoning.supported_efforts` and `mandatory`.
+  Mandatory reasoning cannot be disabled. Missing capability metadata is unknown,
+  so explicit reasoning settings fail preflight; omitting reasoning controls keeps
+  provider defaults. Catalog defaults/capabilities are recorded without silently
+  modifying requests. A failed comparison preflight blocks all paid calls.
+
+For example, compare Nano's production `minimal` effort with `low`:
+
+```ts
+baseline: { id: 'nano-minimal', provider: 'openrouter',
+  model: 'openai/gpt-5-nano', structuredOutputMode: 'json-schema' },
+candidate: { id: 'nano-low', provider: 'openrouter',
+  model: 'openai/gpt-5-nano', structuredOutputMode: 'json-schema',
+  settings: { reasoningEffort: 'low' } },
+```
+
+Use `mode: 'models'`. Both inherit Nano's `flex` service tier; only the second
+candidate overrides effort. Reports and saved-result reuse use the exact resolved
+settings for each candidate.
 
 `--suite=base|all|development` selects a case list; `acceptance` remains an alias
 for `all`. `--case=substring` and repeatable `--tag=role:editor` filter that list;
-tags are ANDed. Filters, suite and repetitions are recorded. Runs are sequential
-and candidate order alternates between repetitions. Check `--dry-run` before paying.
+tags are ANDed. Filters, suite, repetitions and concurrency are recorded. Runs default
+to sequential execution. Add `--concurrency=5` or `--concurrency=10` to run up to
+that many attempts at once (integer 1–10). Each attempt generates its output and
+then runs Jev; completed records and checkpoint writes are serialized. Candidate
+dispatch order alternates between repetitions; parallel results are recorded in
+completion order. Higher concurrency can change latency measurements or hit provider
+rate limits; failures remain recorded without retries. Check `--dry-run` before paying.
+
+```bash
+npm run eval:compare -- --experiment=evaluations/experiments/models.ts \
+  --suite=all --repeat=1 --concurrency=5
+```
 
 | Suite | Cases | New generations + maximum Jev calls, without reuse |
 | --- | --- | --- |
@@ -275,7 +348,8 @@ pre-approved by this implementation.
 ## CI and verification
 
 The **Paid evaluation experiments** workflow is manually dispatched only. Its
-default is one base case, one repetition. Configure provider/Langfuse credentials as
+default is one base case, one repetition and concurrency 1. Set the workflow's
+`concurrency` input to 5 or 10 for parallel attempts. Configure provider/Langfuse credentials as
 repository secrets and `LANGFUSE_BASE_URL` as a repository variable. Artifacts are
 uploaded even on failures; run links and gate state appear in the step summary.
 Ordinary backend CI checks evaluator types and an in-memory Langfuse exporter,

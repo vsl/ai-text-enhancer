@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add OpenRouter Model"
+  short_description: "Inspect model capabilities and production settings"
+  default_prompt: "Use $openrouter-add-model to inspect a new model and prepare its production configuration."

@@ -15,6 +15,7 @@ export interface LLMRequestParams {
   structuredOutputMode?: StructuredOutputMode;
   serviceTier?: 'flex';
   reasoningEffort?: ModelConfig['reasoningEffort'];
+  reasoningEnabled?: boolean;
   temperature?: number;
   maxTokens?: number;
   timeout?: number;

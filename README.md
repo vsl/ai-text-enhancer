@@ -48,7 +48,7 @@ The `ui/` app exports static files. Secrets, quota checks, provider calls, and J
 | Testing | Jest, Playwright, prompt evaluations |
 | Development | Node.js 22; optional Docker or Podman shell |
 
-The configured demo models are [GPT-5 Nano, OpenRouter Free, and Qwen3 30B A3B Instruct 2507](backend/src/config/models.config.ts). The backend model catalog defines their provider IDs and display names; a UI parity test keeps the browser labels aligned.
+The configured demo models are [GPT-5 Nano, OpenRouter Free, Qwen3 30B A3B Instruct 2507, GPT-6 Luna, and Claude Haiku 5.5](backend/src/config/models.config.ts). The backend model catalog defines their provider IDs and display names; a UI parity test keeps the browser labels aligned.
 
 ## Prompt engineering and transformations
 

@@ -43,17 +43,21 @@ describe('UI/backend configuration parity', () => {
       'openai-gpt-5-nano': 'GPT-5 Nano',
       'qwen-qwen3-30b-a3b-instruct-2507': 'Qwen3 30B',
       'open-router-free': 'OpenRouter Free',
+      'openai-gpt-6-luna': 'GPT-6 Luna',
+      'anthropic-claude-haiku-5.5': 'Claude Haiku 5.5',
     });
     expect(AVAILABLE_MODELS[0]).toBe('qwen-qwen3-30b-a3b-instruct-2507');
     for (const workflow of DEFAULT_WORKFLOWS) {
       expect(workflow.configs).toHaveLength(3);
-      expect(workflow.configs.map(config => config.model)).toEqual([...AVAILABLE_MODELS]);
+      expect(workflow.configs.map(config => config.model)).toEqual(['qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt-5-nano', 'open-router-free']);
       expect(new Set(workflow.configs.map(config => config.id)).size).toBe(3);
       expect(new Set(workflow.configs.map(config => JSON.stringify(config.options))).size).toBe(3);
       expect(workflow.configs.every(config => config.enabled)).toBe(true);
       expect(workflow.configs.every(config => config.aiRoleId === (workflow.name === 'Formal Email' ? 'email_assistant' : 'editor'))).toBe(true);
     }
     expect(TIER_LIMITS.free).toMatchObject({ maxTextLength: 1000, maxContextLength: 2500 });
+    for (const role of ROLES) expect([...role.allowedModels].sort()).toEqual([...AVAILABLE_MODELS].sort());
+    for (const model of ['openai-gpt-6-luna', 'anthropic-claude-haiku-5.5']) expect(normalizeAiConfig({ id: 1, model }).model).toBe(model);
     expect(AVAILABLE_AI_ROLES.map(role => role.id).sort()).toEqual(ROLES.map(role => role.id).sort());
     expect(AVAILABLE_AI_ROLES.map(role => role.id)).toEqual(['editor', 'email_assistant']);
 

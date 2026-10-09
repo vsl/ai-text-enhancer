@@ -111,26 +111,32 @@ describe('ModelTierMapper', () => {
   describe('getAccessibleModels', () => {
     it('should return only free models for free users', () => {
       const models = ModelTierMapper.getAccessibleModels('free');
-      expect(models).toHaveLength(3);
+      expect(models).toHaveLength(5);
       expect(models).toContain('open-router-free');
       expect(models).toContain('openai-gpt-5-nano');
       expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
+      expect(models).toContain('openai-gpt-6-luna');
+      expect(models).toContain('anthropic-claude-haiku-5.5');
     });
 
     it('should return free + plus models for plus users', () => {
       const models = ModelTierMapper.getAccessibleModels('plus');
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(5);
       expect(models).toContain('open-router-free');
       expect(models).toContain('openai-gpt-5-nano');
       expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
+      expect(models).toContain('openai-gpt-6-luna');
+      expect(models).toContain('anthropic-claude-haiku-5.5');
     });
 
     it('should return all models for premium users', () => {
       const models = ModelTierMapper.getAccessibleModels('premium');
-      expect(models.length).toBe(3);
+      expect(models.length).toBe(5);
       expect(models).toContain('open-router-free');
       expect(models).toContain('openai-gpt-5-nano');
       expect(models).toContain('qwen-qwen3-30b-a3b-instruct-2507');
+      expect(models).toContain('openai-gpt-6-luna');
+      expect(models).toContain('anthropic-claude-haiku-5.5');
     });
 
     it('should return sorted accessible models consistently', () => {
@@ -148,9 +154,9 @@ describe('ModelTierMapper', () => {
       const premiumModels = ModelTierMapper.getAccessibleModels('premium');
       
       // Since all models allow all tiers, counts should be equal
-      expect(freeModels.length).toBe(3);
-      expect(plusModels.length).toBe(3);
-      expect(premiumModels.length).toBe(3);
+      expect(freeModels.length).toBe(5);
+      expect(plusModels.length).toBe(5);
+      expect(premiumModels.length).toBe(5);
       
       // All models should be accessible to all tiers in current config
       expect(freeModels).toContain('open-router-free');
@@ -166,9 +172,9 @@ describe('ModelTierMapper', () => {
       const plusCount = ModelTierMapper.getAccessibleModels('plus').length;
       const premiumCount = ModelTierMapper.getAccessibleModels('premium').length;
       
-      expect(freeCount).toBe(3);
-      expect(plusCount).toBe(3);
-      expect(premiumCount).toBe(3);
+      expect(freeCount).toBe(5);
+      expect(plusCount).toBe(5);
+      expect(premiumCount).toBe(5);
     });
   });
 });

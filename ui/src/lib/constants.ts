@@ -4,10 +4,12 @@
 
 import { AiConfig, AiRoleId, Options, Workflow, Language, LanguageLevel, Tier, TierLimits } from './types';
 
-export const AVAILABLE_MODELS = ['qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt-5-nano', 'open-router-free'] as const;
+export const AVAILABLE_MODELS = ['qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt-5-nano', 'open-router-free', 'openai-gpt-6-luna', 'anthropic-claude-haiku-5.5'] as const;
 
 export const MODEL_NAMES: Record<string, string> = {
   'openai-gpt-5-nano': 'GPT-5 Nano',
+  'openai-gpt-6-luna': 'GPT-6 Luna',
+  'anthropic-claude-haiku-5.5': 'Claude Haiku 5.5',
   'open-router-free': 'OpenRouter Free',
   'qwen-qwen3-30b-a3b-instruct-2507': 'Qwen3 30B',
 };
@@ -225,19 +227,19 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     maxTextLength: 1000,
     maxContextLength: 2500,
     maxBatchSize: 6,
-    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'],
+    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt-6-luna', 'anthropic-claude-haiku-5.5'],
   },
   plus: {
     maxTextLength: 2000,
     maxContextLength: 3000,
     maxBatchSize: 10,
-    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'],
+    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt-6-luna', 'anthropic-claude-haiku-5.5'],
   },
   premium: {
     maxTextLength: 5000,
     maxContextLength: 10000,
     maxBatchSize: 10,
-    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507'],
+    availableModels: ['openai-gpt-5-nano', 'open-router-free', 'qwen-qwen3-30b-a3b-instruct-2507', 'openai-gpt-6-luna', 'anthropic-claude-haiku-5.5'],
   },
 };
 

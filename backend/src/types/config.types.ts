@@ -84,6 +84,9 @@ export interface ModelConfig {
 
   /** Optional reasoning effort verified for this provider/model pair */
   reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+  /** Explicit reasoning enablement verified for this provider/model pair */
+  reasoningEnabled?: boolean;
   
   /** User tiers that can access this model */
   allowedTiers: ('free' | 'plus' | 'premium')[];

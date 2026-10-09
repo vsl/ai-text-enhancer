@@ -337,6 +337,22 @@ describe('OpenRouterConnector', () => {
       expect(body.reasoning).toEqual({ effort: reasoningEffort });
     });
 
+    it.each([
+      { model: 'openai/gpt-6-luna', reasoningEnabled: false, reasoningEffort: 'low' as const },
+      { model: 'anthropic/claude-haiku-5.5', reasoningEnabled: false, reasoningEffort: 'low' as const },
+      { model: 'configured-model', reasoningEnabled: false },
+      { model: 'configured-model', reasoningEnabled: true },
+    ])('passes explicit reasoning enablement for $model ($reasoningEnabled)', async settings => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true, status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"text":"ok"}' } }] }),
+      });
+      await connector.sendRequest({ ...settings, systemPrompt: 'System', userPrompt: 'User' });
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.reasoning).toEqual({ enabled: settings.reasoningEnabled,
+        ...('reasoningEffort' in settings && { effort: settings.reasoningEffort }) });
+    });
+
     it('uses strict JSON schema only when model metadata enables it', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,

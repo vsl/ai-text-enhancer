@@ -4,7 +4,7 @@ import { MODELS } from '../config/models.config.ts';
 import { PROMPT_VERSION } from '../services/prompt-templates.ts';
 import type { TransformationOptions } from '../types/api.types.ts';
 import type { ModelConfig, StructuredOutputMode } from '../types/config.types.ts';
-import type { LLMConnector } from '../types/llm.types.ts';
+import type { LLMConnector, LLMRequestParams } from '../types/llm.types.ts';
 import { constructPrompt } from '../services/prompt-builder.ts';
 import { JEV_POLICY_VERSION, type ResultSelector } from '../services/jev-result-selector.ts';
 import type { BatchSelection } from '../types/api.types.ts';
@@ -40,6 +40,12 @@ export interface CatalogPreflight {
   status: 'available' | 'unavailable' | 'unsupported' | 'missing-api-key' | 'error';
   supportedParameters: string[];
   message?: string;
+  reasoning?: {
+    supported_efforts?: Array<NonNullable<ModelConfig['reasoningEffort']>> | null;
+    default_effort?: ModelConfig['reasoningEffort'];
+    default_enabled?: boolean;
+    mandatory?: boolean;
+  };
 }
 
 export interface PromptEvaluationReport {
@@ -55,6 +61,7 @@ export interface PromptEvaluationReport {
       temperature: null;
       maxTokens: number;
       reasoningEffort?: ModelConfig['reasoningEffort'];
+      reasoningEnabled?: boolean;
     };
     preflight: CatalogPreflight;
     status: 'completed' | 'skipped';
@@ -88,7 +95,7 @@ export interface PromptEvaluationReport {
 const MAX_TOKENS = 2000;
 
 export async function preflightCandidate(
-  candidate: EvaluationCandidate,
+  candidate: EvaluationCandidate & Pick<LLMRequestParams, 'reasoningEffort' | 'reasoningEnabled'>,
   apiKey: string | undefined,
   fetchImpl: typeof fetch = fetch,
 ): Promise<CatalogPreflight> {
@@ -124,7 +131,7 @@ export async function preflightCandidate(
     }
 
     const data = await response.json() as {
-      data?: Array<{ id?: string; supported_parameters?: string[] }>;
+      data?: Array<{ id?: string; supported_parameters?: string[]; reasoning?: CatalogPreflight['reasoning'] }>;
     };
     const model = data.data?.find((item) => item.id === candidate.model);
     if (!model) {
@@ -132,9 +139,23 @@ export async function preflightCandidate(
     }
 
     const supportedParameters = model.supported_parameters ?? [];
-    return supportedParameters.includes('response_format')
-      ? { status: 'available', supportedParameters }
-      : { status: 'unsupported', supportedParameters, message: 'response_format is not supported' };
+    const result = { supportedParameters, ...(model.reasoning && { reasoning: model.reasoning }) };
+    const unsupported = (message: string): CatalogPreflight => ({ ...result, status: 'unsupported', message });
+    if (!supportedParameters.includes('response_format')) return unsupported('response_format is not supported');
+    if (candidate.reasoningEffort !== undefined || candidate.reasoningEnabled !== undefined) {
+      const reasoning = model.reasoning;
+      if (!reasoning) return unsupported(`${candidate.model}: reasoning capabilities are unknown; cannot verify requested settings`);
+      if (candidate.reasoningEnabled !== undefined && !supportedParameters.includes('reasoning')) return unsupported(`${candidate.model}: reasoning enablement is not supported`);
+      if (candidate.reasoningEnabled === false || candidate.reasoningEffort === 'none') {
+        if (reasoning.mandatory === true) return unsupported(`${candidate.model}: reasoning is mandatory and cannot be disabled`);
+        if (reasoning.mandatory !== false) return unsupported(`${candidate.model}: cannot verify that reasoning may be disabled`);
+      }
+      if (candidate.reasoningEffort !== undefined && reasoning.supported_efforts !== null
+        && (!Array.isArray(reasoning.supported_efforts) || !reasoning.supported_efforts.includes(candidate.reasoningEffort))) {
+        return unsupported(`${candidate.model}: reasoning effort ${candidate.reasoningEffort} is not supported`);
+      }
+    }
+    return { ...result, status: 'available' };
   } catch (error) {
     return { status: 'error', supportedParameters: [], message: (error as Error).message };
   }
@@ -189,17 +210,20 @@ export async function runPromptEvaluation(params: {
   };
 
   for (const candidate of params.candidates) {
-    const preflight = await preflightCandidate(candidate, params.apiKeys[candidate.provider], params.fetchImpl);
-    const connector = params.connectors[candidate.provider];
-    const reasoningEffort = MODELS.find(model =>
+    const configured = MODELS.find(model =>
       model.provider === candidate.provider && model.providerModelId === candidate.model
-    )?.reasoningEffort;
+    );
+    const reasoningEffort = configured?.reasoningEffort;
+    const reasoningEnabled = configured?.reasoningEnabled;
+    const preflight = await preflightCandidate({ ...candidate, reasoningEffort, reasoningEnabled }, params.apiKeys[candidate.provider], params.fetchImpl);
+    const connector = params.connectors[candidate.provider];
     const candidateReport: PromptEvaluationReport['candidates'][number] = {
       provider: candidate.provider,
       requestedModel: candidate.model,
       modelRevision: null,
       structuredOutputMode: candidate.structuredOutputMode,
-      settings: { temperature: null, maxTokens: MAX_TOKENS, reasoningEffort },
+      settings: { temperature: null, maxTokens: MAX_TOKENS, reasoningEffort,
+        ...(reasoningEnabled !== undefined && { reasoningEnabled }) },
       preflight,
       status: preflight.status === 'available' && connector ? 'completed' : 'skipped',
       skipReason: preflight.status !== 'available'
@@ -237,6 +261,7 @@ export async function runPromptEvaluation(params: {
             userPrompt: built.userPrompt,
             structuredOutputMode: candidate.structuredOutputMode,
             reasoningEffort,
+            ...(reasoningEnabled !== undefined && { reasoningEnabled }),
             maxTokens: MAX_TOKENS,
           });
           rawResponse = response.text;

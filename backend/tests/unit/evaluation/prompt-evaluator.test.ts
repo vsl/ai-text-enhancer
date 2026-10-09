@@ -225,6 +225,28 @@ describe('prompt evaluator', () => {
   });
 
   it.each([
+    { reasoning: { mandatory: true, supported_efforts: ['minimal', 'low'] }, settings: { reasoningEffort: 'minimal' as const }, status: 'available' },
+    { reasoning: { mandatory: true, supported_efforts: ['minimal', 'low'] }, settings: { reasoningEffort: 'none' as const }, status: 'unsupported' },
+    { reasoning: { mandatory: true, supported_efforts: ['minimal', 'low'] }, settings: { reasoningEnabled: false }, status: 'unsupported' },
+    { reasoning: { mandatory: false, supported_efforts: ['low'] }, settings: { reasoningEnabled: false, reasoningEffort: 'low' as const }, status: 'available' },
+    { reasoning: { mandatory: false, supported_efforts: ['none', 'low'] }, settings: { reasoningEffort: 'none' as const }, status: 'available' },
+    { reasoning: { mandatory: false, supported_efforts: ['low'] }, settings: { reasoningEffort: 'minimal' as const }, status: 'unsupported' },
+    { reasoning: { mandatory: false, supported_efforts: null }, settings: { reasoningEffort: 'minimal' as const }, status: 'available' },
+    { reasoning: { mandatory: false }, settings: { reasoningEffort: 'low' as const }, status: 'unsupported' },
+    { reasoning: { supported_efforts: ['none', 'low'] }, settings: { reasoningEnabled: false }, status: 'unsupported' },
+    { reasoning: undefined, settings: { reasoningEnabled: false }, status: 'unsupported' },
+    { reasoning: undefined, settings: {}, status: 'available' },
+    { reasoning: { mandatory: true, default_enabled: true, default_effort: 'medium', supported_efforts: ['low', 'medium'] }, settings: {}, status: 'available' },
+  ])('validates requested reasoning against catalog metadata ($status)', async ({ reasoning, settings, status }) => {
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [{
+      id: 'candidate', supported_parameters: ['response_format', 'reasoning', 'reasoning_effort'], reasoning,
+    }] }) });
+    const result = await preflightCandidate({ provider: 'openrouter', model: 'candidate', structuredOutputMode: 'json-schema', ...settings }, 'key', fetchImpl);
+    expect(result.status).toBe(status);
+    if (reasoning) expect(result.reasoning).toEqual(reasoning);
+  });
+
+  it.each([
     ['openai/gpt-5-nano', 'minimal'],
     ['openrouter/free', undefined],
     ['unconfigured/model', undefined],
@@ -242,7 +264,8 @@ describe('prompt evaluator', () => {
       connectors: { openrouter: { name: 'openrouter', supportsStreaming: false, sendRequest } },
       fetchImpl: jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ data: [{ id: model, supported_parameters: ['response_format'] }] }),
+        json: async () => ({ data: [{ id: model, supported_parameters: ['response_format', 'reasoning'],
+          ...(reasoningEffort && { reasoning: { mandatory: true, supported_efforts: ['minimal', 'low'] } }) }] }),
       }) as unknown as typeof fetch,
     });
 
