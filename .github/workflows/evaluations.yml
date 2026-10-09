@@ -5,7 +5,7 @@ on:
       experiment:
         description: Committed comparison definition
         type: choice
-        options: [models, prompts]
+        options: [models, prompts, luna-vs-haiku]
         default: models
       case:
         description: Optional case ID substring (filtered runs cannot become baselines)

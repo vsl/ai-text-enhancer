@@ -6,6 +6,7 @@ import { generationSettings } from '../../../src/services/generation-settings.ts
 import { MODELS } from '../../../src/config/models.config.ts';
 import { DEVELOPMENT_CASES } from '../../../evaluations/development-cases.ts';
 import { CALIBRATION_CONTROLS } from '../../../evaluations/calibration-cases.ts';
+import lunaVsHaiku from '../../../evaluations/experiments/luna-vs-haiku.ts';
 import { BOOLEAN_TRANSFORMATION_KEYS, FORMALITY_VALUES, LANGUAGE_LEVEL_VALUES, LANGUAGE_VALUES, TONE_VALUES } from '../../../src/config/transformation-options.config.ts';
 import type { PromptEvaluationCase } from '../../../src/evaluation/prompt-evaluator.ts';
 import { readFileSync } from 'node:fs';
@@ -67,6 +68,9 @@ describe('evaluation experiments', () => {
     expect(() => validateExperiment({ ...definition, candidate: { ...definition.candidate, settings: { maxTokens: 10 } } }, [fixture])).toThrow('identical generation');
     expect(() => validateExperiment({ ...definition, mode: 'prompts' }, [fixture])).toThrow('same model');
     expect(() => validateExperiment({ ...definition, repetitions: 0 }, [fixture])).toThrow('repetitions');
+    expect(() => validateExperiment({ ...definition, settings: { reasoningEnabled: 'false' as never } }, [fixture])).toThrow('reasoningEnabled must be boolean');
+    expect(() => validateExperiment({ ...definition, settings: { reasoningEnabled: false },
+      candidate: { ...definition.candidate, provider: 'gemini' } }, [fixture])).toThrow('requires OpenRouter');
     expect(() => validateExperiment(definition, [{ ...fixture, options: { shorten: true, lengthen: true } }])).toThrow();
     expect(() => validateExperiment(definition, [{ ...fixture, checks: [{ type: 'matches', value: '[' }] }])).toThrow();
     expect(() => validateExperiment(definition, [])).toThrow('Dataset');
@@ -81,6 +85,14 @@ describe('evaluation experiments', () => {
     const gates = evaluateGates(report); expect(gates.eligible).toBe(true); expect(gates.semanticGates).toBe('advisory');
     expect(gates.summaries[0].generation.totalTokens.reportedTotal).toBe(390);
     expect(gates.summaries[0].judging.totalTokens.reportedTotal).toBe(114);
+  });
+  it('runs the Luna/Haiku comparison with identical reasoning-off settings recorded in requests and reports', async () => {
+    const { report, sendRequest } = await run({ definition: lunaVsHaiku, concurrency: 5 });
+    expect(sendRequest).toHaveBeenCalledTimes(2);
+    expect(report.definition.candidates.map(c => c.model)).toEqual(['openai/gpt-6-luna', 'anthropic/claude-haiku-5.5']);
+    for (const candidate of report.definition.candidates) expect(candidate.settings).toMatchObject({ reasoningEffort: 'low', reasoningEnabled: false });
+    for (const record of report.records) expect(record.request).toMatchObject({ reasoningEffort: 'low', reasoningEnabled: false, structuredOutputMode: 'json-schema' });
+    expect(evaluateGates(report).eligible).toBe(true);
   });
   it('checks decoded forbidden symbols and never repairs malformed JSON', async () => {
     const escaped = await run({ text: '{"text":"Ana will not pay $20\\u2014today."}' });

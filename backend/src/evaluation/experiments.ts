@@ -122,12 +122,14 @@ export function validateExperiment(definition: ExperimentDefinition, cases: Prom
     requireString(prompt.id, 'Prompt id'); requireString(prompt.version, 'Prompt version');
     if (typeof prompt.build !== 'function') throw new Error('Prompt variant requires a build function');
     const settings = resolvedSettings(candidate, definition);
-    const allowed = ['structuredOutputMode', 'serviceTier', 'reasoningEffort', 'temperature', 'maxTokens', 'timeout'];
+    const allowed = ['structuredOutputMode', 'serviceTier', 'reasoningEffort', 'reasoningEnabled', 'temperature', 'maxTokens', 'timeout'];
     if ([...Object.keys(candidate.settings ?? {}), ...Object.keys(definition.settings ?? {})].some(k => !allowed.includes(k))) throw new Error('Unknown generation setting');
     if (!['json-schema', 'json-object'].includes(settings.structuredOutputMode ?? '')) throw new Error('Unsupported output mode');
     if (candidate.provider === 'gemini' && settings.structuredOutputMode !== 'json-schema') throw new Error('Gemini requires json-schema');
     if (settings.serviceTier !== undefined && settings.serviceTier !== 'flex') throw new Error('Unsupported service tier');
     if (settings.reasoningEffort !== undefined && !['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(settings.reasoningEffort)) throw new Error('Unsupported reasoning effort');
+    if (settings.reasoningEnabled !== undefined && typeof settings.reasoningEnabled !== 'boolean') throw new Error('reasoningEnabled must be boolean');
+    if (candidate.provider !== 'openrouter' && settings.reasoningEnabled !== undefined) throw new Error('reasoningEnabled requires OpenRouter');
     for (const key of ['maxTokens', 'timeout'] as const) if (!Number.isSafeInteger(settings[key]) || settings[key]! <= 0) throw new Error(`${key} must be a positive integer`);
     if (settings.temperature !== undefined && (!Number.isFinite(settings.temperature) || settings.temperature < 0 || settings.temperature > 2)) throw new Error('temperature must be 0 to 2');
   }

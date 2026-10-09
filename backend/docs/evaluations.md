@@ -55,6 +55,44 @@ requested **and resolved** identities; use pinned providers/models for approvals
 Edit a trusted TypeScript module under `evaluations/experiments/`. `models.ts` and
 `prompts.ts` are working examples, not endorsed replacements for production.
 
+### GPT-6 Luna versus Claude Haiku 5.5
+
+`evaluations/experiments/luna-vs-haiku.ts` compares `openai/gpt-6-luna` and
+`anthropic/claude-haiku-5.5` with the same production prompts, strict JSON schema,
+one repetition and reasoning explicitly disabled. It defaults to the 26-case base
+suite and does not add the models to the application's model catalog.
+
+Verified against the OpenRouter catalog on October 9, 2026: both support reasoning
+controls and structured outputs; neither lists `minimal` effort. Luna supports
+`none`, `low`, `medium`, `high`, `xhigh`, `max`; Haiku lists `low`, `medium`,
+`high`, `xhigh`, `max`. Both default to `medium` effort, and Haiku thinking is on
+by default. Omitting the reasoning setting does not disable it.
+The comparison sends `reasoning: { effort: 'low', enabled: false }` to both models;
+explicit disablement turns thinking off, while low effort keeps Haiku's response
+effort low. Jev judging remains enabled and uses additional tokens.
+See [OpenAI's Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna),
+[Haiku on OpenRouter](https://openrouter.ai/anthropic/claude-haiku-5.5/), and
+[OpenRouter's reasoning controls](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+
+From `backend/` with Node 22 and `OPENROUTER_API_KEY` in your private `.env.local`:
+
+```bash
+# Validate without paid calls.
+npm run eval:compare -- --experiment=evaluations/experiments/luna-vs-haiku.ts \
+  --concurrency=5 --dry-run
+
+# Paid base comparison: 52 generations plus at most 52 Jev calls.
+node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+  --experimental-transform-types scripts/evaluate-experiment.ts \
+  --experiment=evaluations/experiments/luna-vs-haiku.ts --concurrency=5
+```
+
+Add `--case=editor-protected-facts` for a two-generation smoke test, or `--suite=all`
+for 140 cases (280 generations plus at most 280 Jev calls). Add `--publish` to
+export to your configured Langfuse instance. In GitHub Actions select
+`luna-vs-haiku`, set concurrency to 5 or 10, and clear the default case filter
+when running a complete suite.
+
 ### GLM 5.3 Flash versus Qwen
 
 `evaluations/experiments/glm.ts` runs `z-ai/glm-5.3-flash` against the pinned

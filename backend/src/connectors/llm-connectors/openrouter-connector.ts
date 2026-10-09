@@ -37,7 +37,10 @@ export class OpenRouterConnector implements LLMConnector {
       ...(params.temperature !== undefined && { temperature: params.temperature }),
       ...(params.serviceTier && { service_tier: params.serviceTier }),
       max_tokens: params.maxTokens ?? 2048,
-      ...(params.reasoningEffort !== undefined && { reasoning: { effort: params.reasoningEffort } }),
+      ...((params.reasoningEffort !== undefined || params.reasoningEnabled !== undefined) && { reasoning: {
+        ...(params.reasoningEffort !== undefined && { effort: params.reasoningEffort }),
+        ...(params.reasoningEnabled !== undefined && { enabled: params.reasoningEnabled }),
+      } }),
       response_format: params.structuredOutputMode === 'json-schema'
         ? {
             type: 'json_schema',

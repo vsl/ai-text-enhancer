@@ -4,7 +4,7 @@ import type { ModelConfig } from '../types/config.types.ts';
 import type { LLMRequestParams } from '../types/llm.types.ts';
 
 export type GenerationSettings = Pick<LLMRequestParams,
-  'structuredOutputMode' | 'serviceTier' | 'reasoningEffort' | 'temperature' | 'maxTokens' | 'timeout'>;
+  'structuredOutputMode' | 'serviceTier' | 'reasoningEffort' | 'reasoningEnabled' | 'temperature' | 'maxTokens' | 'timeout'>;
 
 export function generationSettings(
   model: Pick<ModelConfig, 'structuredOutputMode' | 'serviceTier' | 'reasoningEffort'>,
