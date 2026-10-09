@@ -96,8 +96,18 @@ run even when the suite is `all`.
 
 `--suite=base|all|development` selects a case list; `acceptance` remains an alias
 for `all`. `--case=substring` and repeatable `--tag=role:editor` filter that list;
-tags are ANDed. Filters, suite and repetitions are recorded. Runs are sequential
-and candidate order alternates between repetitions. Check `--dry-run` before paying.
+tags are ANDed. Filters, suite, repetitions and concurrency are recorded. Runs default
+to sequential execution. Add `--concurrency=5` or `--concurrency=10` to run up to
+that many attempts at once (integer 1–10). Each attempt generates its output and
+then runs Jev; completed records and checkpoint writes are serialized. Candidate
+dispatch order alternates between repetitions; parallel results are recorded in
+completion order. Higher concurrency can change latency measurements or hit provider
+rate limits; failures remain recorded without retries. Check `--dry-run` before paying.
+
+```bash
+npm run eval:compare -- --experiment=evaluations/experiments/models.ts \
+  --suite=all --repeat=1 --concurrency=5
+```
 
 | Suite | Cases | New generations + maximum Jev calls, without reuse |
 | --- | --- | --- |
@@ -275,7 +285,8 @@ pre-approved by this implementation.
 ## CI and verification
 
 The **Paid evaluation experiments** workflow is manually dispatched only. Its
-default is one base case, one repetition. Configure provider/Langfuse credentials as
+default is one base case, one repetition and concurrency 1. Set the workflow's
+`concurrency` input to 5 or 10 for parallel attempts. Configure provider/Langfuse credentials as
 repository secrets and `LANGFUSE_BASE_URL` as a repository variable. Artifacts are
 uploaded even on failures; run links and gate state appear in the step summary.
 Ordinary backend CI checks evaluator types and an in-memory Langfuse exporter,

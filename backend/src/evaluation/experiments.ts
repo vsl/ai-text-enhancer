@@ -260,14 +260,21 @@ export function plannedCalls(report: ExperimentReport, prepared: PreparedAttempt
     catalogChecks: report.definition.candidates.filter(c => valid.some(p => p.record.candidateId === c.id && !p.cached)).length };
 }
 
+export function validateConcurrency(concurrency: number): void {
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 10) throw new Error('concurrency must be an integer from 1 to 10');
+}
+
 export async function runExperiment(definition: ExperimentDefinition, report: ExperimentReport, dependencies: {
   connectors: Partial<Record<EvaluationCandidate['provider'], LLMConnector>>;
   keys: Partial<Record<EvaluationCandidate['provider'], string>>;
   judge?: DecisionConnector;
   fetchImpl?: typeof fetch;
   prepared?: PreparedAttempt[];
+  concurrency?: number;
   onRecord?: (record: AttemptRecord) => Promise<void>;
 }): Promise<void> {
+  const concurrency = dependencies.concurrency ?? 1;
+  validateConcurrency(concurrency);
   validateExperiment(definition, report.fixtures);
   const prepared = dependencies.prepared ?? await prepareExperiment(definition, report);
   for (const candidate of [definition.baseline, definition.candidate]) {
@@ -277,7 +284,9 @@ export async function runExperiment(definition: ExperimentDefinition, report: Ex
       structuredOutputMode: settings.structuredOutputMode! }, dependencies.keys[candidate.provider], dependencies.fetchImpl)
       : { status: 'missing-api-key', supportedParameters: [], message: `${candidate.provider} key is missing` };
   }
-  for (const p of prepared) {
+  let checkpoint = Promise.resolve();
+  let stopped = false;
+  const runAttempt = async (p: PreparedAttempt) => {
     const record = p.record, item = record.fixture;
     const candidate = [definition.baseline, definition.candidate].find(c => c.id === record.candidateId)!;
     let stage: NonNullable<AttemptRecord['error']>['stage'] = 'preflight';
@@ -324,7 +333,18 @@ export async function runExperiment(definition: ExperimentDefinition, report: Ex
         ...(e.statusCode ? { statusCode: e.statusCode } : {}), ...(e.details !== undefined ? { details: e.details } : {}) };
       if (stage === 'parse') record.checks.push({ check: 'valid-json-text-contract', passed: false });
     }
-    report.records.push(record);
-    await dependencies.onRecord?.(record);
-  }
+    // Serialize completed records and journal writes while inference runs concurrently.
+    const saved = checkpoint.then(async () => {
+      report.records.push(record);
+      await dependencies.onRecord?.(record);
+    });
+    checkpoint = saved.catch(() => { stopped = true; });
+    await saved;
+  };
+  let next = 0;
+  const results = await Promise.allSettled(Array.from({ length: Math.min(concurrency, prepared.length) }, async () => {
+    while (!stopped && next < prepared.length) await runAttempt(prepared[next++]);
+  }));
+  // Drain in-flight attempts before the caller writes its final report, including on checkpoint failure.
+  for (const result of results) if (result.status === 'rejected') throw result.reason;
 }

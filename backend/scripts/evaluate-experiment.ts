@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { GeminiConnector } from '../src/connectors/llm-connectors/gemini-connector.ts';
 import { OpenRouterConnector } from '../src/connectors/llm-connectors/openrouter-connector.ts';
 import { OpenRouterDecisionConnector } from '../src/connectors/openrouter-decision-connector.ts';
-import { caseTags, createExperimentReport, runExperiment, validateExperiment, prepareExperiment, plannedCalls, type ExperimentDefinition, type ExperimentReport } from '../src/evaluation/experiments.ts';
+import { caseTags, createExperimentReport, runExperiment, validateExperiment, validateConcurrency, prepareExperiment, plannedCalls, type ExperimentDefinition, type ExperimentReport } from '../src/evaluation/experiments.ts';
 import { createReview, evaluateGates, validateStoredReport, type ReviewArtifact } from '../src/evaluation/experiment-review.ts';
 import { executionFingerprint, loadSuite } from './lib/evaluation-files.ts';
 import { CALIBRATION_CONTROLS } from '../evaluations/calibration-cases.ts';
@@ -14,7 +14,7 @@ import { publishExperiment, publishCalibration, type Publication } from './lib/l
 import { fingerprintPrompt } from '../src/services/prompt-builder.ts';
 
 const args = process.argv.slice(2);
-const allowed = ['experiment', 'suite', 'reuse', 'case', 'tag', 'repeat', 'baseline', 'report', 'review', 'output', 'dry-run', 'publish', 'help', 'calibrate', 'judge-controls'];
+const allowed = ['experiment', 'suite', 'reuse', 'case', 'tag', 'repeat', 'concurrency', 'baseline', 'report', 'review', 'output', 'dry-run', 'publish', 'help', 'calibrate', 'judge-controls'];
 for (const arg of args) if (!arg.startsWith('--') || !allowed.includes(arg.slice(2).split('=')[0])) throw new Error(`Unknown argument: ${arg}`);
 const flags = ['dry-run', 'publish', 'help', 'calibrate', 'judge-controls'];
 for (const arg of args) {
@@ -24,6 +24,9 @@ for (const arg of args) {
 }
 const option = (name: string) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const flag = (name: string) => args.includes(`--${name}`);
+const concurrency = Number(option('concurrency') ?? 1);
+validateConcurrency(concurrency);
+if (option('concurrency') !== undefined && (flag('calibrate') || option('report'))) throw new Error('--concurrency only applies to eval:compare');
 const load = async <T>(path: string): Promise<T> => JSON.parse(await readFile(resolve(path), 'utf8')) as T;
 const save = async (path: string, value: unknown) => { await mkdir(dirname(path), { recursive: true }); await writeFile(path, `${JSON.stringify(value, null, 2)}\n`); };
 async function loadReport(path: string): Promise<ExperimentReport> {
@@ -51,7 +54,7 @@ async function publish(report: ExperimentReport, path: string) {
 }
 
 if (flag('help')) {
-  console.log('eval:compare --experiment=evaluations/experiments/models.ts [--suite=base|all|development] [--reuse=saved-report.json] [--dry-run] [--case=substring] [--tag=tag] [--repeat=1] [--baseline=approved.json] [--publish]\neval:publish --report=evaluation-results/<comparison>/report.json\neval:review --report=... --review=review-input.json --output=evaluations/baselines/<name>.json\neval:calibrate [--judge-controls] [--output=evaluation-results/calibration.json]');
+  console.log('eval:compare --experiment=evaluations/experiments/models.ts [--suite=base|all|development] [--reuse=saved-report.json] [--dry-run] [--case=substring] [--tag=tag] [--repeat=1] [--concurrency=1..10] [--baseline=approved.json] [--publish]\neval:publish --report=evaluation-results/<comparison>/report.json\neval:review --report=... --review=review-input.json --output=evaluations/baselines/<name>.json\neval:calibrate [--judge-controls] [--output=evaluation-results/calibration.json]');
 } else if (flag('calibrate')) {
   if (flag('judge-controls') && !process.env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY required for paid calibration');
   const connector = process.env.OPENROUTER_API_KEY ? new OpenRouterDecisionConnector(process.env.OPENROUTER_API_KEY) : null;
@@ -91,7 +94,7 @@ if (flag('help')) {
   const trustedDirectory = `${resolve('evaluations/experiments')}/`;
   if (!modulePath.startsWith(trustedDirectory) || !modulePath.endsWith('.ts')) throw new Error('Experiment must be a trusted local TypeScript module under evaluations/experiments/');
   const definition: ExperimentDefinition = (await import(pathToFileURL(modulePath).href)).default;
-  const overrides: Record<string, unknown> = {};
+  const overrides: Record<string, unknown> = { concurrency };
   if (option('suite')) { definition.suite = option('suite') as ExperimentDefinition['suite']; overrides.suite = definition.suite; }
   if (definition.suite !== undefined && !['base', 'all', 'acceptance', 'development'].includes(definition.suite)) throw new Error('Unknown suite');
   if (option('repeat')) { definition.repetitions = Number(option('repeat')); overrides.repetitions = definition.repetitions; }
@@ -118,7 +121,7 @@ if (flag('help')) {
   }
   const prepared = await prepareExperiment(definition, report, sources);
   const calls = plannedCalls(report, prepared);
-  console.log(`${definition.id} (${definition.suite ?? 'base'}): ${cases.length} cases, ${report.definition.repetitions} repetitions; at most ${calls.generations} new generation + ${calls.judgments} new judge calls, plus ${calls.catalogChecks} catalog checks. Reuse: ${calls.reusedGenerations} generations + ${calls.reusedJudgments} judgments. Publication adds 0 AI calls.`);
+  console.log(`${definition.id} (${definition.suite ?? 'base'}): ${cases.length} cases, ${report.definition.repetitions} repetitions, concurrency ${concurrency}; at most ${calls.generations} new generation + ${calls.judgments} new judge calls, plus ${calls.catalogChecks} catalog checks. Reuse: ${calls.reusedGenerations} generations + ${calls.reusedJudgments} judgments. Publication adds 0 AI calls.`);
   const promptErrors = prepared.filter(p => p.record.error);
   if (promptErrors.length) throw new Error(`Prompt preparation failed before paid calls: ${promptErrors.map(p => `${p.record.candidateId}/${p.record.caseId}: ${p.record.error!.message}`).join('; ')}`);
   if (!flag('dry-run')) {
@@ -134,7 +137,7 @@ if (flag('help')) {
       if (mismatches.length) throw new Error(mismatches.join('; '));
     }
     const keys = { openrouter: process.env.OPENROUTER_API_KEY, gemini: process.env.GEMINI_API_KEY };
-    try { await runExperiment(definition, report, { keys, prepared, connectors: {
+    try { await runExperiment(definition, report, { keys, prepared, concurrency, connectors: {
       ...(keys.openrouter ? { openrouter: new OpenRouterConnector(keys.openrouter) } : {}),
       ...(keys.gemini ? { gemini: new GeminiConnector(keys.gemini) } : {}),
     }, judge: keys.openrouter ? new OpenRouterDecisionConnector(keys.openrouter, report.definition.judge.timeoutMs) : undefined,

@@ -1,4 +1,4 @@
-import { createExperimentReport, runExperiment, validateExperiment, resolvedSettings, prepareExperiment, plannedCalls, PRODUCTION_PROMPT, type ExperimentDefinition, type ExperimentReport } from '../../../src/evaluation/experiments.ts';
+import { createExperimentReport, runExperiment, validateExperiment, resolvedSettings, prepareExperiment, plannedCalls, PRODUCTION_PROMPT, type AttemptRecord, type ExperimentDefinition, type ExperimentReport } from '../../../src/evaluation/experiments.ts';
 import { buildJudgeRequest, parseJudgeResponse, evaluateWithJev } from '../../../src/evaluation/jev-evaluator.ts';
 import { createReview, evaluateGates, tokenBuckets } from '../../../src/evaluation/experiment-review.ts';
 import { PromptBuilder } from '../../../src/services/prompt-builder.ts';
@@ -22,6 +22,7 @@ function judgeResponse(request: ReturnType<typeof buildJudgeRequest>, grade = 3)
       : { type: 'score', score: grade, confidence: .9, probabilities: { '0': 0, '1': 0, '2': .1, '3': .9 } }])) };
 }
 async function run(options: { text?: string; grade?: number; generationError?: boolean; judgeError?: boolean; judge?: boolean;
+  concurrency?: number; beforeGeneration?: () => Promise<void>; beforeJudge?: () => Promise<void>; onRecord?: (record: AttemptRecord) => Promise<void>;
   definition?: ExperimentDefinition; fixtures?: PromptEvaluationCase[]; sources?: ExperimentReport[]; executionHash?: string } = {}) {
   const def = { ...definition, judge: { enabled: options.judge ?? true }, ...options.definition };
   const report = await createExperimentReport(def, options.fixtures ?? [fixture], { revision: 'commit', dirty: false });
@@ -29,17 +30,20 @@ async function run(options: { text?: string; grade?: number; generationError?: b
   const prepared = await prepareExperiment(def, report, options.sources);
   const calls = plannedCalls(report, prepared);
   const sendRequest = jest.fn().mockImplementation(async () => {
+    await options.beforeGeneration?.();
     if (options.generationError) throw new Error('Provider failed');
     return { text: options.text ?? '{"text":"Ana will not pay $20."}', model: 'resolved', provider: 'provider',
       usage: { inputTokens: 100, outputTokens: 30, totalTokens: 130, cachedTokens: 20, reasoningTokens: 10, cost: .002 },
       diagnostics: { httpStatus: 200, providerModel: 'model-a', latencyMs: 20 } };
   });
   const decide = jest.fn().mockImplementation(async request => {
+    await options.beforeJudge?.();
     if (options.judgeError) throw new Error('Judge failed');
     return judgeResponse(request, options.grade);
   });
   const fetchImpl = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [def.baseline.model, def.candidate.model].map(id => ({ id, supported_parameters: ['response_format'] })) }) });
-  await runExperiment(def, report, { keys: { openrouter: 'key' }, prepared, connectors: { openrouter: { name: 'openrouter', supportsStreaming: false, sendRequest } }, judge: { decide }, fetchImpl });
+  await runExperiment(def, report, { keys: { openrouter: 'key' }, prepared, concurrency: options.concurrency, onRecord: options.onRecord,
+    connectors: { openrouter: { name: 'openrouter', supportsStreaming: false, sendRequest } }, judge: { decide }, fetchImpl });
   return { report, sendRequest, decide, fetchImpl, calls };
 }
 describe('evaluation experiments', () => {
@@ -85,6 +89,56 @@ describe('evaluation experiments', () => {
     const broken = await run({ text: '{"text":' });
     expect(broken.decide).not.toHaveBeenCalled(); expect(broken.report.records[0].error?.stage).toBe('parse');
     expect(broken.report.records[0].response?.text).toBe('{"text":');
+  });
+  it.each([1, 5, 10])('bounds generation and judging at concurrency %i and serializes checkpoints', async concurrency => {
+    let active = 0, peak = 0, writes = 0, peakWrites = 0;
+    const checkpointed: string[] = [];
+    const delayedCall = async () => {
+      peak = Math.max(peak, ++active);
+      await new Promise(resolve => setTimeout(resolve, 1));
+      active--;
+    };
+    const { report, sendRequest, decide } = await run({ concurrency,
+      fixtures: [fixture, { ...fixture, id: 'second' }, { ...fixture, id: 'third' }],
+      beforeGeneration: delayedCall, beforeJudge: delayedCall,
+      onRecord: async record => {
+        peakWrites = Math.max(peakWrites, ++writes);
+        await new Promise(resolve => setTimeout(resolve, 1));
+        checkpointed.push(`${record.candidateId}/${record.caseId}/${record.attempt}`);
+        writes--;
+      } });
+    expect(peak).toBe(concurrency); expect(active).toBe(0); expect(peakWrites).toBe(1);
+    expect(sendRequest).toHaveBeenCalledTimes(18); expect(decide).toHaveBeenCalledTimes(18);
+    expect(new Set(checkpointed).size).toBe(18); expect(report.records).toHaveLength(18);
+    expect(checkpointed).toEqual(report.records.map(r => `${r.candidateId}/${r.caseId}/${r.attempt}`));
+    expect(evaluateGates(report).eligible).toBe(true);
+  });
+  it.each([0, -1, 1.5, 11, NaN, Infinity])('rejects concurrency %s before provider calls', async concurrency => {
+    const beforeGeneration = jest.fn(), beforeJudge = jest.fn();
+    await expect(run({ concurrency, beforeGeneration, beforeJudge })).rejects.toThrow('concurrency');
+    expect(beforeGeneration).not.toHaveBeenCalled(); expect(beforeJudge).not.toHaveBeenCalled();
+  });
+  it.each(['generationError', 'judgeError'] as const)('retains all parallel %s attempts without retries', async flag => {
+    const { report, sendRequest } = await run({ concurrency: 5, [flag]: true });
+    expect(sendRequest).toHaveBeenCalledTimes(6); expect(report.records).toHaveLength(6);
+    expect(report.records.every(r => r.error?.stage === (flag === 'generationError' ? 'generation' : 'judge'))).toBe(true);
+    expect(evaluateGates(report).eligible).toBe(false);
+  });
+  it('drains in-flight attempts and stops new work when a checkpoint fails', async () => {
+    let started = 0, active = 0;
+    const checkpointed: AttemptRecord[] = [];
+    await expect(run({ concurrency: 3,
+      beforeGeneration: async () => {
+        started++; active++;
+        await new Promise(resolve => setTimeout(resolve, 5));
+        active--;
+      },
+      onRecord: async record => {
+        checkpointed.push(record);
+        if (checkpointed.length === 1) throw new Error('Journal write failed');
+      } })).rejects.toThrow('Journal write failed');
+    expect(started).toBe(3); expect(active).toBe(0); expect(checkpointed).toHaveLength(3);
+    expect(checkpointed.every(r => r.judge?.status === 'success')).toBe(true);
   });
   it.each(['generationError', 'judgeError'] as const)('keeps %s attempts and blocks eligibility', async flag => {
     const { report, sendRequest } = await run({ [flag]: true });
@@ -229,9 +283,9 @@ describe('evaluation experiments', () => {
     for (const role of ['editor', 'email_assistant']) expect(base.some(c => c.roleId === role && !Object.keys(c.options).length)).toBe(true);
   });
 
-  it('reuses an unchanged baseline across comparison/candidate labels, paying only for the new model', async () => {
+  it.each([1, 5])('reuses an unchanged baseline with concurrency %i, paying only for the new model', async concurrency => {
     const previous = await run();
-    const current = await run({ sources: [previous.report], definition: { ...definition, id: 'new-comparison',
+    const current = await run({ concurrency, sources: [previous.report], definition: { ...definition, id: 'new-comparison',
       baseline: { ...definition.baseline, id: 'renamed-baseline' }, candidate: { ...definition.candidate, model: 'model-c' } } });
     expect(current.calls).toEqual({ generations: 3, judgments: 3, reusedGenerations: 3, reusedJudgments: 3, catalogChecks: 1 });
     expect(current.sendRequest).toHaveBeenCalledTimes(3); expect(current.decide).toHaveBeenCalledTimes(3);
@@ -248,7 +302,7 @@ describe('evaluation experiments', () => {
     report.executionHash = previous.report.executionHash;
     const prepared = await prepareExperiment(definition, report, [previous.report]);
     const fetchImpl = jest.fn();
-    await runExperiment(definition, report, { keys: {}, connectors: {}, fetchImpl, prepared });
+    await runExperiment(definition, report, { keys: {}, connectors: {}, fetchImpl, prepared, concurrency: 5 });
     expect(fetchImpl).not.toHaveBeenCalled(); expect(evaluateGates(report).eligible).toBe(true);
     expect(report.records.every(r => r.reuse?.generation && r.reuse.judge)).toBe(true);
     expect(report.records[0].generation).toEqual(previous.report.records[0].generation);
