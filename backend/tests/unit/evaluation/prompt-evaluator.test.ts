@@ -9,6 +9,8 @@ import type { LLMConnector } from '../../../src/types/llm.types.ts';
 import { ROLES } from '../../../src/config/roles.config.ts';
 import { PROMPT_EVALUATION_CASES } from '../../../evaluations/cases.ts';
 import { BOUNDARY_GENERATION_CASES } from '../../../evaluations/boundary-cases.ts';
+import { DEVELOPMENT_CASES } from '../../../evaluations/development-cases.ts';
+import { readFileSync } from 'node:fs';
 
 const evaluationCase: PromptEvaluationCase = {
   id: 'facts',
@@ -98,17 +100,44 @@ describe('prompt evaluator', () => {
     '$id accepts the reply and rejects swapped recipients or invented commitments', evaluationCase => {
       const reply = 'Subject: Emergency contact for Casey\n\nDear Morgan,\n\nWe do not have another emergency contact for Casey.\n\nThank you,\nAlex';
       expect(runDeterministicChecks(evaluationCase, reply).every(check => check.passed)).toBe(true);
+      for (const wording of [
+        'Thank you for your email about adding a second emergency contact for Casey. Unfortunately, we do not have another contact to provide at this time.',
+        'Unfortunately, I’m concerned to tell you that we don’t have another contact to provide.',
+        'We are unable to provide an additional emergency contact.',
+      ]) expect(runDeterministicChecks(evaluationCase, reply.replace('We do not have another emergency contact for Casey.', wording)).every(check => check.passed)).toBe(true);
       for (const badReply of [
         reply.replace('Dear Morgan,', 'Dear Ms. Taylor and Mr. Alex,'),
         reply.replace('We do not have another emergency contact for Casey.', 'Please provide us with a second emergency contact.'),
         reply.replace('Thank you,', 'Our family situation is difficult. We will provide details soon. Thank you,'),
         reply.replace('Thank you,', 'We are working to resolve it. Thank you,'),
+        reply.replace('Thank you,', 'We’re working on this urgently and will update you as soon as possible. Thank you,'),
+        reply.replace('Thank you,', "We're working to find someone. Thank you,"),
+        reply.replace('Thank you,', "We'll update you soon. Thank you,"),
         reply.replace(/Alex$/, 'Morgan'),
       ]) {
         expect(runDeterministicChecks(evaluationCase, badReply).some(check => !check.passed)).toBe(true);
       }
     }
   );
+
+  it('frozen acceptance checks match the corrected development regressions', () => {
+    const acceptance = JSON.parse(readFileSync('evaluations/acceptance.json', 'utf8')) as PromptEvaluationCase[];
+    for (const id of ['email-source-priority-no-options', 'email-source-priority-lengthened-worried', 'coverage-email_assistant-context-conflict']) {
+      const current = DEVELOPMENT_CASES.find(c => c.id === id)!;
+      expect(acceptance.find(c => c.id === id)?.checks).toEqual(current.checks);
+    }
+  });
+
+  it('rejects context-driven email identity reversal even when date and amount match', () => {
+    const item = DEVELOPMENT_CASES.find(c => c.id === 'coverage-email_assistant-context-conflict')!;
+    const faithful = 'Subject: Order 887 update\n\nHi Morgan,\n\nThe shipment is delayed until Friday. The refund is $20 and approval remains uncertain. Please confirm whether Friday works.\n\nThanks,\nAlex';
+    expect(runDeterministicChecks(item, faithful).every(c => c.passed)).toBe(true);
+    for (const wrong of [faithful.replace('Hi Morgan,', 'Hi Alex,'), faithful.replace(/Alex$/, 'Morgan'), faithful.replace('$20', '$50')]) {
+      expect(runDeterministicChecks(item, wrong).some(c => !c.passed)).toBe(true);
+    }
+    const observed = 'Subject: Re: Update on Order 887 Delivery and Refund\n\nHi Alex,\n\nThanks for the update. I confirm that the Friday delivery date is acceptable. The refund is $20 and approval remains uncertain.\n\nBest regards,\nMorgan';
+    expect(runDeterministicChecks(item, observed).filter(c => !c.passed)).toHaveLength(2);
+  });
 
   it('accepts equivalent numeric/date formatting while preserving negation', () => {
     const facts = PROMPT_EVALUATION_CASES.find(item => item.id === 'editor-protected-facts')!;
@@ -170,14 +199,14 @@ describe('prompt evaluator', () => {
     });
 
     expect(report).toMatchObject({
-      promptVersion: 'prompt-v11',
+      promptVersion: 'prompt-v12',
       candidates: [{
         status: 'completed',
         modelRevision: 'gemini-2.5-flash-001',
         settings: { temperature: null, maxTokens: 2000 },
         cases: [{
-          promptVersion: 'prompt-v11',
-          promptRevision: 'prompt-v11/editor@v1',
+          promptVersion: 'prompt-v12',
+          promptRevision: 'prompt-v12/editor@v1',
           tokenUsage: { totalTokens: 20 },
           error: null,
           humanReview: { meaningPreserved: null, roleFit: null, languageQuality: null, notes: null },
@@ -302,7 +331,7 @@ describe('prompt evaluator', () => {
 
     expect(report.candidates[0].cases).toHaveLength(ROLES.length);
     report.candidates[0].cases.forEach((result, index) => {
-      expect(result.promptRevision).toBe(`prompt-v11/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
+      expect(result.promptRevision).toBe(`prompt-v12/${ROLES[index].id}@${ROLES[index].systemPromptVersion}`);
       expect(result.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
     });
   });

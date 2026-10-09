@@ -24,7 +24,7 @@ work faster and more consistent.
 - Keep shared safety, input-boundary, and output-format rules centralized and
   concise. Do not shorten role prompts merely to make the overall prompt lean.
 - Treat enabled options as additive transformations. Disabled options must not
-  remove behavior inherent to a role, such as summarizing or producing a
+  remove behavior inherent to a role, such as producing a
   complete email.
 - Prompt changes must include regression coverage for every affected role and
   option, including the no-options case.

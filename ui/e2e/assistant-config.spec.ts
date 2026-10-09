@@ -30,7 +30,7 @@ test.describe('Assistant Configuration', () => {
     await page.locator('select[name="model"]').selectOption('open-router-free');
     
     // Select AI Role
-    await page.locator('select[name="aiRoleId"]').selectOption('summarizer');
+    await page.locator('select[name="aiRoleId"]').selectOption('email_assistant');
     
     // Check some action options
     await page.locator('input[name="improve"]').check();
@@ -49,7 +49,7 @@ test.describe('Assistant Configuration', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible();
     
     // New assistant card should appear
-    await expect(page.locator('text=Summarizer Assistant').first()).toBeVisible();
+    await expect(page.locator('text=Professional Email Assistant').first()).toBeVisible();
     await expect(page.getByText('OpenRouter Free').first()).toBeVisible();
   });
 
@@ -329,10 +329,10 @@ test.describe('Assistant Configuration', () => {
     await expect(page.getByTestId('assistant-card-1')).toBeVisible();
 
     await page.getByTestId('add-assistant-button').click();
-    await page.locator('select[name="aiRoleId"]').selectOption('summarizer');
+    await page.locator('select[name="aiRoleId"]').selectOption('email_assistant');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(4);
-    await expect(page.getByRole('heading', { name: 'Summarizer Assistant' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Professional Email Assistant' })).toBeVisible();
 
     await page.getByTestId('workflow-tab-formal-email').click();
     await page.getByTestId('workflow-tab-quick-fix').click();
@@ -340,6 +340,6 @@ test.describe('Assistant Configuration', () => {
 
     await page.reload();
     await expect(page.locator('[data-testid^="assistant-card-"]')).toHaveCount(4);
-    await expect(page.getByRole('heading', { name: 'Summarizer Assistant' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Professional Email Assistant' })).toBeVisible();
   });
 });

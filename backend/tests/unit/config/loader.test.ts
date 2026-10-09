@@ -69,7 +69,7 @@ describe('Configuration Loader', () => {
 
       expect(config.llmProviders).toHaveLength(1);
       expect(config.models.length).toBeGreaterThan(0);
-      expect(config.roles.length).toBe(3);
+      expect(config.roles.length).toBe(2);
       expect(config.supabase.serviceRoleKey).toBe('test-supabase-key');
     });
 

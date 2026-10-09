@@ -55,6 +55,7 @@ describe('UI/backend configuration parity', () => {
     }
     expect(TIER_LIMITS.free).toMatchObject({ maxTextLength: 1000, maxContextLength: 2500 });
     expect(AVAILABLE_AI_ROLES.map(role => role.id).sort()).toEqual(ROLES.map(role => role.id).sort());
+    expect(AVAILABLE_AI_ROLES.map(role => role.id)).toEqual(['editor', 'email_assistant']);
 
     for (const tier of ['free', 'plus', 'premium'] as const) {
       expect(TIER_LIMITS[tier]).toEqual({
@@ -89,7 +90,7 @@ describe('UI/backend configuration parity', () => {
     expect(normalizeAiConfig({
       id: 1,
       model: 'local-debug-model',
-      aiRole: 'Summarizer Assistant',
+      aiRole: 'Professional Email Assistant',
       options: {
         ...DEFAULT_OPTIONS,
         shorten: true,
@@ -100,7 +101,7 @@ describe('UI/backend configuration parity', () => {
       } as never,
     })).toEqual(expect.objectContaining({
       model: 'qwen-qwen3-30b-a3b-instruct-2507',
-      aiRoleId: 'summarizer',
+      aiRoleId: 'email_assistant',
       options: expect.objectContaining({
         shorten: true,
         lengthen: false,
@@ -112,5 +113,15 @@ describe('UI/backend configuration parity', () => {
     expect(normalizeAiConfig({ id: 2, aiRole: 'Unknown role' })).toEqual(
       expect.objectContaining({ model: 'qwen-qwen3-30b-a3b-instruct-2507', aiRoleId: 'editor' })
     );
+  });
+
+  it.each([
+    { aiRoleId: 'summarizer' as never },
+    { aiRole: 'Summarizer Assistant' },
+  ])('falls back for a retired saved role while preserving user settings %#', storedRole => {
+    const options = { ...DEFAULT_OPTIONS, shorten: true, lengthen: false, tone: 'Polite' as const };
+    expect(normalizeAiConfig({ id: 42, ...storedRole, model: AVAILABLE_MODELS[0], options, enabled: false })).toEqual({
+      id: 42, aiRoleId: 'editor', model: AVAILABLE_MODELS[0], options, enabled: false,
+    });
   });
 });

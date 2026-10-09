@@ -86,7 +86,7 @@ describe('JevResultSelector', () => {
     expect(selection.scores.constructor).toBeCloseTo(0.9);
   });
 
-  it.each(['editor', 'summarizer', 'email_assistant'])('keeps the %s role with no options', async aiRoleId => {
+  it.each(['editor', 'email_assistant'])('keeps the %s role with no options', async aiRoleId => {
     const judge = connector([7.2]);
     await new JevResultSelector(judge).select({ assistants: [{ ...assistant('a'), aiRoleId, options: {} }] }, [success('a')], 'r');
     const candidate = judge.decide.mock.calls[0][0].state.candidates[0];

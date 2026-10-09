@@ -12,7 +12,7 @@ test.describe('Text Enhancement Flow', () => {
         name: 'Jev Test',
         configs: [
           { id: 1, model: 'open-router-free', aiRoleId: 'editor', options, enabled: true },
-          { id: 2, model: 'open-router-free', aiRoleId: 'summarizer', options, enabled: true },
+          { id: 2, model: 'open-router-free', aiRoleId: 'email_assistant', options, enabled: true },
         ],
       }]));
       localStorage.setItem('aiTextEnhancerLastSelectedWorkflow', JSON.stringify('Jev Test'));

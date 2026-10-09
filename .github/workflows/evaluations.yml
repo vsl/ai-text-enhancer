@@ -1,0 +1,67 @@
+name: Paid evaluation experiments
+on:
+  workflow_dispatch:
+    inputs:
+      experiment:
+        description: Committed comparison definition
+        type: choice
+        options: [models, prompts]
+        default: models
+      case:
+        description: Optional case ID substring (filtered runs cannot become baselines)
+        type: string
+        default: editor-protected-facts
+      suite:
+        description: Base development check or full English-focused acceptance suite
+        type: choice
+        options: [base, all]
+        default: base
+      repetitions:
+        description: Generation repetitions per model/prompt (base 32 cases, all 199)
+        type: number
+        default: 1
+      publish:
+        description: Publish saved results to the configured Langfuse instance
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run type-check:evaluations
+      - name: Run paid experiment
+        env:
+          EVAL_EXPERIMENT: ${{ inputs.experiment }}
+          EVAL_CASE: ${{ inputs.case }}
+          EVAL_SUITE: ${{ inputs.suite }}
+          EVAL_REPETITIONS: ${{ inputs.repetitions }}
+          EVAL_PUBLISH: ${{ inputs.publish }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
+        run: |
+          publish_flag=()
+          if [ "$EVAL_PUBLISH" = 'true' ]; then publish_flag=(--publish); fi
+          npm run eval:compare -- "--experiment=evaluations/experiments/$EVAL_EXPERIMENT.ts" "--suite=$EVAL_SUITE" "--case=$EVAL_CASE" "--repeat=$EVAL_REPETITIONS" "${publish_flag[@]}"
+      - name: Preserve all attempted outputs, errors and comparison links
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-${{ github.run_id }}
+          path: backend/evaluation-results/
+          if-no-files-found: warn

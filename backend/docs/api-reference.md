@@ -466,7 +466,7 @@ interface BatchRequest {
 interface AssistantConfiguration {
   id: string;                   // Unique client-side identifier
   model: string;                // Model identifier (e.g., 'qwen-qwen3-30b-a3b-instruct-2507')
-  aiRoleId: string;             // editor | summarizer | email_assistant
+  aiRoleId: string;             // editor | email_assistant
   userText: string;             // Text to enhance (tier-based max length)
   contextText?: string;         // Optional context (tier-based max length)
   options: TransformationOptions;
@@ -738,7 +738,6 @@ These errors affect individual tasks within a batch. Other tasks may succeed.
 | Role ID | Name | Description | Allowed Models |
 |---------|------|-------------|----------------|
 | `editor` | Editor | Edits clarity, correctness, readability, and flow | All production models |
-| `summarizer` | Summarizer | Condenses text while preserving key information | All production models |
 | `email_assistant` | Email Assistant | Writes complete, ready-to-send emails | All production models |
 
 **Note:** Roles are configured in `src/config/roles.config.ts`.

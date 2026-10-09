@@ -36,7 +36,7 @@ function PreferenceRow({ model, percentage, text, compact = false }: {
 const capabilities = [
   { title: "Reusable workflows", body: "Save a combination of assistants and settings for a recurring task, such as Formal Email, and return to it later.", icon: Layers3 },
   { title: "Multiple AI models", body: "Try the demo’s available models through one interface. Assistants in a workflow run in parallel and stay available for comparison.", icon: Cpu },
-  { title: "Specialized assistants", body: "Choose a General Assistant, Summarizer Assistant, or Professional Email Assistant. Each has a distinct writing task.", icon: Bot },
+  { title: "Specialized assistants", body: "Choose a General Assistant or Professional Email Assistant. Each has a distinct writing task.", icon: Bot },
   { title: "Context & transformations", body: "Keep source text separate from reference context. Configure edits, length, formality, tone, language level, and translation.", icon: SlidersHorizontal },
 ];
 

@@ -52,7 +52,7 @@ describe('PromptBuilder', () => {
 
     expect(prompt.systemPrompt).toContain(role.systemPrompt);
     expect(prompt.systemPrompt).toContain("Perform the role's primary task without additional transformations.");
-    expect(prompt.promptRevision).toBe(`prompt-v11/${role.id}@${role.systemPromptVersion}`);
+    expect(prompt.promptRevision).toBe(`prompt-v12/${role.id}@${role.systemPromptVersion}`);
     expect(prompt.promptFingerprint).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -95,19 +95,6 @@ describe('PromptBuilder', () => {
       expect(prompt.systemPrompt).toContain('Rewrite every em dash into a period, comma, or parentheses');
       expect(prompt.systemPrompt).toContain(role.systemPrompt);
     }
-  });
-
-  it('keeps summarization inherent without shorten', async () => {
-    const prompt = await builder.buildPrompt({
-      id: 'summary',
-      model: 'open-router-free',
-      aiRoleId: 'summarizer',
-      userText: 'Long source',
-      options: { shorten: false },
-    });
-
-    expect(prompt.systemPrompt).toContain('expert summarizer and analyst');
-    expect(prompt.systemPrompt).not.toContain('Make the result meaningfully shorter');
   });
 
   it('builds all requested option deltas', async () => {

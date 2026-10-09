@@ -6,8 +6,8 @@ import { ROLES, getRoleById, isModelAllowedForRole } from '../../../src/config/r
 
 describe('Roles Configuration', () => {
   describe('ROLES', () => {
-    it('should have exactly 3 roles defined', () => {
-      expect(ROLES.length).toBe(3);
+    it('defines only the editor and email roles', () => {
+      expect(ROLES.map(role => role.id)).toEqual(['editor', 'email_assistant']);
     });
 
     it('should have all required fields for each role', () => {
@@ -34,13 +34,6 @@ describe('Roles Configuration', () => {
       expect(role?.systemPrompt).toContain('professional editor');
     });
 
-    it('should include summarizer role', () => {
-      const role = ROLES.find((r) => r.id === 'summarizer');
-      expect(role).toBeDefined();
-      expect(role?.name).toBe('Summarizer');
-      expect(role?.systemPrompt).toContain('summarizer and analyst');
-    });
-
     it('should include email_assistant role', () => {
       const role = ROLES.find((r) => r.id === 'email_assistant');
       expect(role).toBeDefined();
@@ -50,7 +43,6 @@ describe('Roles Configuration', () => {
 
     it.each<[string, string[]]>([
       ['editor', ['meticulous professional editor', 'Correct grammar', 'Make proportionate edits', 'Quality standard:']],
-      ['summarizer', ['expert summarizer and analyst', 'Preserve important names, figures, dates', 'facts, opinions, proposals', 'Quality standard:']],
       ['email_assistant', ['expert email writer', 'Always include a specific "Subject:" line', 'reference context', 'Quality standard:']],
     ])('should define distinct expertise and quality criteria for %s', (roleId, expectedPhrases) => {
       const role = getRoleById(roleId);
@@ -79,13 +71,6 @@ describe('Roles Configuration', () => {
       expect(role).toBeNull();
     });
 
-    it('should return correct role for summarizer', () => {
-      const role = getRoleById('summarizer');
-      expect(role).not.toBeNull();
-      expect(role?.name).toBe('Summarizer');
-    });
-
-
   });
 
   describe('isModelAllowedForRole', () => {
@@ -98,7 +83,7 @@ describe('Roles Configuration', () => {
     });
 
     it('should return false when model is not in allowedModels', () => {
-      expect(isModelAllowedForRole('summarizer', 'non-existent-model')).toBe(false);
+      expect(isModelAllowedForRole('email_assistant', 'non-existent-model')).toBe(false);
     });
 
     it('should return false for non-existent role', () => {

@@ -39,6 +39,9 @@ Complete guide to environment setup, configuration modules, and system configura
 | `LANGSMITH_ENDPOINT` | No | LangSmith US endpoint | `https://api.smith.langchain.com` |
 | `APP_ENV` | No | Deployment environment | `staging` |
 | `APP_RELEASE` | No | Git release SHA | `abc123...` |
+| `LANGFUSE_BASE_URL` | With eval publication | Existing Langfuse instance API URL | Your instance URL |
+| `LANGFUSE_PUBLIC_KEY` | With eval publication | Langfuse evaluation project public key | `pk-lf-...` |
+| `LANGFUSE_SECRET_KEY` | With eval publication | Langfuse evaluation project secret key (server-side only) | `sk-lf-...` |
 
 ### Quick Setup Commands
 
@@ -157,6 +160,40 @@ Tracing is disabled unless `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are 
 Traces omit user source/context, assembled prompts, raw provider responses, and final output by default. Set the GitHub Actions repository secret `LANGSMITH_CAPTURE_CONTENT=true` only for a sensitive diagnostic deployment; credentials remain redacted. Restrict workspace access and retention accordingly, and never enable raw `LOG_LEVEL=debug` payload logging in normal staging or production operation.
 
 Role prompt text remains versioned in Git. Increment that role's `systemPromptVersion` for a role prompt change. Increment the shared `PROMPT_VERSION` for shared policy or transformation instruction changes. LangSmith stores the resulting composite revision and SHA-256 prompt fingerprint; it is not a prompt registry.
+
+#### Langfuse evaluation workspace
+
+We use **Langfuse for offline model and prompt evaluation**: experiment comparison,
+named code/Jev scores, output review and human calibration. Production tracing
+continues to use LangSmith; Langfuse is not a production dependency.
+
+`LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are read only by
+the Node evaluation publisher. They are optional for local JSON experiments and
+required when using `--publish`. Put them in your private `backend/.env.local`
+(both backend example files include blank entries), or export them for the CLI.
+Use your existing instance URL and project keys; this change does not provision
+an instance. Do not add these keys to `ui/.env.local` or deploy them to Edge
+Functions. In the paid evaluation workflow, store the keys as repository secrets
+and `LANGFUSE_BASE_URL` as a repository variable.
+
+Node does not automatically load `.env.local`. From `backend/`, load it explicitly:
+
+```bash
+node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+  --experimental-transform-types scripts/evaluate-experiment.ts \
+  --suite=base --dry-run
+```
+
+Remove `--dry-run` to make paid AI calls; add `--publish` to export the completed
+results. The default comparison definitions use 32 base cases and one repetition.
+Use `--suite=all --repeat=3` only for a deliberate full acceptance evaluation.
+Saved results can be reused with `--reuse=evaluation-results/ID/report.json`.
+Evaluation exports contain exact prompts, source/context and outputs, unlike the
+default content-redacted production tracing. Use synthetic/anonymized fixtures
+and restrict Langfuse project access and retention.
+
+See the [evaluation guide](./evaluations.md) for cache matching, costs, comparison
+review and owner-approved baselines.
 
 ---
 

@@ -116,6 +116,7 @@ describe('ConfigEditorModal Integration Tests', () => {
 
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i }) as HTMLSelectElement;
       expect(aiRoleSelect.value).toBe('editor');
+      expect(Array.from(aiRoleSelect.options).map(option => option.value)).toEqual(['editor', 'email_assistant']);
     });
 
     it('should reset form when modal reopens with new data', () => {
@@ -132,7 +133,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       const newConfig: AiConfig = {
         ...sampleConfig,
         model: 'open-router-free',
-        aiRoleId: 'summarizer',
+        aiRoleId: 'email_assistant',
       };
 
       rerender(
@@ -159,7 +160,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(modelSelect.value).toBe('open-router-free');
 
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i }) as HTMLSelectElement;
-      expect(aiRoleSelect.value).toBe('summarizer');
+      expect(aiRoleSelect.value).toBe('email_assistant');
     });
   });
 
@@ -640,7 +641,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       await user.selectOptions(modelSelect, 'open-router-free');
 
       const aiRoleSelect = screen.getByRole('combobox', { name: /ai role/i });
-      await user.selectOptions(aiRoleSelect, 'summarizer');
+      await user.selectOptions(aiRoleSelect, 'email_assistant');
 
       const formatCheckbox = screen.getByRole('checkbox', { name: /format/i });
       await user.click(formatCheckbox);
@@ -651,7 +652,7 @@ describe('ConfigEditorModal Integration Tests', () => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'open-router-free',
-          aiRoleId: 'summarizer',
+          aiRoleId: 'email_assistant',
           options: expect.objectContaining({
             format: true,
           }),

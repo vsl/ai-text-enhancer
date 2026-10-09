@@ -71,6 +71,7 @@ describe('validateBatchRequest', () => {
     ['blank text', (request: ReturnType<typeof validRequest>) => { request.assistants[0].userText = ''; }],
     ['unknown model', (request: ReturnType<typeof validRequest>) => { request.assistants[0].model = 'missing'; }],
     ['unknown role', (request: ReturnType<typeof validRequest>) => { request.assistants[0].aiRoleId = 'missing'; }],
+    ['retired role', (request: ReturnType<typeof validRequest>) => { request.assistants[0].aiRoleId = 'summarizer'; }],
     ['invalid formality', (request: ReturnType<typeof validRequest>) => { request.assistants[0].options.formality = 'Professional'; }],
     ['invalid tone', (request: ReturnType<typeof validRequest>) => { request.assistants[0].options.tone = 'Neutral'; }],
     ['invalid language level', (request: ReturnType<typeof validRequest>) => { request.assistants[0].options.languageLevel = 'expert'; }],

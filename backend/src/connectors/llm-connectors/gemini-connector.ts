@@ -95,6 +95,7 @@ export class GeminiConnector implements LLMConnector {
           outputTokens: usage.candidatesTokenCount ?? 0,
           totalTokens: usage.totalTokenCount ?? 0,
           cachedTokens: usage.cachedContentTokenCount ?? 0,
+          ...(typeof usage.thoughtsTokenCount === 'number' ? { reasoningTokens: usage.thoughtsTokenCount } : {}),
         },
         model: data.modelVersion || params.model,
         provider: 'gemini',
@@ -107,6 +108,9 @@ export class GeminiConnector implements LLMConnector {
           finishReason: candidate.finishReason,
           providerError: data.error,
           latencyMs: result.latencyMs,
+          reportedUsage: Object.entries({ inputTokens: usage.promptTokenCount, outputTokens: usage.candidatesTokenCount,
+            totalTokens: usage.totalTokenCount, cachedTokens: usage.cachedContentTokenCount, reasoningTokens: usage.thoughtsTokenCount })
+            .filter(([, value]) => typeof value === 'number' && Number.isFinite(value)).map(([key]) => key),
         },
       };
     } finally {

@@ -15,8 +15,8 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
         { type: 'matches', value: '^Subject:', flags: 'm' },
         { type: 'matches', value: '^(?:Dear|Hi|Hello) Morgan[,!]', flags: 'm' },
         { type: 'matches', value: 'Alex[.\\s]*$' },
-        { type: 'matches', value: '(?:(?:do not|don[’\u0027]t) (?:currently )?have|unable to provide) (?:another|an additional|a second) emergency contact', flags: 'i' },
-        { type: 'matches', value: '^(?![\\s\\S]*(?:Dear Ms\\.|family (?:situation|circumstances)|(?:we|I) (?:will|promise to) (?:provide|send)|(?:actively |are )working|working to resolve))[\\s\\S]*$', flags: 'i' },
+        { type: 'matches', value: '(?:(?:do not|don[’\u0027]t) (?:currently )?have|unable to provide) (?:another|an additional|a second) (?:emergency )?contact\\b', flags: 'i' },
+        { type: 'matches', value: '^(?![\\s\\S]*(?:Dear Ms\\.|family (?:situation|circumstances)|(?:we|I) (?:will|promise to) (?:provide|send|update)|(?:we|I)[’\u0027]ll (?:provide|send|update)|(?:actively |are |am |[’\u0027]re )working|working to resolve))[\\s\\S]*$', flags: 'i' },
       ],
     })),
   {
@@ -70,19 +70,6 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
     ],
   },
   {
-    id: 'summarizer-role-overlap',
-    roleId: 'summarizer',
-    language: 'en',
-    userText: 'The board met for two hours. Marta proposed delaying launch to 8 May because testing might not finish. Lee disagreed. After discussion, the board approved the delay by 6 votes to 2 and asked Marta to publish the revised plan.',
-    options: { shorten: true, tone: 'Direct' },
-    checks: [
-      { type: 'contains', value: '8 May' },
-      { type: 'contains', value: '6' },
-      { type: 'contains', value: '2' },
-      { type: 'max-length-ratio', value: 0.85 },
-    ],
-  },
-  {
     id: 'email-role-required-structure',
     roleId: 'email_assistant',
     language: 'en',
@@ -122,7 +109,7 @@ export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [
   },
   {
     id: 'translation-ukrainian-to-english',
-    roleId: 'summarizer',
+    roleId: 'editor',
     language: 'uk-to-en',
     userText: 'Олена повідомила, що бюджет становить 2500 євро, але рішення ще не остаточне.',
     options: { translateTo: 'en' },

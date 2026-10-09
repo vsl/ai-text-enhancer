@@ -65,6 +65,7 @@ export class OpenRouterConnector implements LLMConnector {
         operation: async (): Promise<ProviderResult> => {
           const startedAt = performance.now();
           let response: Response;
+          let rawResponse: string;
           try {
             response = await fetch(url, {
               method: 'POST',
@@ -77,14 +78,16 @@ export class OpenRouterConnector implements LLMConnector {
               body: JSON.stringify(body),
               signal: controller.signal,
             });
+            // Fetch can resolve headers before the body finishes; the same
+            // timeout and network classification must cover both stages.
+            rawResponse = typeof response.text === 'function'
+              ? await response.text()
+              : JSON.stringify(await response.json());
           } catch (error) {
-            if ((error as Error).name === 'AbortError') throw new LLMTimeoutError('openrouter', timeout);
+            if (controller.signal.aborted || (error as Error).name === 'AbortError') throw new LLMTimeoutError('openrouter', timeout);
             throw new LLMError('openrouter', (error as Error).message, undefined, 'PROVIDER_NETWORK_ERROR');
           }
 
-          const rawResponse = typeof response.text === 'function'
-            ? await response.text()
-            : JSON.stringify(await response.json());
           const parsedResponse = parseProviderResponse(rawResponse);
           const latencyMs = Math.round(performance.now() - startedAt);
           const choice = parsedResponse?.choices?.[0];
@@ -148,6 +151,10 @@ export class OpenRouterConnector implements LLMConnector {
         nativeFinishReason: choice.native_finish_reason,
         providerError,
         latencyMs: result.latencyMs,
+        reportedUsage: Object.entries({ inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens,
+          totalTokens: usage.total_tokens, reasoningTokens: usage.completion_tokens_details?.reasoning_tokens,
+          cachedTokens: usage.prompt_tokens_details?.cached_tokens, cost: usage.cost })
+          .filter(([, value]) => typeof value === 'number' && Number.isFinite(value)).map(([key]) => key),
       };
       const response: LLMResponse = {
         text: choice.message?.content ?? '',

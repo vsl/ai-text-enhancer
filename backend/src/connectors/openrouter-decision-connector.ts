@@ -6,6 +6,7 @@ export interface DecisionRequest {
   questions: Record<string,
     | { type: 'choice'; instructions: string; criteria: Record<string, string> }
     | { type: 'score'; instructions: string; criteria: string[] }
+    | { type: 'noul'; instructions: string; criteria?: { true: string; false: string } }
   >;
 }
 export interface DecisionConnector {
