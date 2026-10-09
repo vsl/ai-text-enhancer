@@ -59,6 +59,35 @@ export const MODELS: readonly ModelConfig[] = [
       output: 0.0001931,
     },
   },
+  {
+    id: 'openai-gpt-6-luna',
+    provider: 'openrouter',
+    providerModelId: 'openai/gpt-6-luna',
+    structuredOutputMode: 'json-schema',
+    reasoningEffort: 'none',
+    allowedTiers: ['free', 'plus', 'premium'],
+    displayName: 'GPT-6 Luna',
+    contextWindow: 1050000,
+    costPer1kTokens: {
+      input: 0.0001,
+      output: 0.0005,
+    },
+  },
+  {
+    id: 'anthropic-claude-haiku-5.5',
+    provider: 'openrouter',
+    providerModelId: 'anthropic/claude-haiku-5.5',
+    structuredOutputMode: 'json-schema',
+    reasoningEffort: 'low',
+    reasoningEnabled: false,
+    allowedTiers: ['free', 'plus', 'premium'],
+    displayName: 'Claude Haiku 5.5',
+    contextWindow: 1000000,
+    costPer1kTokens: {
+      input: 0.0001,
+      output: 0.0005,
+    },
+  },
 ] as const;
 
 /**

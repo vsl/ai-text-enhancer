@@ -1,3 +1,4 @@
+import { generationSettings } from '../../../src/services/generation-settings';
 import { MODELS, getModelById, getModelsByProvider, getModelsByTier } from '../../../src/config/models.config';
 
 describe('Models Configuration', () => {
@@ -26,7 +27,14 @@ describe('Models Configuration', () => {
         structuredOutputMode: 'json-schema',
         contextWindow: 262144,
       }),
+      expect.objectContaining({ id: 'openai-gpt-6-luna', providerModelId: 'openai/gpt-6-luna', reasoningEffort: 'none', contextWindow: 1050000 }),
+      expect.objectContaining({ id: 'anthropic-claude-haiku-5.5', providerModelId: 'anthropic/claude-haiku-5.5', reasoningEffort: 'low', reasoningEnabled: false, contextWindow: 1000000 }),
     ]);
+  });
+
+  it('preserves the evaluated production request settings', () => {
+    expect(generationSettings(getModelById('openai-gpt-6-luna')!)).toEqual({ structuredOutputMode: 'json-schema', serviceTier: undefined, reasoningEffort: 'none', maxTokens: 3500, timeout: 30000 });
+    expect(generationSettings(getModelById('anthropic-claude-haiku-5.5')!)).toEqual({ structuredOutputMode: 'json-schema', serviceTier: undefined, reasoningEffort: 'low', reasoningEnabled: false, maxTokens: 3500, timeout: 30000 });
   });
 
   it('makes all models available to every tier', () => {
@@ -35,12 +43,14 @@ describe('Models Configuration', () => {
         'openai-gpt-5-nano',
         'open-router-free',
         'qwen-qwen3-30b-a3b-instruct-2507',
+        'openai-gpt-6-luna',
+        'anthropic-claude-haiku-5.5',
       ]);
     }
   });
 
   it('exposes all models only through OpenRouter', () => {
-    expect(getModelsByProvider('openrouter')).toHaveLength(3);
+    expect(getModelsByProvider('openrouter')).toHaveLength(5);
     expect(getModelsByProvider('gemini')).toHaveLength(0);
     expect(getModelById('openai-gpt-5-nano')?.displayName).toBe('GPT-5 Nano');
     expect(getModelById('qwen-qwen3-30b-a3b-instruct-2507')?.displayName).toBe('Qwen3 30B A3B Instruct 2507');

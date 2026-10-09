@@ -30,6 +30,8 @@ Quality standard: The result is fluent, accurate, internally consistent, easy to
       'open-router-free',
       'openai-gpt-5-nano',
       'qwen-qwen3-30b-a3b-instruct-2507',
+      'openai-gpt-6-luna',
+      'anthropic-claude-haiku-5.5',
     ],
   },
   {
@@ -50,6 +52,8 @@ Quality standard: The result is concise but complete, natural rather than boiler
       'open-router-free',
       'openai-gpt-5-nano',
       'qwen-qwen3-30b-a3b-instruct-2507',
+      'openai-gpt-6-luna',
+      'anthropic-claude-haiku-5.5',
     ],
   },
 ] as const;

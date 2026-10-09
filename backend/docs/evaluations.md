@@ -59,8 +59,9 @@ Edit a trusted TypeScript module under `evaluations/experiments/`. `models.ts` a
 
 `evaluations/experiments/luna-vs-haiku.ts` compares `openai/gpt-6-luna` and
 `anthropic/claude-haiku-5.5` with the same production prompts, strict JSON schema,
-one repetition and individual proposed production settings. It defaults to the 26-case base
-suite and does not add the models to the application's model catalog.
+one repetition and each model's production settings from `models.config.ts`. It defaults
+to the 26-case base suite. Both models are available in the application for both
+roles and all tiers.
 
 Verified against the OpenRouter catalog on October 9, 2026: both support reasoning
 controls and structured outputs; neither lists `minimal` effort. Luna supports
@@ -68,9 +69,8 @@ controls and structured outputs; neither lists `minimal` effort. Luna supports
 `high`, `xhigh`, `max`. Both default to `medium` effort, and Haiku thinking is on
 by default. Omitting the reasoning setting does not disable it.
 Luna sends `reasoning: { effort: 'none' }`; Haiku sends
-`reasoning: { effort: 'low', enabled: false }`. These settings belong to each
-candidate because neither model is in the production catalog yet. When promoting
-a model, preserve its evaluated settings in `models.config.ts`. Jev judging
+`reasoning: { effort: 'low', enabled: false }`. These settings are stored in
+`models.config.ts` and inherited by the experiment. Jev judging
 remains enabled and uses additional tokens.
 See [OpenAI's Luna documentation](https://developers.openai.com/api/docs/models/gpt-6-luna),
 [Haiku on OpenRouter](https://openrouter.ai/anthropic/claude-haiku-5.5/), and
