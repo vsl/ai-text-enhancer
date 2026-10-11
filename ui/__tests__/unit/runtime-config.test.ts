@@ -4,7 +4,7 @@ describe('runtime configuration', () => {
     delete process.env.NEXT_PUBLIC_API_BASE_URL;
     jest.resetModules();
 
-    expect(() => require('../../src/lib/runtime-config')).toThrow('NEXT_PUBLIC_API_BASE_URL is required');
+    expect(() => require('../../src/config/runtime.config')).toThrow('NEXT_PUBLIC_API_BASE_URL is required');
 
     process.env.NEXT_PUBLIC_API_BASE_URL = value;
     jest.resetModules();

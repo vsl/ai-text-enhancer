@@ -60,13 +60,12 @@ export function ConfirmationModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         className="sm:max-w-[500px] bg-card border-border"
-        aria-describedby="confirm-modal-description"
       >
         <DialogHeader>
-          <DialogTitle id="confirm-modal-title" className="text-xl font-semibold">
+          <DialogTitle className="text-xl font-semibold">
             Confirm Deletion
           </DialogTitle>
-          <DialogDescription id="confirm-modal-description" className="text-base pt-4">
+          <DialogDescription className="text-base pt-4">
             Are you sure you want to delete the workflow{" "}
             <strong className="text-foreground font-semibold">&quot;{workflowName}&quot;</strong>? This action cannot
             be undone.

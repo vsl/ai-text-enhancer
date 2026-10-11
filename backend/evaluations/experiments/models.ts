@@ -1,4 +1,4 @@
-import type { ExperimentDefinition } from '../../src/evaluation/experiments.ts';
+import type { ExperimentDefinition } from '../lib/experiments.ts';
 
 // Each model inherits its own production generation settings.
 export default {

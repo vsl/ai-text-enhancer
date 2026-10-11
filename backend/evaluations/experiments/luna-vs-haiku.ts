@@ -1,4 +1,4 @@
-import type { ExperimentDefinition } from '../../src/evaluation/experiments.ts';
+import type { ExperimentDefinition } from '../lib/experiments.ts';
 
 // Both candidates inherit their production settings from models.config.ts.
 export default {

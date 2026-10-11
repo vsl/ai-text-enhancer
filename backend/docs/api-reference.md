@@ -1,775 +1,116 @@
-# API Reference
+# Released API
 
-**Last Updated:** September 2026
+Base URL: the configured Supabase project's `/functions/v1`. The browser uses
+`NEXT_PUBLIC_API_BASE_URL`. Startup adapters live in `supabase/functions/`; the
+portable enhancement DTOs are defined in `src/types/api.types.ts`.
 
-Complete API specification for the AI Text Enhancer Backend, including authentication, endpoints, request/response schemas, error codes, and examples.
+## Public health
 
----
+`GET /enhance/health` and `GET /me/health` return a JSON object with `status: "ok"`.
+They do not require a JWT. `OPTIONS` handles browser preflight. `/enhance` also
+accepts a root GET health check; `/me` uses its root for the authenticated profile.
 
-## Table of Contents
+## Enhance
 
-1. [API Overview](#api-overview)
-2. [Authentication](#authentication)
-3. [Main Enhancement Endpoint](#main-enhancement-endpoint)
-4. [User Profile Endpoint](#user-profile-endpoint)
-5. [Admin Endpoints](#admin-endpoints)
-6. [Request Specification](#request-specification)
-7. [Response Specification](#response-specification)
-8. [Error Codes Reference](#error-codes-reference)
-9. [Request Examples](#request-examples)
-10. [Response Examples](#response-examples)
-11. [Available Models](#available-models)
-12. [Available AI Roles](#available-ai-roles)
+`POST /enhance` requires `Authorization: Bearer <Supabase user JWT>` and a JSON
+body. This is a user session token, not a Supabase CLI access token.
 
----
-
-## API Overview
-
-The AI Text Enhancer Backend is a serverless API that processes batches of text enhancement requests. The API is designed for:
-
-- **Batch Processing:** Handle 1-10 enhancement tasks in a single request
-- **Parallel Execution:** All tasks processed concurrently for speed
-- **Flexible Enhancement:** Rich set of transformation options
-- **Multi-Model Support:** Configured demo models through OpenRouter
-- **Tier-Based Access:** Three-tier system (Free, Plus, Premium) with different limits
-- **Weekly Demo Allowance:** Anonymous users receive a weekly token allowance with usage accounting
-
-**Base URL:** `http://localhost:54321/functions/v1` (local) or your production URL
-
----
-
-## Authentication
-
-### Overview
-
-The API uses **Supabase Auth** for authentication with JWT tokens and database-backed user profiles. The public demo uses **anonymous sign-ins**. JWT validation and user profiles also support internal/admin flows.
-
-### Method
-
-All requests (except health checks) must include a Bearer token in the `Authorization` header:
-
-```http
-Authorization: Bearer <YOUR_JWT_TOKEN>
+```json
+{
+  "assistants": [{
+    "id": "1",
+    "model": "open-router-free",
+    "aiRoleId": "editor",
+    "userText": "This are a short message.",
+    "contextText": "",
+    "options": { "fixMistakes": true }
+  }]
+}
 ```
 
-### Getting a JWT Token
+`model` is a public catalog ID, not an arbitrary provider model ID. Roles are
+`editor` and `email_assistant`. Options are validated against the transformation
+configuration. Empty options preserve inherent role behavior. Requests reject
+unknown fields/values and conflicting shorten/lengthen options. IDs must be
+unique, nonblank strings. Limits are defined in configuration; do not copy numeric
+limits into client logic.
 
-#### Email/Password Login
-
-```bash
-curl -X POST 'http://localhost:54321/auth/v1/token?grant_type=password' \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "your-password"
-  }'
+```json
+{
+  "results": [{
+    "id": "1",
+    "status": "success",
+    "enhancedText": "This is a short message.",
+    "total_tokens": 42
+  }],
+  "selection": {
+    "status": "success",
+    "judge": "jev",
+    "model": "typesafe/jev-1.13",
+    "selectedResultId": "1",
+    "confidence": 0.9,
+    "scores": { "1": 0.89 }
+  }
+}
 ```
 
-Response includes `access_token` field with JWT token.
+The example is illustrative, not a promised score. Jev scores are normalized
+rubric levels; confidence is a separate judge value. A single valid output may be
+scored. Selection may instead be `skipped` or `unavailable`, with a reason. All
+successful results remain usable if judging fails.
 
-#### Anonymous Sign-In
+Per-assistant failures use `status: "error"` and an error code. Assistants beyond
+the user's tier batch limit receive errors while allowed positions still run.
+An individual timeout/provider/output failure does not erase other outputs.
+Usage is reported for successful generation; Jev usage is separate.
 
-Anonymous users can access the service without providing email or credentials:
+Request-level errors use `{ "error": { "code": "...", "message": "..." } }`:
+400 for malformed/invalid input, 401 for authentication, 403 for authorization,
+429 for quota, and 500 for unexpected failures. Provider detail exposure is an
+explicit backend flag. `/enhance` returns `X-Request-ID` for correlation.
 
-```bash
-curl -X POST 'http://localhost:54321/auth/v1/signup' \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
+## Profile
 
-**Anonymous User Features:**
-- Weekly anonymous allowance (currently 50,000 tokens; configurable in the database)
-- No email required - users identified by UUID only
-- Automatic profile creation with tier and quota
-- Rate limited: 30 anonymous sign-ins per hour per IP address
-- **Important:** Lost access if browser storage is cleared (no account recovery)
-- Account linking is NOT enabled - anonymous users cannot convert to permanent accounts
-
-### Token Validation
-
-- Token is validated using local JWT verification (jose library)
-- Token payload must contain `sub` claim (user ID)
-- User profile and quota are fetched from database
-- User must be active (`is_active = true`) to access services
-- Invalid token returns `401 Unauthorized`
-- Expired token returns `401 Unauthorized`
-- Blocked user returns `403 Forbidden`
-- Insufficient quota returns `429 Too Many Requests`
-
-### User Tiers
-
-| Tier | Token Quota | User Text Limit | Context Text Limit | Batch Size | Model Access |
-|------|-------------|-----------------|-------------------|------------|--------------|
-| **Free** | 50,000 tokens (weekly anonymous demo) | 1,000 chars | 2,500 chars | 6 | All configured models |
-| **Plus** | 500,000 tokens | 2,000 chars | 3,000 chars | 10 | All configured models |
-| **Premium** | 5,000,000 tokens | 5,000 chars | 10,000 chars | 10 | All configured models |
-
-**Note:** The deployed anonymous demo allowance resets weekly. Token purchases are a disabled prototype and are not available in the current deployment.
-
-### Authentication Flow
-
-```
-1. Client sends request with Bearer token
-2. AuthService validates JWT locally using jose library
-3. Extract userId from JWT payload (sub claim)
-4. Fetch user profile + quota from database (single JOIN query)
-5. Check user.isActive (throw UserBlockedError if false)
-6. Return UserProfile with tier, admin status, quota info
-```
-
----
-
-## Main Enhancement Endpoint
-
-### `POST /functions/v1/enhance`
-
-Process a batch of text enhancement tasks.
-
-**Method:** `POST`
-**Content-Type:** `application/json`
-**Authentication:** Required (Bearer token)
-
-**Rate Limits:**
-- Batch size: 1-10 assistants per request (tier-based: Free=6, Plus/Premium=10)
-- Request timeout: 30 seconds per LLM call
-- Token quota enforced per tier
-
-**Headers:**
-
-| Header | Type | Required | Description |
-|--------|------|----------|-------------|
-| `Authorization` | string | **Yes** | Bearer token for authentication |
-| `Content-Type` | string | **Yes** | Must be `application/json` |
-
----
-
-## User Profile Endpoint
-
-### `GET /functions/v1/me`
-
-Fetch current user's profile and quota information.
-
-**Method:** `GET`
-**Authentication:** Required (Bearer token)
-**No query parameters needed** - user is identified from JWT token
-
-**Purpose:** Provides UI with user data without complex REST API queries.
-
-**Use Cases:**
-- After signup/login - display tier and token balance
-- Page refresh - get updated token balance
-- Account settings page - show complete user info
-
-**Example Request:**
-
-```bash
-curl -X GET 'http://localhost:54321/functions/v1/me' \
-  -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
-```
-
-**Success Response (200 OK):**
+`GET /me` requires the same session JWT and returns:
 
 ```json
 {
   "profile": {
-    "id": "user-uuid-here",
-    "email": "user@example.com",
+    "id": "user-id",
+    "email": "anonymous@example.invalid",
     "tier": "free",
     "is_admin": false,
     "is_active": true,
-    "auth_provider": "email"
+    "auth_provider": "anonymous"
   },
-  "quota": {
-    "tokens_available": 50000,
-    "tokens_used": 0
-  }
+  "quota": { "tokens_available": 50000, "tokens_used": 0 }
 }
 ```
 
-**Error Responses:**
-
-| Status | Code | Description |
-|--------|------|-------------|
-| 401 | `AUTHENTICATION_FAILED` | Invalid or expired token |
-| 401 | `AUTHENTICATION_FAILED` | User account is blocked |
-
----
-
-## Admin Endpoints
-
-All admin endpoints require:
-1. Valid JWT token
-2. User with `is_admin = true` in database
-
-**Base Path:** `/functions/v1/admin`
-
-### Bootstrap Test Users
-
-#### `POST /admin/bootstrap`
-
-Create 6 predefined test users (idempotent operation).
-
-**Authentication:** Requires `BOOTSTRAP_SECRET_KEY` in Authorization header (not JWT)
-
-**Request:**
-
-```bash
-curl -X POST http://localhost:54321/functions/v1/admin/bootstrap \
-  -H "Authorization: your-bootstrap-secret"
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "usersCreated": 6,
-  "usersSkipped": 0,
-  "users": [
-    "admin@textenhancer.dev",
-    "free@textenhancer.dev",
-    "plus@textenhancer.dev",
-    "premium@textenhancer.dev",
-    "zero@textenhancer.dev",
-    "blocked@textenhancer.dev"
-  ]
-}
-```
-
-**Predefined Users:**
-
-| Email | Password | Tier | Admin | Tokens | Status | Purpose |
-|-------|----------|------|-------|--------|--------|---------|
-| admin@textenhancer.dev | Admin_2025_Secure! | premium | Yes | 10,000,000 | Active | Admin operations |
-| free@textenhancer.dev | Free_User_2025 | free | No | 50,000 | Active | Free tier limits |
-| plus@textenhancer.dev | Plus_User_2025 | plus | No | 500,000 | Active | Plus tier limits |
-| premium@textenhancer.dev | Premium_User_2025 | premium | No | 5,000,000 | Active | Premium tier limits |
-| zero@textenhancer.dev | Zero_Tokens_2025 | free | No | 0 | Active | Quota errors |
-| blocked@textenhancer.dev | Blocked_User_2025 | free | No | 10,000 | Blocked | Access denial |
-
----
-
-### List Users
-
-#### `GET /admin/users`
-
-Get paginated list of all users.
-
-**Query Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | number | 1 | Page number (1-indexed) |
-| `limit` | number | 20 | Items per page (max: 100) |
-
-**Example:**
-
-```bash
-curl http://localhost:54321/functions/v1/admin/users?page=1&limit=20 \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>"
-```
-
-**Response:**
-
-```json
-{
-  "users": [
-    {
-      "userId": "uuid",
-      "email": "user@example.com",
-      "tier": "free",
-      "isAdmin": false,
-      "isActive": true,
-      "tokensAvailable": 50000,
-      "tokensUsed": 0,
-      "authProvider": "email"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 6
-  }
-}
-```
-
----
-
-### Get User Details
-
-#### `GET /admin/users/:userId`
-
-Get complete user details including quota and purchase history.
-
-**Example:**
-
-```bash
-curl http://localhost:54321/functions/v1/admin/users/<USER_ID> \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>"
-```
-
-**Response:**
-
-```json
-{
-  "profile": {
-    "userId": "uuid",
-    "email": "user@example.com",
-    "tier": "free",
-    "isAdmin": false,
-    "isActive": true,
-    "tokensAvailable": 50000,
-    "tokensUsed": 1500,
-    "authProvider": "email"
-  },
-  "recentPurchases": [
-    {
-      "id": "uuid",
-      "userId": "uuid",
-      "tokens": 50000,
-      "purchaseType": "welcome_bonus",
-      "createdAt": "2025-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
----
-
-### Adjust Tokens
-
-#### `POST /admin/users/:userId/tokens`
-
-Add or subtract tokens from user account.
-
-**Request Body:**
-
-```json
-{
-  "tokens": 100000,
-  "description": "Bonus tokens for testing"
-}
-```
-
-**Fields:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tokens` | number | Yes | Number of tokens to add (positive) or subtract (negative) |
-| `description` | string | No | Optional description of the adjustment |
-
-**Example (Add Tokens):**
-
-```bash
-curl -X POST http://localhost:54321/functions/v1/admin/users/<USER_ID>/tokens \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tokens": 100000,
-    "description": "Bonus tokens"
-  }'
-```
-
-**Example (Subtract Tokens):**
-
-```bash
-curl -X POST http://localhost:54321/functions/v1/admin/users/<USER_ID>/tokens \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tokens": -50000
-  }'
-```
-
----
-
-### Change User Tier
-
-#### `PUT /admin/users/:userId/tier`
-
-Change user's subscription tier.
-
-**Request Body:**
-
-```json
-{
-  "tier": "premium"
-}
-```
-
-**Valid Tiers:** `free`, `plus`, `premium`
-
-**Example:**
-
-```bash
-curl -X PUT http://localhost:54321/functions/v1/admin/users/<USER_ID>/tier \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tier": "premium"
-  }'
-```
-
----
-
-### Block/Unblock User
-
-#### `PUT /admin/users/:userId/status`
-
-Block or unblock a user account.
-
-**Request Body:**
-
-```json
-{
-  "isActive": false
-}
-```
-
-**Example (Block User):**
-
-```bash
-curl -X PUT http://localhost:54321/functions/v1/admin/users/<USER_ID>/status \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "isActive": false
-  }'
-```
-
-**Example (Unblock User):**
-
-```bash
-curl -X PUT http://localhost:54321/functions/v1/admin/users/<USER_ID>/status \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "isActive": true
-  }'
-```
-
----
-
-## Request Specification
-
-### Request Body Schema
-
-```typescript
-interface BatchRequest {
-  assistants: AssistantConfiguration[];  // 1-10 items (tier-based max)
-}
-```
-
-### AssistantConfiguration
-
-```typescript
-interface AssistantConfiguration {
-  id: string;                   // Unique client-side identifier
-  model: string;                // Model identifier (e.g., 'qwen-qwen3-30b-a3b-instruct-2507')
-  aiRoleId: string;             // editor | email_assistant
-  userText: string;             // Text to enhance (tier-based max length)
-  contextText?: string;         // Optional context (tier-based max length)
-  options: TransformationOptions;
-}
-```
-
-**Field Descriptions:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | **Yes** | Unique identifier for this task in the batch. Used to match results. |
-| `model` | string | **Yes** | Model identifier from available models list. Must be accessible to user's tier. |
-| `aiRoleId` | string | **Yes** | AI role identifier from available roles list. |
-| `userText` | string | **Yes** | Nonblank text. Length limits by tier: Free=500, Plus=2000, Premium=5000 chars. |
-| `contextText` | string | No | Reference-only context. Length limits by tier: Free=800, Plus=3000, Premium=10000 chars. |
-| `options` | object | **Yes** | Transformation options (see below). |
-
----
-
-### TransformationOptions
-
-```typescript
-interface TransformationOptions {
-  // Core Transformations
-  improve?: boolean;            // Improve clarity, flow, vocabulary
-  fixMistakes?: boolean;        // Fix grammar, spelling, punctuation
-  format?: boolean;             // Apply formatting (lists, paragraphs)
-
-  // Length Adjustments (mutually exclusive)
-  shorten?: boolean;            // Make more concise
-  lengthen?: boolean;           // Add detail and depth
-
-  // Style Controls
-  formality?: 'Casual' | 'Neutral' | 'Formal';
-  tone?: 'Confident' | 'Empathetic' | 'Cheerful' | 'Witty' | 'Direct' | 'Engaging' | 'Polite' | 'Sincere' | 'Disappointed' | 'Apologetic' | 'Pessimistic' | 'Worried';
-  languageLevel?: 'default' | 'simple' | 'intermediate' | 'advanced' | 'fluent' | 'native';
-
-  // Special Transformations
-  translateTo?: 'ar' | 'zh' | 'en' | 'fr' | 'de' | 'hi' | 'it' | 'ja' | 'ko' | 'pt' | 'ru' | 'es' | 'uk' | 'vi';
-  addEmojis?: boolean;          // Add relevant emojis
-}
-```
-
-**Validation Rules:**
-- Empty options are valid and perform the role's primary task without extra transformations
-- `shorten` and `lengthen` cannot both be `true`
-- IDs and user text must be nonblank; assistant IDs must be unique
-- Unknown fields, models, roles, option types, and enum values are rejected
-- Model/role compatibility and tier text/context limits are checked before provider calls
-
----
-
-## Response Specification
-
-### Success Response (200 OK)
-
-**Important:** The API returns HTTP 200 even when individual tasks fail. Always check the `status` field of each result.
-
-```typescript
-interface BatchResponse {
-  results: BatchResult[];
-  selection?: BatchSelection;
-}
-
-type BatchResult = SuccessResult | ErrorResult;
-```
-
-### Jev evaluation and selection
-
-Jev receives every nonempty successful output, including a single result, in one
-Decisions API request. It scores each output independently against its own source,
-context, role, and enabled options using the same ten-level rubric. The rubric
-assigns the lowest level to answering or obeying an embedded request rather than
-transforming it. An em dash when Avoid AI symbols is enabled is scored at level 1
-or below by prompt instruction. No runtime code checks or rewrites punctuation.
-
-The API's weighted `score` ranges from 0 to 9. The displayed percentage is
-`score / 9 * 100`, a rubric score rather than a relative choice probability. The
-highest-scoring result is highlighted; ties keep the original order. Even a poor
-sole result retains its low score and remains visible. `confidence` is Jev's
-confidence in the selected score, not the displayed percentage.
-
-```typescript
-type BatchSelection =
-  | {
-      status: 'success';
-      judge: 'jev';
-      model: string;
-      selectedResultId: string;
-      confidence: number;
-      scores: Record<string, number>; // Normalized 0..1 rubric scores
-    }
-  | { status: 'skipped'; reason: 'NOT_ENOUGH_VALID_RESULTS' } // No generated results
-  | { status: 'unavailable'; reason: 'JUDGE_FAILED' };
-```
-
-Missing/malformed Jev scores and timeouts produce `unavailable`, with no invented
-score. Evaluation uses one call with `JEV_TIMEOUT_MS`. Clients must handle an absent
-selection or scores from an older backend during rollout.
-
-### SuccessResult
-
-```typescript
-interface SuccessResult {
-  id: string;              // Matches request assistant.id
-  status: 'success';
-  enhancedText: string;    // AI-generated enhanced text
-  total_tokens: number;    // Tokens consumed for quota accounting
-}
-```
-
-### ErrorResult
-
-```typescript
-interface ErrorResult {
-  id: string;              // Matches request assistant.id
-  status: 'error';
-  error: ErrorDetails;
-}
-
-interface ErrorDetails {
-  code: string;            // Machine-readable error code
-  message: string;         // Human-readable error message
-}
-```
-
----
-
-## Error Codes Reference
-
-### Top-Level Request Errors (4xx/5xx HTTP Status)
-
-These errors prevent the entire request from being processed.
-
-| Code | HTTP | Description |
-|------|------|-------------|
-| `INVALID_REQUEST` | 400 | Invalid shape, ID/text, model/role, option, conflict, or tier text/context length |
-| `INVALID_TOKEN` | 401 | Bearer token is missing, malformed, or invalid |
-| `EXPIRED_TOKEN` | 401 | Bearer token has expired |
-| `AUTHENTICATION_FAILED` | 401 | Authentication service unavailable or error |
-| `USER_BLOCKED` | 403 | User account is blocked (is_active = false) |
-| `ADMIN_REQUIRED` | 403 | Admin access required for this endpoint |
-| `INSUFFICIENT_QUOTA` | 429 | Not enough remaining tokens for this request |
-| `INTERNAL_ERROR` | 500 | Unexpected system error |
-| `SERVICE_UNAVAILABLE` | 503 | System or external service temporarily unavailable |
-
----
-
-### Per-Task Errors (HTTP 200, error in results array)
-
-These errors affect individual tasks within a batch. Other tasks may succeed.
-
-| Code | Description |
-|------|-------------|
-| `TIER_BATCH_SIZE_EXCEEDED` | Assistant position is beyond the tier batch limit |
-| `TASK_TIMEOUT` | Connector aborted the provider request at the configured timeout |
-| `LLM_ERROR` | Provider failure or malformed structured output |
-
----
-
-## Request Examples
-
-### Example 1: Basic Grammar Correction
-
-```json
-{
-  "assistants": [
-    {
-      "id": "task-001",
-      "model": "qwen-qwen3-30b-a3b-instruct-2507",
-      "aiRoleId": "editor",
-      "userText": "this sentance has a typo and is unprofessional.",
-      "options": {
-        "improve": true,
-        "fixMistakes": true,
-        "formality": "Formal"
-      }
-    }
-  ]
-}
-```
-
-### Example 2: Batch with Multiple Tasks
-
-```json
-{
-  "assistants": [
-    {
-      "id": "edit-01",
-      "model": "qwen-qwen3-30b-a3b-instruct-2507",
-      "aiRoleId": "editor",
-      "userText": "Quick summary of the meeting",
-      "options": {
-        "improve": true,
-        "formality": "Formal"
-      }
-    },
-    {
-      "id": "translate-01",
-      "model": "qwen-qwen3-30b-a3b-instruct-2507",
-      "aiRoleId": "editor",
-      "userText": "Welcome to our platform",
-      "options": {
-        "translateTo": "es"
-      }
-    }
-  ]
-}
-```
-
----
-
-## Response Examples
-
-### Example 1: Full Success
-
-```json
-{
-  "results": [
-    {
-      "id": "task-001",
-      "status": "success",
-      "enhancedText": "This sentence is grammatically correct and maintains a professional tone.",
-      "total_tokens": 52
-    }
-  ]
-}
-```
-
-### Example 2: Partial Success
-
-```json
-{
-  "results": [
-    {
-      "id": "edit-01",
-      "status": "success",
-      "enhancedText": "This is a comprehensive summary of the meeting discussions.",
-      "total_tokens": 45
-    },
-    {
-      "id": "translate-01",
-      "status": "error",
-      "error": {
-        "code": "LLM_TIMEOUT",
-        "message": "The LLM provider did not respond within the 30-second timeout period."
-      }
-    }
-  ]
-}
-```
-
----
-
-## Available Models
-
-| Model ID | Display Name | Provider | Access Tiers | Context Window |
-|----------|--------------|----------|--------------|----------------|
-| `openai-gpt-5-nano` | GPT-5 Nano | OpenRouter | Free, Plus, Premium | 400,000 |
-| `open-router-free` | OpenRouter Free | OpenRouter | Free, Plus, Premium | 200,000 |
-| `qwen-qwen3-30b-a3b-instruct-2507` | Qwen3 30B A3B Instruct 2507 | OpenRouter | Free, Plus, Premium | 262,144 |
-
-**Note:** Models are configured in `src/config/models.config.ts`. The LM Studio connector remains available for direct local connector tests but is not an API model.
-
----
-
-## Available AI Roles
-
-| Role ID | Name | Description | Allowed Models |
-|---------|------|-------------|----------------|
-| `editor` | Editor | Edits clarity, correctness, readability, and flow | All production models |
-| `email_assistant` | Email Assistant | Writes complete, ready-to-send emails | All production models |
-
-**Note:** Roles are configured in `src/config/roles.config.ts`.
-
----
-
-## Quick Reference
-
-### HTTP Status Codes Summary
-
-| Status | Meaning |
-|--------|---------|
-| 200 | Success (check individual task `status`) |
-| 400 | Bad request (validation failed) |
-| 401 | Authentication failed |
-| 403 | Authorization denied |
-| 429 | Insufficient quota |
-| 500 | Internal server error |
-| 503 | Service unavailable |
-
-### Tier Limits Summary
-
-| Tier | Tokens | User Text | Context Text | Batch Size |
-|------|--------|-----------|--------------|------------|
-| Free | 50,000 | 500 chars | 800 chars | 5 |
-| Plus | 500,000 | 2,000 chars | 3,000 chars | 10 |
-| Premium | 5,000,000 | 10,000 chars | 15,000 chars | 10 |
-
----
-
-**Related Documentation:**
-- [Architecture Guide](./architecture.md) - System design and two-layer architecture
-- [Developer Guides](./developer-guides.md) - Implementation patterns and how-to guides
-- [Configuration](./configuration.md) - Environment variables and settings
-- [Testing Guide](./testing.md) - Complete testing scenarios
+Blocked users receive 403. Missing/invalid sessions receive 401. Unsupported
+methods receive 405 and unknown paths receive 404. Unexpected internal diagnostics
+are not returned to the client. The browser obtains anonymous sessions through
+Supabase Auth; this API does not implement signup/login.
+
+## Administration
+
+Released admin routes require an active admin user's JWT, except explicit
+bootstrap. Privileges come from server-managed profiles, not user-editable
+metadata.
+
+| Route | Body/query | Purpose |
+| --- | --- | --- |
+| `GET /admin/users` | `limit`, `offset` | List users |
+| `GET /admin/users/:id` | None | Profile, quota and recent ledger entries |
+| `POST /admin/users/:id/tokens` | Integer `tokens`, optional string `description` | Adjust token balance |
+| `PUT /admin/users/:id/tier` | `tier`: free/plus/premium | Change tier |
+| `PUT /admin/users/:id/status` | Boolean `isActive` | Block/unblock |
+| `POST /admin/bootstrap` | No client-supplied users | Create explicitly server-configured initial accounts |
+
+Bootstrap accepts its configured secret directly in `Authorization`, not a Bearer
+JWT. It returns 503 when unconfigured and 401 for a missing/wrong secret. Users and
+passwords are loaded from server configuration. Existing accounts are skipped;
+this is not password rotation. See [configuration](configuration.md).
+
+There are no released `/create-checkout` or `/stripe-webhook` endpoints. Their
+source is retained outside the deployed function directory as [planned work](payments.md).

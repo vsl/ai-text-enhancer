@@ -36,10 +36,9 @@ or service-role key.
 1. Push a UI change and confirm the `UI` GitHub Actions workflow succeeds.
 2. Confirm the production deployment succeeds.
 3. Open the generated `*.pages.dev` URL.
-4. Verify sign-in, profile loading, text enhancement, and checkout navigation.
+4. Verify anonymous session creation, allowance loading, text enhancement, and saved workflows.
 5. Verify a pull request receives a working preview deployment.
 6. Push a backend-only change and confirm Cloudflare skips the UI build.
-7. Disable the old GitHub Pages project after the new deployment is accepted.
 
 See the root [setup guide](../../docs/getting-started.md) for Supabase Auth
 redirect URLs and the full environment checklist.

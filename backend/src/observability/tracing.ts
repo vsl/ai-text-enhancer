@@ -1,29 +1,29 @@
+import { loadTracingConfig, traceSecrets } from '../config/observability.config.ts';
 import { Client } from 'npm:langsmith@0.10.5';
 import { getCurrentRunTree, traceable } from 'npm:langsmith@0.10.5/traceable';
 
 type TraceRunType = 'chain' | 'llm' | 'parser';
 type TraceValue = Record<string, unknown>;
 
-const DEFAULT_ENDPOINT = 'https://api.smith.langchain.com';
 const SAFE_KEY = /^(requestId|environment|release|deploymentId|userTier|assistantId|role|model|requestedModel|requestedPublicModel|providerModel|resolvedModel|resolvedProvider|provider|promptRevision|promptFingerprint|elapsedMs|latencyMs|inputTokens|outputTokens|totalTokens|reasoningTokens|cachedTokens|tokensUsed|finishReason|nativeFinishReason|failureCode|httpStatus|candidateCount|candidateIds|selectedResultId|scores|confidence|improve|fixMistakes|format|shorten|lengthen|addEmojis|avoidCommonAiSymbols|formality|tone|languageLevel|translateTo|judge|generationId|status|method|cost|isByok)$/;
 const SECRET_KEY = /(^key$|authorization|cookie|set-cookie|api[-_]?key|service[-_]?role[-_]?key|password|secret)/i;
 
 let client: Client | null | undefined;
 
 export function isContentCaptureEnabled(): boolean {
-  return process.env.LANGSMITH_CAPTURE_CONTENT === 'true';
+  return loadTracingConfig().captureContent;
 }
 
 export function isTracingEnabled(): boolean {
-  return process.env.LANGSMITH_TRACING === 'true' && Boolean(process.env.LANGSMITH_API_KEY);
+  return loadTracingConfig().enabled;
 }
 
 function getClient(): Client | null {
   if (client !== undefined) return client;
   client = isTracingEnabled()
     ? new Client({
-        apiKey: process.env.LANGSMITH_API_KEY,
-        apiUrl: process.env.LANGSMITH_ENDPOINT || DEFAULT_ENDPOINT,
+        apiKey: loadTracingConfig().apiKey,
+        apiUrl: loadTracingConfig().endpoint,
       })
     : null;
   return client;
@@ -31,9 +31,9 @@ function getClient(): Client | null {
 
 export function deploymentMetadata(): TraceValue {
   return {
-    environment: process.env.APP_ENV || 'local',
-    release: process.env.APP_RELEASE || 'local',
-    deploymentId: process.env.DENO_DEPLOYMENT_ID || 'local',
+    environment: loadTracingConfig().environment,
+    release: loadTracingConfig().release,
+    deploymentId: loadTracingConfig().deploymentId,
   };
 }
 
@@ -64,8 +64,7 @@ export function sanitizeTraceValue(value: unknown, captureContent = isContentCap
 }
 
 function redactSecretStrings(value: string): string {
-  return [process.env.OPENROUTER_API_KEY, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, process.env.LANGSMITH_API_KEY]
-    .filter((secret): secret is string => Boolean(secret && secret.length >= 8))
+  return traceSecrets()
     .reduce((redacted, secret) => redacted.replaceAll(secret, '[REDACTED]'), value);
 }
 
@@ -110,7 +109,7 @@ export async function traceRun<TInput extends TraceValue, TOutput>(options: {
       name: options.name,
       run_type: options.runType,
       client: tracingClient,
-      project_name: process.env.LANGSMITH_PROJECT,
+      project_name: loadTracingConfig().project,
       metadata: sanitizeTraceValue({ ...deploymentMetadata(), ...options.metadata }, captureContent) as TraceValue,
       processInputs: inputs => sanitizeTraceValue(inputs, captureContent) as TraceValue,
       processOutputs: outputs => sanitizeTraceValue(outputs, captureContent) as TraceValue,

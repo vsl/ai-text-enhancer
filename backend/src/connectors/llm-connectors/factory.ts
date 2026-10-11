@@ -1,3 +1,4 @@
+import { PROVIDER_CONFIG } from '../../config/providers.config.ts';
 /**
  * LLM Connector Factory
  * 
@@ -30,7 +31,7 @@ export class LLMConnectorFactory {
         return new OpenRouterConnector(providerConfig.apiKey);
       
       case 'lmstudio':
-        return new LMStudioConnector(providerConfig.baseUrl || 'http://localhost:1234');
+        return new LMStudioConnector(providerConfig.baseUrl ?? PROVIDER_CONFIG.lmstudio.baseUrl);
       
       default:
         throw new Error(`Unknown provider: ${providerConfig.name}`);

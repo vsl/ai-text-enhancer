@@ -1,15 +1,9 @@
-// ============================================
-// PLATFORM-SPECIFIC CODE (Deno/Supabase)
-// This is the ONLY file that should use Deno APIs
-// Target: 50-100 lines
-// ============================================
-
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { handleRequest } from './handler.ts';
 import { loadConfig, validateConfig } from '../../../src/config/index.ts';
-import { initializeSupabase } from '../../../src/config/supabase.config.ts';
+import { initializeSupabase } from '../../../src/connectors/supabase-client.ts';
 import { BatchOrchestrator } from '../../../src/services/batch-orchestrator.ts';
 import { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
 import { QuotaService } from '../../../src/services/quota-service.ts';

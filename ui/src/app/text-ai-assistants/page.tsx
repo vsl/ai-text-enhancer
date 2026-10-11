@@ -9,8 +9,11 @@ import { ConfigEditorModal } from '@/components/features/ConfigEditorModal';
 import { CharacterCounter } from '@/components/features/CharacterCounter';
 import { AssistantCard } from '@/components/features/AssistantCard';
 import { AiConfig } from '@/lib/types';
+import { createDefaultAssistant } from '@/lib/workflow-config';
+import { INTERACTION_TIMING } from '@/config/interaction.config';
 import { orderConfigsForDisplay } from '@/lib/result-order';
-import { TOOLTIP_TEXTS, DEFAULT_OPTIONS, DEFAULT_WORKFLOW_NAMES, AVAILABLE_MODELS } from '@/lib/constants';
+import { DEFAULT_WORKFLOW_NAMES } from '@/config/workflows.config';
+import { TOOLTIP_TEXTS } from '@/config/messages.config';
 import { useAuth } from '@/context/AuthContext';
 import { Plus, Sparkles } from 'lucide-react';
 
@@ -75,13 +78,7 @@ function TextAIAssistantsContent() {
       return; // Button should be disabled, but extra safety check
     }
 
-    const newConfiguration: AiConfig = {
-      id: Date.now(),
-      model: AVAILABLE_MODELS[0],
-      aiRoleId: 'editor',
-      options: { ...DEFAULT_OPTIONS },
-      enabled: true,
-    };
+    const newConfiguration = createDefaultAssistant(Date.now());
     setEditorMode('add');
     setConfigToEdit(newConfiguration);
     setIsEditorModalOpen(true);
@@ -117,7 +114,7 @@ function TextAIAssistantsContent() {
     navigator.clipboard.writeText(text)
       .then(() => {
         setCopiedId(configId);
-        setTimeout(() => setCopiedId(null), 2000);
+        setTimeout(() => setCopiedId(null), INTERACTION_TIMING.copyFeedbackMs);
       })
       .catch((err) => console.error('Failed to copy: ', err));
   };
@@ -129,7 +126,7 @@ function TextAIAssistantsContent() {
     setIsInputHighlighted(true);
     setTimeout(() => {
       setIsInputHighlighted(false);
-    }, 1500);
+    }, INTERACTION_TIMING.inputHighlightMs);
   };
 
   // Keyboard shortcuts

@@ -1,6 +1,6 @@
 import { PROMPT_EVALUATION_CASES } from './cases.ts';
 import { BOOLEAN_TRANSFORMATION_KEYS, FORMALITY_VALUES, TONE_VALUES, LANGUAGE_LEVEL_VALUES, LANGUAGE_VALUES } from '../src/config/transformation-options.config.ts';
-import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
+import type { PromptEvaluationCase } from './lib/prompt-evaluator.ts';
 
 const source = 'Hi Morgan, the shipment for order 887 is delayed until Friday. The refund is $20. Approval is still uncertain. Please confirm whether the revised date works. Thanks, Alex.';
 const roles = ['editor', 'email_assistant'];

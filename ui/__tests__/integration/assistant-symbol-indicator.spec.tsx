@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { AssistantCard } from '@/components/features/AssistantCard';
 import { ConfigEditorModal } from '@/components/features/ConfigEditorModal';
-import { DEFAULT_OPTIONS, TIER_LIMITS } from '@/lib/constants';
+import { TIER_LIMITS } from '@/config/catalog.config';
+import { DEFAULT_OPTIONS } from '@/config/workflows.config';
 import type { AiConfig, Result } from '@/lib/types';
 
 jest.mock('../../src/context/AuthContext', () => ({

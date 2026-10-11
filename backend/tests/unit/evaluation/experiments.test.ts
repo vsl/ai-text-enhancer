@@ -1,6 +1,6 @@
-import { createExperimentReport, runExperiment, validateExperiment, resolvedSettings, prepareExperiment, plannedCalls, PRODUCTION_PROMPT, type AttemptRecord, type ExperimentDefinition, type ExperimentReport } from '../../../src/evaluation/experiments.ts';
-import { buildJudgeRequest, parseJudgeResponse, evaluateWithJev } from '../../../src/evaluation/jev-evaluator.ts';
-import { createReview, evaluateGates, tokenBuckets } from '../../../src/evaluation/experiment-review.ts';
+import { createExperimentReport, runExperiment, validateExperiment, resolvedSettings, prepareExperiment, plannedCalls, PRODUCTION_PROMPT, type AttemptRecord, type ExperimentDefinition, type ExperimentReport } from '../../../evaluations/lib/experiments.ts';
+import { buildJudgeRequest, parseJudgeResponse, evaluateWithJev } from '../../../evaluations/lib/jev-evaluator.ts';
+import { createReview, evaluateGates, tokenBuckets } from '../../../evaluations/lib/experiment-review.ts';
 import { PromptBuilder } from '../../../src/services/prompt-builder.ts';
 import { generationSettings } from '../../../src/services/generation-settings.ts';
 import { MODELS } from '../../../src/config/models.config.ts';
@@ -8,7 +8,7 @@ import { DEVELOPMENT_CASES } from '../../../evaluations/development-cases.ts';
 import { CALIBRATION_CONTROLS } from '../../../evaluations/calibration-cases.ts';
 import lunaVsHaiku from '../../../evaluations/experiments/luna-vs-haiku.ts';
 import { BOOLEAN_TRANSFORMATION_KEYS, FORMALITY_VALUES, LANGUAGE_LEVEL_VALUES, LANGUAGE_VALUES, TONE_VALUES } from '../../../src/config/transformation-options.config.ts';
-import type { PromptEvaluationCase } from '../../../src/evaluation/prompt-evaluator.ts';
+import type { PromptEvaluationCase } from '../../../evaluations/lib/prompt-evaluator.ts';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 

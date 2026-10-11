@@ -1,5 +1,5 @@
 import { orderConfigsForDisplay } from '@/lib/result-order';
-import { DEFAULT_WORKFLOWS } from '@/lib/constants';
+import { DEFAULT_WORKFLOWS } from '@/config/workflows.config';
 import type { AiConfig, Result } from '@/lib/types';
 import type { BatchSelection } from '../../../backend/src/types/api.types';
 

@@ -8,7 +8,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  */
 export function useLocalStorage<T>(
   key: string,
-  initialValue: T
+  initialValue: T,
+  parse?: (value: unknown) => T,
 ): [T, (value: T | ((val: T) => T)) => void] {
   // Match the static server render, then restore browser data after hydration.
   const [storedValue, setStoredValue] = useState<T>(initialValue);
@@ -17,13 +18,14 @@ export function useLocalStorage<T>(
     try {
       const item = window.localStorage.getItem(key);
       if (item) {
-        valueRef.current = JSON.parse(item);
+        const value: unknown = JSON.parse(item);
+        valueRef.current = parse ? parse(value) : value as T;
         setStoredValue(valueRef.current);
       }
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
     }
-  }, [key]);
+  }, [key, parse]);
 
   // Return a wrapped version of useState's setter function that
   // persists the new value to localStorage.
@@ -63,7 +65,8 @@ export function useLocalStorage<T>(
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === key && e.newValue !== null) {
         try {
-          valueRef.current = JSON.parse(e.newValue);
+          const value: unknown = JSON.parse(e.newValue);
+          valueRef.current = parse ? parse(value) : value as T;
           setStoredValue(valueRef.current);
         } catch (error) {
           console.error(`Error parsing storage event for key "${key}":`, error);
@@ -73,7 +76,7 @@ export function useLocalStorage<T>(
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key]);
+  }, [key, parse]);
 
   return [storedValue, setValue];
 }

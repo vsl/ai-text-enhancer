@@ -1,4 +1,4 @@
-import type { ExperimentDefinition } from '../../src/evaluation/experiments.ts';
+import type { ExperimentDefinition } from '../lib/experiments.ts';
 
 // Full English-focused acceptance suite. Keep both models on identical
 // production prompts and each model's own settings; one repetition limits cost.

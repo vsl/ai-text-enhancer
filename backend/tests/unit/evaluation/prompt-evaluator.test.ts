@@ -4,7 +4,7 @@ import {
   runDeterministicChecks,
   evaluationPassed,
   type PromptEvaluationCase,
-} from '../../../src/evaluation/prompt-evaluator.ts';
+} from '../../../evaluations/lib/prompt-evaluator.ts';
 import type { LLMConnector } from '../../../src/types/llm.types.ts';
 import { ROLES } from '../../../src/config/roles.config.ts';
 import { PROMPT_EVALUATION_CASES } from '../../../evaluations/cases.ts';

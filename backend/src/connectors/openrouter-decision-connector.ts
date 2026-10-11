@@ -1,4 +1,5 @@
-const DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisions';
+import { RUNTIME_DEFAULTS } from '../config/runtime.config.ts';
+import { PROVIDER_CONFIG } from '../config/providers.config.ts';
 
 export interface DecisionRequest {
   model: string;
@@ -16,7 +17,7 @@ export interface DecisionConnector {
 export class OpenRouterDecisionConnector implements DecisionConnector {
   constructor(
     private readonly apiKey: string,
-    private readonly timeoutMs: number = 5000,
+    private readonly timeoutMs: number = RUNTIME_DEFAULTS.jev.timeoutMs,
     private readonly fetchFn: typeof fetch = fetch,
   ) {}
 
@@ -27,13 +28,13 @@ export class OpenRouterDecisionConnector implements DecisionConnector {
     try {
       let response: Response;
       try {
-        response = await this.fetchFn(DECISIONS_URL, {
+        response = await this.fetchFn(PROVIDER_CONFIG.openrouter.decisionsUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`,
-            'HTTP-Referer': 'https://github.com/vsl/ai-text-enhancer',
-            'X-Title': 'AI Text Enhancer',
+            'HTTP-Referer': PROVIDER_CONFIG.openrouter.referer,
+            'X-Title': PROVIDER_CONFIG.openrouter.title,
           },
           body: JSON.stringify(request),
           signal: controller.signal,

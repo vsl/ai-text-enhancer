@@ -1,3 +1,4 @@
+import { EVALUATION_DEFAULTS } from '../evaluations/config.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { GeminiConnector } from '../src/connectors/llm-connectors/gemini-connector.ts';
@@ -8,7 +9,7 @@ import {
   evaluationPassed,
   type EvaluationCandidate,
   type EvaluationProvider,
-} from '../src/evaluation/prompt-evaluator.ts';
+} from '../evaluations/lib/prompt-evaluator.ts';
 import type { LLMConnector } from '../src/types/llm.types.ts';
 import { PROMPT_EVALUATION_CASES } from '../evaluations/cases.ts';
 import { OpenRouterDecisionConnector } from '../src/connectors/openrouter-decision-connector.ts';
@@ -52,7 +53,7 @@ if (process.argv.includes('--help')) {
 }
 
 const candidates = parseCandidates(process.argv.slice(2));
-const repetitions = Number(process.argv.find(arg => arg.startsWith('--repeat='))?.slice(9) ?? '1');
+const repetitions = Number(process.argv.find(arg => arg.startsWith('--repeat='))?.slice(9) ?? EVALUATION_DEFAULTS.smokeRepetitions);
 const caseFilter = process.argv.find(arg => arg.startsWith('--case='))?.slice(7) ?? '';
 const cases = PROMPT_EVALUATION_CASES.filter(item => item.id.includes(caseFilter));
 if (cases.length === 0) throw new Error('No evaluation cases match --case');

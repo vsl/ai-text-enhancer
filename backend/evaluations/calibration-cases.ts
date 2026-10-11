@@ -1,4 +1,4 @@
-import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
+import type { PromptEvaluationCase } from './lib/prompt-evaluator.ts';
 
 // These are proposed controls, NOT human labels. Reviewers fill humanLabels in
 // the exported review set and score the linked traces in Langfuse.

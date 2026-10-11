@@ -4,8 +4,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { TierLimits, UserProfile } from '@/lib/types';
-import { TIER_LIMITS } from '@/lib/constants';
-import { API_BASE_URL } from '@/lib/runtime-config';
+import { TIER_LIMITS } from '@/config/catalog.config';
+import { INTERACTION_TIMING } from '@/config/interaction.config';
+import { API_BASE_URL } from '@/config/runtime.config';
 
 interface AuthContextType {
   profile: UserProfile | null;
@@ -124,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session?.expires_at) return;
 
-    const refreshTime = Math.max(session.expires_at * 1000 - Date.now() - 5 * 60 * 1000, 0);
+    const refreshTime = Math.max(session.expires_at * 1000 - Date.now() - INTERACTION_TIMING.sessionRefreshLeadMs, 0);
     const refreshTimer = setTimeout(async () => {
       const { error } = await supabase.auth.refreshSession();
       if (error) console.error('Session refresh failed:', error);

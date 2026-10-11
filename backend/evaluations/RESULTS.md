@@ -1,4 +1,8 @@
-# Injection and symbol evaluation, 26 September 2026
+# Evaluation observation: injection and symbols, 26 September 2026
+
+This is a dated research observation, not acceptance evidence for the current
+release. It includes roles and prompt revisions that are no longer configured.
+Current reproducible suites and verification are documented separately.
 
 The screenshot showed a comparison probability, not a quality grade: Jev's old
 `choice` call could give an answer to the source request a nonzero share of the
@@ -46,9 +50,5 @@ The current raw reports are:
 - `evaluation-results/2026-09-26T16-58-21.091Z.json` (focused context case)
 - `evaluation-results/2026-09-26T16-58-45.216Z.json` (focused editor cases)
 
-See [testing instructions](../docs/testing.md#promptmodel-evaluations) for
-reproduction. Offline checks: 698 backend tests passed (26 existing integration
-tests skipped), 233 UI tests passed, the focused Jev UI browser test passed,
-backend type and portability checks passed, evaluation scripts type-checked,
-and the UI static build passed with placeholder public configuration. No new
-dependencies or provider credentials were added.
+See [the current evaluation guide](../docs/evaluations.md) for reproduction and
+[the release review](../../docs/release-review.md) for current offline verification.

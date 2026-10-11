@@ -1,8 +1,9 @@
+import { EVALUATION_DEFAULTS } from '../../evaluations/config.ts';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fingerprintPrompt } from '../../src/services/prompt-builder.ts';
-import type { ExperimentDefinition } from '../../src/evaluation/experiments.ts';
-import type { PromptEvaluationCase } from '../../src/evaluation/prompt-evaluator.ts';
+import type { ExperimentDefinition } from '../../evaluations/lib/experiments.ts';
+import type { PromptEvaluationCase } from '../../evaluations/lib/prompt-evaluator.ts';
 
 // Include wire serialization and strict parsing, not just prompt fingerprints.
 const executionFiles = [
@@ -10,6 +11,8 @@ const executionFiles = [
   'src/connectors/llm-connectors/gemini-connector.ts',
   'src/connectors/llm-connectors/provider-response.ts',
   'src/config/output-contract.config.ts',
+  'src/config/runtime.config.ts',
+  'src/config/providers.config.ts',
   'src/services/generation-settings.ts',
   'package-lock.json',
 ];
@@ -20,7 +23,7 @@ export async function executionFingerprint(revision?: string): Promise<string> {
     : await readFile(path, 'utf8')]));
   return fingerprintPrompt(JSON.stringify(contents));
 }
-export async function loadSuite(suite: ExperimentDefinition['suite'] = 'base'): Promise<PromptEvaluationCase[]> {
+export async function loadSuite(suite: ExperimentDefinition['suite'] = EVALUATION_DEFAULTS.suite): Promise<PromptEvaluationCase[]> {
   if (suite === 'development') return (await import('../../evaluations/development-cases.ts')).DEVELOPMENT_CASES;
   const all = JSON.parse(await readFile('evaluations/acceptance.json', 'utf8')) as PromptEvaluationCase[];
   if (suite !== 'base') return all;

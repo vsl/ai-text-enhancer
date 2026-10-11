@@ -1,3 +1,5 @@
+import { RUNTIME_DEFAULTS } from '../../config/runtime.config.ts';
+import { PROVIDER_CONFIG } from '../../config/providers.config.ts';
 /** Local LM Studio connector using its OpenAI-compatible endpoint. */
 import type { LLMConnector, LLMRequestParams, LLMResponse } from '../../types/llm.types.ts';
 import { LLMError, LLMRateLimitError, LLMTimeoutError } from '../../errors/llm-errors.ts';
@@ -9,10 +11,10 @@ export class LMStudioConnector implements LLMConnector {
   name = 'lmstudio';
   supportsStreaming = false;
 
-  constructor(private baseUrl: string = 'http://localhost:1234') {}
+  constructor(private baseUrl: string = PROVIDER_CONFIG.lmstudio.baseUrl) {}
 
   async sendRequest(params: LLMRequestParams): Promise<LLMResponse> {
-    const timeout = params.timeout || 60000;
+    const timeout = params.timeout ?? PROVIDER_CONFIG.lmstudio.timeoutMs;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     const url = `${this.baseUrl}/v1/chat/completions`;
@@ -23,7 +25,7 @@ export class LMStudioConnector implements LLMConnector {
         { role: 'user', content: params.userPrompt },
       ],
       ...(params.temperature !== undefined && { temperature: params.temperature }),
-      max_tokens: params.maxTokens ?? 2048,
+      max_tokens: params.maxTokens ?? RUNTIME_DEFAULTS.maxOutputTokens,
       response_format: {
         type: 'json_schema',
         json_schema: { name: TEXT_OUTPUT_SCHEMA_NAME, strict: true, schema: TEXT_OUTPUT_SCHEMA },

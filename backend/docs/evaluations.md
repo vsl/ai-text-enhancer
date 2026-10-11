@@ -6,10 +6,9 @@ There is no custom HTML dashboard and no change to production LangSmith tracing 
 the product's intentional judging of one valid output.
 
 The supported roles are Editor (General Assistant in the UI) and Email Assistant.
-Saved configs with a retired role fall back to Editor while preserving options;
-Shorten remains an optional transformation. Historical reports are not rewritten.
-Role removal uses `prompt-v12`, `jev-v5` and the `text-quality-v3` evaluator; dataset
-and evaluator hashes change, so earlier acceptance approvals cannot be reused.
+Only the current role-ID storage schema is supported. Shorten is an additive
+transformation. Generator prompts remain in `src/config/` and `src/services/`;
+evaluation engines, fixtures, rubrics and experiment policy live in `evaluations/`.
 
 ## Start here
 
@@ -22,7 +21,7 @@ npm run eval:compare -- --experiment=evaluations/experiments/prompts.ts --dry-ru
 
 # Small paid smoke test: two generations and at most two Jev calls.
 # Existing exported environment variables also work; --env-file never prints keys.
-node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+node --env-file=.env.evaluation --import ./scripts/register-npm-imports.mjs \
   --experimental-transform-types scripts/evaluate-experiment.ts \
   --experiment=evaluations/experiments/models.ts --case=editor-protected-facts --repeat=1 --publish
 
@@ -34,9 +33,8 @@ Generation needs `OPENROUTER_API_KEY` or `GEMINI_API_KEY`; Jev needs OpenRouter.
 Publication additionally needs `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and
 `LANGFUSE_BASE_URL`. Use an existing configured instance. Provisioning, hosted
 evaluator configuration and observability migration are outside this change.
-Both backend env templates include blank Langfuse settings. Copy the template to
-your private `.env.local` and fill them in; Node requires `--env-file=.env.local`
-to load it. Existing `.env` files also work with `--env-file=.env`.
+Copy `backend/.env.evaluation.example` to your private `.env.evaluation` and
+fill the required keys. Load it explicitly with Node's `--env-file` option.
 Never commit `.env` or provider keys. Fixtures/outputs may contain sensitive data:
 use synthetic/anonymized cases and an appropriately secured Langfuse project.
 
@@ -76,7 +74,7 @@ See [OpenAI's Luna documentation](https://developers.openai.com/api/docs/models/
 [Haiku on OpenRouter](https://openrouter.ai/anthropic/claude-haiku-5.5/), and
 [OpenRouter's reasoning controls](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
 
-From `backend/` with Node 22 and `OPENROUTER_API_KEY` in your private `.env.local`:
+From `backend/` with Node 22 and `OPENROUTER_API_KEY` in your private `.env.evaluation`:
 
 ```bash
 # Validate without paid calls.
@@ -84,7 +82,7 @@ npm run eval:compare -- --experiment=evaluations/experiments/luna-vs-haiku.ts \
   --concurrency=5 --dry-run
 
 # Paid base comparison: 52 generations plus at most 52 Jev calls.
-node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+node --env-file=.env.evaluation --import ./scripts/register-npm-imports.mjs \
   --experimental-transform-types scripts/evaluate-experiment.ts \
   --experiment=evaluations/experiments/luna-vs-haiku.ts --concurrency=5
 ```
@@ -119,7 +117,7 @@ Add `--publish` when all three Langfuse settings are configured, or publish the
 saved report later without further AI calls. Add `--reuse=.../report.json` to reuse
 matching baseline samples; preview savings by adding it to the dry-run command.
 Use `--repeat=3` for a more stable comparison (840 generations plus up to 840
-Jev calls without reuse). If your credentials are in `.env.local`, change the env
+Jev calls without reuse). If your credentials are in `.env.evaluation`, change the env
 file flag accordingly. Keep the credentials private and never commit them.
 
 For the manually triggered workflow, select experiment `glm`, suite `all`, clear
@@ -227,9 +225,8 @@ index, and a hash of the production connector/output-contract implementation and
 lockfile. Candidate labels, comparison IDs and whole-dataset hashes need not
 match. Each repetition uses its own saved sample: one sample is never cloned
 into three independent repetitions. Invalid JSON, failed attempts and OpenRouter
-routing aliases (`openrouter/free`, `openrouter/auto`) are not reused. Existing
-clean legacy reports can be fingerprinted from their saved Git revision; reports
-without reconstructable code provenance are misses.
+routing aliases (`openrouter/free`, `openrouter/auto`) are not reused. Reports must contain their original execution fingerprint; older reports without
+that provenance are misses and are not upgraded automatically.
 
 Jev reuse additionally requires the same evaluator hash, judge model/config and
 exact atomic question request. Stored raw answers are parsed again. Changing the
@@ -301,7 +298,7 @@ under the same run name, but never performs additional AI calls.
 # 40 realistic proposed controls, blank human labels; no AI calls.
 npm run eval:calibrate
 # Optionally judge controls and publish a review experiment (40 paid Jev calls).
-node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
+node --env-file=.env.evaluation --import ./scripts/register-npm-imports.mjs \
   --experimental-transform-types scripts/evaluate-experiment.ts \
   --calibrate --judge-controls --publish
 ```

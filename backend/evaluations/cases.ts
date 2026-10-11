@@ -1,4 +1,4 @@
-import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
+import type { PromptEvaluationCase } from './lib/prompt-evaluator.ts';
 import { BOUNDARY_GENERATION_CASES } from './boundary-cases.ts';
 
 export const PROMPT_EVALUATION_CASES: PromptEvaluationCase[] = [

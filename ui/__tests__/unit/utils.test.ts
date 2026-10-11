@@ -1,5 +1,5 @@
 import { getErrorMessage } from '@/lib/utils';
-import { ERROR_MESSAGES } from '@/lib/constants';
+import { ERROR_MESSAGES } from '@/config/messages.config';
 
 describe('utils', () => {
   describe('getErrorMessage', () => {

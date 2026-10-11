@@ -51,27 +51,38 @@ jobs:
         working-directory: backend
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_ID: ${{ github.event_name == 'pull_request' && secrets.STAGING_SUPABASE_PROJECT_ID || secrets.PRODUCTION_SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_PASSWORD: ${{ github.event_name == 'pull_request' && secrets.STAGING_SUPABASE_DB_PASSWORD || secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets[github.event_name == 'pull_request' && 'STAGING_SUPABASE_PROJECT_ID' || 'PRODUCTION_SUPABASE_PROJECT_ID'] }}
+      SUPABASE_DB_PASSWORD: ${{ secrets[github.event_name == 'pull_request' && 'STAGING_SUPABASE_DB_PASSWORD' || 'PRODUCTION_SUPABASE_DB_PASSWORD'] }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_APP_SUPABASE_SERVICE_ROLE_KEY || secrets.PRODUCTION_APP_SUPABASE_SERVICE_ROLE_KEY }}
-      BOOTSTRAP_SECRET_KEY: ${{ github.event_name == 'pull_request' && secrets.STAGING_BOOTSTRAP_SECRET_KEY || secrets.PRODUCTION_BOOTSTRAP_SECRET_KEY }}
-      LLM_TIMEOUT_MS: ${{ secrets.LLM_TIMEOUT_MS || '30000' }}
-      MAX_BATCH_SIZE: ${{ secrets.MAX_BATCH_SIZE || '10' }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets[github.event_name == 'pull_request' && 'STAGING_APP_SUPABASE_SERVICE_ROLE_KEY' || 'PRODUCTION_APP_SUPABASE_SERVICE_ROLE_KEY'] }}
+      BOOTSTRAP_SECRET_KEY: ${{ secrets[github.event_name == 'pull_request' && 'STAGING_BOOTSTRAP_SECRET_KEY' || 'PRODUCTION_BOOTSTRAP_SECRET_KEY'] }}
+      LLM_TIMEOUT_MS: ${{ secrets.LLM_TIMEOUT_MS }}
+      JEV_MODEL_ID: ${{ secrets.JEV_MODEL_ID }}
+      JEV_TIMEOUT_MS: ${{ secrets.JEV_TIMEOUT_MS }}
+      ADMIN_BOOTSTRAP_USERS_JSON: ${{ secrets[github.event_name == 'pull_request' && 'STAGING_ADMIN_BOOTSTRAP_USERS_JSON' || 'PRODUCTION_ADMIN_BOOTSTRAP_USERS_JSON'] }}
+      MAX_BATCH_SIZE: ${{ secrets.MAX_BATCH_SIZE }}
       LANGSMITH_TRACING: ${{ secrets.LANGSMITH_API_KEY != '' && 'true' || 'false' }}
       LANGSMITH_CAPTURE_CONTENT: ${{ secrets.LANGSMITH_CAPTURE_CONTENT == 'true' && 'true' || 'false' }}
       LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
       LANGSMITH_PROJECT: ${{ github.event_name == 'pull_request' && 'ai-text-enhancer-staging' || 'ai-text-enhancer-production' }}
-      LANGSMITH_ENDPOINT: https://api.smith.langchain.com
+      LANGSMITH_ENDPOINT: ${{ secrets.LANGSMITH_ENDPOINT }}
       APP_ENV: ${{ github.event_name == 'pull_request' && 'staging' || 'production' }}
       APP_RELEASE: ${{ github.sha }}
-      LOG_LEVEL: info
+      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
 
     steps:
       - uses: actions/checkout@v6
       - uses: supabase/setup-cli@v2
         with:
           version: 2.101.0
+      - name: Validate deployment configuration
+        run: |
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD APP_SUPABASE_SERVICE_ROLE_KEY OPENROUTER_API_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "Required deployment secret is missing: $name" >&2
+              exit 1
+            fi
+          done
       - name: Link Supabase project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Sync Supabase secrets
@@ -82,6 +93,9 @@ jobs:
             BOOTSTRAP_SECRET_KEY="$BOOTSTRAP_SECRET_KEY" \
             LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
             MAX_BATCH_SIZE="$MAX_BATCH_SIZE" \
+            JEV_MODEL_ID="$JEV_MODEL_ID" \
+            JEV_TIMEOUT_MS="$JEV_TIMEOUT_MS" \
+            ADMIN_BOOTSTRAP_USERS_JSON="$ADMIN_BOOTSTRAP_USERS_JSON" \
             LANGSMITH_TRACING="$LANGSMITH_TRACING" \
             LANGSMITH_CAPTURE_CONTENT="$LANGSMITH_CAPTURE_CONTENT" \
             LANGSMITH_API_KEY="$LANGSMITH_API_KEY" \

@@ -6,8 +6,7 @@ This is one Git repository containing two applications:
 - `backend/`: Supabase migrations and Edge Functions.
 
 Follow the nearest `AGENTS.md`: `ui/AGENTS.md` for UI work and
-`backend/AGENTS.md` for backend work. The older `CLAUDE.md` files are detailed
-reference documents, not Codex instructions.
+`backend/AGENTS.md` for backend work.
 
 When an API contract changes, update and verify both applications in the same
 change. Do not make an unrelated app change just to trigger its workflow.

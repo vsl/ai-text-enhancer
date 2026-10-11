@@ -1,4 +1,4 @@
-import type { PromptEvaluationCase } from '../src/evaluation/prompt-evaluator.ts';
+import type { PromptEvaluationCase } from './lib/prompt-evaluator.ts';
 import type { TransformationOptions } from '../src/types/api.types.ts';
 
 export interface BoundaryCase extends PromptEvaluationCase {

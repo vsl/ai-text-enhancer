@@ -1,3 +1,4 @@
+import { RUNTIME_BOUNDS } from './runtime.config.ts';
 /**
  * Configuration Validator
  * 
@@ -29,7 +30,7 @@ export interface ValidationResult {
  * @param config - System configuration to validate
  * @throws Error if validation fails
  */
-export function validateConfig(config: SystemConfig): void {
+export function validateConfigDetailed(config: SystemConfig): ValidationResult {
   const errors: ValidationError[] = [];
 
   // Validate models exist
@@ -104,21 +105,21 @@ export function validateConfig(config: SystemConfig): void {
   }
 
   // Validate timeout value
-  if (config.timeout <= 0) {
+  if (!Number.isSafeInteger(config.timeout) || config.timeout <= 0) {
     errors.push({
       field: 'timeout',
       message: `Timeout must be positive, got ${config.timeout}`,
     });
   }
 
-  if (config.timeout < 1000) {
+  if (config.timeout < RUNTIME_BOUNDS.timeoutMs.min) {
     errors.push({
       field: 'timeout',
       message: `Timeout too low (${config.timeout}ms). Minimum recommended: 1000ms`,
     });
   }
 
-  if (config.timeout > 300000) {
+  if (config.timeout > RUNTIME_BOUNDS.timeoutMs.max) {
     errors.push({
       field: 'timeout',
       message: `Timeout too high (${config.timeout}ms). Maximum recommended: 300000ms (5 minutes)`,
@@ -126,14 +127,14 @@ export function validateConfig(config: SystemConfig): void {
   }
 
   // Validate max batch size
-  if (config.maxBatchSize <= 0) {
+  if (!Number.isSafeInteger(config.maxBatchSize) || config.maxBatchSize <= 0) {
     errors.push({
       field: 'maxBatchSize',
       message: `Max batch size must be positive, got ${config.maxBatchSize}`,
     });
   }
 
-  if (config.maxBatchSize > 100) {
+  if (config.maxBatchSize > RUNTIME_BOUNDS.maxBatchSize.max) {
     errors.push({
       field: 'maxBatchSize',
       message: `Max batch size too high (${config.maxBatchSize}). Maximum recommended: 100`,
@@ -143,7 +144,7 @@ export function validateConfig(config: SystemConfig): void {
   if (!config.jev?.modelId) {
     errors.push({ field: 'jev.modelId', message: 'Jev model ID is required' });
   }
-  if (!config.jev || config.jev.timeoutMs <= 0) {
+  if (!Number.isSafeInteger(config.jev?.timeoutMs) || config.jev.timeoutMs <= 0) {
     errors.push({ field: 'jev.timeoutMs', message: 'Jev timeout must be positive' });
   }
 
@@ -179,81 +180,14 @@ export function validateConfig(config: SystemConfig): void {
     }
   }
 
-  // Validate bootstrap secret
-  if (!config.bootstrapSecretKey) {
-    errors.push({
-      field: 'bootstrapSecretKey',
-      message: 'Bootstrap secret key is required',
-    });
-  }
-
-  // Validate rate limits
-  if (!config.rateLimits) {
-    errors.push({
-      field: 'rateLimits',
-      message: 'Rate limits configuration is missing',
-    });
-  } else {
-    const tiers = ['free', 'plus', 'premium'] as const;
-    for (const tier of tiers) {
-      const limits = config.rateLimits[tier];
-      if (!limits) {
-        errors.push({
-          field: `rateLimits.${tier}`,
-          message: `Rate limits for "${tier}" tier are missing`,
-        });
-      } else {
-        if (limits.requestsPerDay <= 0) {
-          errors.push({
-            field: `rateLimits.${tier}.requestsPerDay`,
-            message: `Requests per day must be positive for "${tier}" tier`,
-          });
-        }
-        if (limits.requestsPerHour <= 0) {
-          errors.push({
-            field: `rateLimits.${tier}.requestsPerHour`,
-            message: `Requests per hour must be positive for "${tier}" tier`,
-          });
-        }
-        if (limits.requestsPerHour > limits.requestsPerDay) {
-          errors.push({
-            field: `rateLimits.${tier}`,
-            message: `Requests per hour cannot exceed requests per day for "${tier}" tier`,
-          });
-        }
-      }
-    }
-  }
-
-  // If any errors, throw with detailed message
-  if (errors.length > 0) {
-    const errorMessages = errors.map((e) => `  - ${e.field}: ${e.message}`).join('\n');
-    throw new Error(`Configuration validation failed:\n${errorMessages}`);
-  }
+  return { valid: errors.length === 0, errors };
 }
 
-/**
- * Validate configuration and return detailed result
- * @param config - System configuration to validate
- * @returns Validation result with errors
- */
-export function validateConfigDetailed(config: SystemConfig): ValidationResult {
-  try {
-    validateConfig(config);
-    return { valid: true, errors: [] };
-  } catch (error) {
-    // Parse error message to extract individual errors
-    const message = error instanceof Error ? error.message : String(error);
-    const errorLines = message.split('\n').slice(1); // Skip first line
-    
-    const errors: ValidationError[] = errorLines.map((line) => {
-      const match = line.match(/^\s*-\s*([^:]+):\s*(.+)$/);
-      if (match) {
-        return { field: match[1], message: match[2] };
-      }
-      return { field: 'unknown', message: line.trim() };
-    });
-
-    return { valid: false, errors };
+/** Fail startup with a readable list of configuration problems. */
+export function validateConfig(config: SystemConfig): void {
+  const result = validateConfigDetailed(config);
+  if (!result.valid) {
+    const details = result.errors.map(error => `  - ${error.field}: ${error.message}`).join('\n');
+    throw new Error(`Configuration validation failed:\n${details}`);
   }
 }

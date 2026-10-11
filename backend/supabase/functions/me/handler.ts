@@ -1,11 +1,6 @@
-// ============================================
-// PLATFORM-SPECIFIC REQUEST HANDLING FOR /me
-// Deno-specific but isolated for easy porting
-// ============================================
-
 import type { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AuthenticationError } from '../../../src/errors/auth-errors.ts';
+import { AuthenticationError, AuthorizationError } from '../../../src/errors/auth-errors.ts';
 import { getFunctionPath } from '../../../src/utils/function-path.ts';
 
 interface Services {
@@ -33,12 +28,16 @@ export async function handleRequest(
     const pathname = getFunctionPath(url.pathname, 'me');
 
     // Health check endpoint
-    if (pathname === '/health') {
+    if (pathname === '/health' && req.method === 'GET') {
       return jsonResponse(
         { status: 'ok', service: 'ai-text-enhancer-me' },
         200,
         corsHeaders
       );
+    }
+
+    if (pathname !== '/') {
+      return jsonResponse({ error: { code: 'NOT_FOUND', message: 'Endpoint not found' } }, 404, corsHeaders);
     }
 
     // Only GET method allowed for /me
@@ -87,8 +86,12 @@ function handleError(error: unknown, corsHeaders: Record<string, string>): Respo
     );
   }
 
+  if (error instanceof AuthorizationError) {
+    return jsonResponse({ error: { code: 'AUTHORIZATION_FAILED', message: 'Access is unavailable' } }, 403, corsHeaders);
+  }
+
   return jsonResponse(
-    { error: { code: 'INTERNAL_ERROR', message: (error as Error).message } },
+    { error: { code: 'INTERNAL_ERROR', message: 'An internal error occurred' } },
     500,
     corsHeaders
   );

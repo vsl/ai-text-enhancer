@@ -1,4 +1,4 @@
-import { PRODUCTION_PROMPT, type ExperimentDefinition, type PromptVariant } from '../../src/evaluation/experiments.ts';
+import { PRODUCTION_PROMPT, type ExperimentDefinition, type PromptVariant } from '../lib/experiments.ts';
 import { constructPrompt } from '../../src/services/prompt-builder.ts';
 
 const checklist: PromptVariant = {

@@ -154,14 +154,17 @@ organization secrets instead, restrict each secret to this repository.
 | `STAGING_SUPABASE_PROJECT_ID` | Staging project ref |
 | `STAGING_SUPABASE_DB_PASSWORD` | Staging database password |
 | `STAGING_APP_SUPABASE_SERVICE_ROLE_KEY` | Staging secret/service-role key |
-| `STAGING_BOOTSTRAP_SECRET_KEY` | Unique random staging bootstrap secret |
+| `STAGING_BOOTSTRAP_SECRET_KEY` | Optional random staging bootstrap secret (32+ characters) |
+| `STAGING_ADMIN_BOOTSTRAP_USERS_JSON` | Optional explicit initial user array; otherwise bootstrap stays disabled |
 | `PRODUCTION_SUPABASE_PROJECT_ID` | Production project ref |
 | `PRODUCTION_SUPABASE_DB_PASSWORD` | Production database password |
 | `PRODUCTION_APP_SUPABASE_SERVICE_ROLE_KEY` | Production secret/service-role key |
-| `PRODUCTION_BOOTSTRAP_SECRET_KEY` | Different random production bootstrap secret |
+| `PRODUCTION_BOOTSTRAP_SECRET_KEY` | Optional independent production bootstrap secret (32+ characters) |
+| `PRODUCTION_ADMIN_BOOTSTRAP_USERS_JSON` | Optional explicit production initial user array |
 
-Generate two different random 32+ character bootstrap secrets in a password
-manager and retain them. They are not UI credentials. The checked-in backend
+If initial account bootstrap is needed, supply explicit user JSON and different
+random 32+ character secrets for staging/production. See [bootstrap configuration](../backend/docs/configuration.md#admin-bootstrap). Never deploy the local test
+passwords. Remove bootstrap user JSON after setup. They are not UI credentials. The checked-in backend
 workflow selects `STAGING_` values
 for pull requests and `PRODUCTION_` values after a merge to `main`. No
 Cloudflare API token is required. GitHub does not provide repository secrets
@@ -193,7 +196,9 @@ SUPABASE_PROJECT_ID='staging-project-ref'
 SUPABASE_DB_PASSWORD='staging-database-password'
 OPENROUTER_API_KEY='sk-or-v1-...'
 APP_SUPABASE_SERVICE_ROLE_KEY='sb_secret_...'
-BOOTSTRAP_SECRET_KEY='staging-random-bootstrap-secret'
+# Account bootstrap is disabled unless an explicit user array is configured.
+BOOTSTRAP_SECRET_KEY=''
+ADMIN_BOOTSTRAP_USERS_JSON=''
 LLM_TIMEOUT_MS='30000'
 MAX_BATCH_SIZE='10'
 
@@ -222,6 +227,7 @@ supabase secrets set \
   OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
   APP_SUPABASE_SERVICE_ROLE_KEY="$APP_SUPABASE_SERVICE_ROLE_KEY" \
   BOOTSTRAP_SECRET_KEY="$BOOTSTRAP_SECRET_KEY" \
+  ADMIN_BOOTSTRAP_USERS_JSON="$ADMIN_BOOTSTRAP_USERS_JSON" \
   LLM_TIMEOUT_MS="$LLM_TIMEOUT_MS" \
   MAX_BATCH_SIZE="$MAX_BATCH_SIZE" \
   LANGSMITH_TRACING="$LANGSMITH_TRACING" \
@@ -241,7 +247,7 @@ done
 ```
 
 Replace the values in the same `backend/.env` with the production values,
-including a different `BOOTSTRAP_SECRET_KEY`,
+including an independent `BOOTSTRAP_SECRET_KEY` if bootstrap is enabled,
 `LANGSMITH_PROJECT='ai-text-enhancer-production'`, and
 `APP_ENV='production'`, then run the same commands again. Use a different
 `APP_RELEASE` label for the manual production bootstrap. `SUPABASE_URL` is
@@ -252,7 +258,7 @@ Alternatively, a PR containing a genuine `backend/` change deploys staging;
 after review and merge, the same workflow deploys production. Do not make a
 no-op source change merely to trigger a deployment.
 
-Only `enhance`, `me`, and `admin` are deployed. If legacy payment
+Only `enhance`, `me`, and `admin` are deployed. If previously deployed payment
 functions exist from an earlier deployment, remove them once per project:
 
 ```bash

@@ -84,10 +84,7 @@ describe('Configuration Validator', () => {
 
     it('should not throw error when lmstudio provider has no API key', () => {
       const config = loadConfig();
-      const lmStudio = config.llmProviders.find((p) => p.name === 'lmstudio');
-      if (lmStudio) {
-        lmStudio.apiKey = '';
-      }
+      config.llmProviders.push({ name: 'lmstudio', apiKey: '', models: [] });
 
       expect(() => validateConfig(config)).not.toThrow();
     });
@@ -154,44 +151,6 @@ describe('Configuration Validator', () => {
       expect(() => validateConfig(config)).toThrow('Supabase service role key is required');
     });
 
-    it('should throw error when rate limits are missing', () => {
-      const config = loadConfig();
-      // @ts-ignore - intentionally break config for testing
-      config.rateLimits = undefined;
-
-      expect(() => validateConfig(config)).toThrow('Rate limits configuration is missing');
-    });
-
-    it('should throw error when tier rate limits are missing', () => {
-      const config = loadConfig();
-      // @ts-ignore - intentionally break config for testing
-      config.rateLimits.free = undefined;
-
-      expect(() => validateConfig(config)).toThrow('Rate limits for "free" tier are missing');
-    });
-
-    it('should throw error for negative requests per day', () => {
-      const config = loadConfig();
-      config.rateLimits.free.requestsPerDay = -10;
-
-      expect(() => validateConfig(config)).toThrow('Requests per day must be positive');
-    });
-
-    it('should throw error for negative requests per hour', () => {
-      const config = loadConfig();
-      config.rateLimits.free.requestsPerHour = -5;
-
-      expect(() => validateConfig(config)).toThrow('Requests per hour must be positive');
-    });
-
-    it('should throw error when requests per hour exceeds requests per day', () => {
-      const config = loadConfig();
-      config.rateLimits.free.requestsPerHour = 1000;
-      config.rateLimits.free.requestsPerDay = 100;
-
-      expect(() => validateConfig(config)).toThrow('Requests per hour cannot exceed requests per day');
-    });
-
     it('should throw error with multiple validation failures', () => {
       const config = loadConfig();
       config.timeout = -1000;
@@ -216,8 +175,6 @@ describe('Configuration Validator', () => {
       // Get a fresh config
       process.env.GEMINI_API_KEY = 'test-gemini-key';
       process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-      process.env.USER_SERVICE_URL = 'http://test.com';
-      process.env.USER_SERVICE_API_KEY = 'test-user-key';
       
       const config = loadConfig();
       const result = validateConfigDetailed(config);

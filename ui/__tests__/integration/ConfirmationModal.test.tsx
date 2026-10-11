@@ -222,7 +222,8 @@ describe('ConfirmationModal Integration Tests', () => {
         />
       );
 
-      expect(screen.getByText('Confirm Deletion')).toHaveAttribute('id', 'confirm-modal-title');
+      const title = screen.getByText('Confirm Deletion');
+      expect(screen.getByRole('dialog')).toHaveAttribute('aria-labelledby', title.id);
     });
   });
 
