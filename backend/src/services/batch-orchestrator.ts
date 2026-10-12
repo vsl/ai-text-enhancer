@@ -1,3 +1,4 @@
+import { RUNTIME_DEFAULTS } from '../config/runtime.config.ts';
 /**
  * Batch Orchestrator Service
  * 
@@ -47,8 +48,8 @@ export class BatchOrchestrator {
     providers: LLMProviderConfig[],
     quotaService: QuotaService,
     authzService: AuthorizationService,
-    taskTimeoutMs: number = 30000,
-    exposeErrorDetails: boolean = false,
+    taskTimeoutMs: number = RUNTIME_DEFAULTS.timeoutMs,
+    exposeErrorDetails: boolean = RUNTIME_DEFAULTS.exposeErrorDetails,
     resultSelector?: ResultSelector,
   ) {
     this.promptBuilder = new PromptBuilder();
@@ -126,9 +127,7 @@ export class BatchOrchestrator {
           requestId,
         );
       } catch (error) {
-        // Log but don't fail - user already got results
-        //todo: need to implement
-        //console.error('[ORCHESTRATOR] Failed to report token usage:', error);
+        console.error(`[ORCHESTRATOR][${requestId}] Failed to report token usage:`, conciseError(error));
       }
     }
 
@@ -207,7 +206,7 @@ export class BatchOrchestrator {
       const textLength = assistant.userText.length + 
         (assistant.contextText?.length || 0);
       // Rough estimate: 4 chars ≈ 1 token + 500 tokens overhead per assistant
-      return total + Math.ceil(textLength / 4) + 500;
+      return total + Math.ceil(textLength / RUNTIME_DEFAULTS.tokenEstimate.charactersPerToken) + RUNTIME_DEFAULTS.tokenEstimate.overheadPerAssistant;
     }, 0);
   }
 

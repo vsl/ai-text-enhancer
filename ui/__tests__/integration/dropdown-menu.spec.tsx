@@ -21,6 +21,7 @@ describe('DropdownMenu Integration', () => {
       shorten: false,
       lengthen: false,
       addEmojis: false,
+      avoidCommonAiSymbols: true,
       formality: 'Formal',
       tone: 'Confident',
       languageLevel: '',

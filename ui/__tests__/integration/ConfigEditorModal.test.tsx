@@ -3,7 +3,8 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { ConfigEditorModal } from '@/components/features/ConfigEditorModal';
 import { AiConfig } from '@/lib/types';
-import { DEFAULT_OPTIONS, TIER_LIMITS } from '@/lib/constants';
+import { TIER_LIMITS } from '@/config/catalog.config';
+import { DEFAULT_OPTIONS } from '@/config/workflows.config';
 
 // Mock AuthContext before imports
 jest.mock('../../src/context/AuthContext', () => ({

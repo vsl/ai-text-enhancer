@@ -81,7 +81,8 @@ flowchart TD
     JSON --> RESULT["Create success or per-assistant error result"]
 
     RESULT --> USAGE["Deduct successful token usage"]
-    USAGE --> RESPONSE["Return the batch response"]
+    USAGE --> JUDGE["Jev scores valid outputs; failures preserve results"]
+    JUDGE --> RESPONSE["Return the batch response"]
     RESPONSE --> UI["UI updates assistant cards and local token balance"]
 ```
 
@@ -137,6 +138,7 @@ Missing, malformed, empty, or additional output fields become an `LLM_ERROR` for
 flowchart LR
     B["One batch"] --> A1["Editor assistant"]
     B --> A2["Email assistant"]
+    B --> A3["Another configured assistant"]
     A1 --> OK1["Success"]
     A2 --> ERR["Provider error"]
     A3 --> OK3["Success"]
@@ -151,7 +153,7 @@ Successful results contain `enhancedText` and `total_tokens`. Failed assistants 
 
 | Concern | Main source |
 |---|---|
-| UI choices and default workflows | [ui/src/lib/constants.ts](../ui/src/lib/constants.ts) |
+| UI choices and default workflows | [catalog](../ui/src/config/catalog.config.ts) and [workflows](../ui/src/config/workflows.config.ts) |
 | Public request and response types | [backend/src/types/api.types.ts](../backend/src/types/api.types.ts) |
 | Runtime request validation | [backend/src/services/request-validator.ts](../backend/src/services/request-validator.ts) |
 | Production models and capabilities | [backend/src/config/models.config.ts](../backend/src/config/models.config.ts) |

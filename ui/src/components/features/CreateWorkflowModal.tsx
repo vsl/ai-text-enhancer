@@ -1,5 +1,6 @@
 "use client";
 
+import { INTERACTION_TIMING } from '@/config/interaction.config';
 import { useEffect, useState, useRef } from "react";
 import {
   Dialog,
@@ -55,7 +56,7 @@ export function CreateWorkflowModal({
       // Auto-focus the input with a slight delay to ensure modal is rendered
       setTimeout(() => {
         inputRef.current?.focus();
-      }, 100);
+      }, INTERACTION_TIMING.modalFocusDelayMs);
     }
   }, [isOpen]);
 
@@ -112,13 +113,12 @@ export function CreateWorkflowModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         className="sm:max-w-[500px] bg-card border-border"
-        aria-describedby="create-modal-description"
       >
         <DialogHeader>
-          <DialogTitle id="create-modal-title" className="text-xl font-semibold">
+          <DialogTitle className="text-xl font-semibold">
             Create New Workflow
           </DialogTitle>
-          <DialogDescription id="create-modal-description" className="sr-only">
+          <DialogDescription className="sr-only">
             Enter a unique name for your new workflow configuration
           </DialogDescription>
         </DialogHeader>

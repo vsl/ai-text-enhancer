@@ -1,19 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-  AVAILABLE_AI_ROLES,
-  AVAILABLE_MODELS,
-  DEFAULT_OPTIONS,
-  DEFAULT_WORKFLOWS,
-  FORMALITY,
-  LANGUAGES,
-  LANGUAGE_LEVELS,
-  MODEL_NAMES,
-  normalizeAiConfig,
-  OPTIONS_CHECKBOXES,
-  TIER_LIMITS,
-  TONES,
-} from '@/lib/constants';
+import { AVAILABLE_AI_ROLES, AVAILABLE_MODELS, FORMALITY, LANGUAGES, LANGUAGE_LEVELS, MODEL_NAMES, OPTIONS_CHECKBOXES, TIER_LIMITS, TONES } from '@/config/catalog.config';
+import { DEFAULT_OPTIONS, DEFAULT_WORKFLOWS } from '@/config/workflows.config';
+import { normalizeAiConfig } from '@/lib/workflow-config';
 import { MODELS } from '../../../backend/src/config/models.config';
 import { ROLES } from '../../../backend/src/config/roles.config';
 import { TIER_LIMITS as BACKEND_TIER_LIMITS } from '../../../backend/src/config/tier-limits.config';
@@ -87,45 +76,18 @@ describe('UI/backend configuration parity', () => {
     expect(MODELS.find(model => model.id === 'qwen-qwen3-30b-a3b-instruct-2507')?.contextWindow).toBe(262144);
   });
 
-  it('migrates legacy roles and retired models safely', () => {
-    expect(DEFAULT_OPTIONS.avoidCommonAiSymbols).toBe(true);
-    expect(normalizeAiConfig({ id: 0, options: { improve: false } as never }).options.avoidCommonAiSymbols).toBe(true);
-    expect(normalizeAiConfig({ id: 0, options: { avoidCommonAiSymbols: false } as never }).options.avoidCommonAiSymbols).toBe(false);
-    expect(normalizeAiConfig({
-      id: 1,
-      model: 'local-debug-model',
-      aiRole: 'Professional Email Assistant',
-      options: {
-        ...DEFAULT_OPTIONS,
-        shorten: true,
-        lengthen: true,
-        formality: 'Professional',
-        tone: 'Neutral',
-        surprise: true,
-      } as never,
-    })).toEqual(expect.objectContaining({
-      model: 'qwen-qwen3-30b-a3b-instruct-2507',
-      aiRoleId: 'email_assistant',
-      options: expect.objectContaining({
-        shorten: true,
-        lengthen: false,
-        formality: 'Neutral',
-        tone: 'Confident',
-      }),
-    }));
-
-    expect(normalizeAiConfig({ id: 2, aiRole: 'Unknown role' })).toEqual(
-      expect.objectContaining({ model: 'qwen-qwen3-30b-a3b-instruct-2507', aiRoleId: 'editor' })
-    );
+  it('fills omitted options and preserves explicit disabled preferences', () => {
+    expect(normalizeAiConfig({ id: 0 }).options.avoidCommonAiSymbols).toBe(true);
+    expect(normalizeAiConfig({ id: 0, options: { ...DEFAULT_OPTIONS, avoidCommonAiSymbols: false } }).options.avoidCommonAiSymbols).toBe(false);
   });
 
-  it.each([
-    { aiRoleId: 'summarizer' as never },
-    { aiRole: 'Summarizer Assistant' },
-  ])('falls back for a retired saved role while preserving user settings %#', storedRole => {
-    const options = { ...DEFAULT_OPTIONS, shorten: true, lengthen: false, tone: 'Polite' as const };
-    expect(normalizeAiConfig({ id: 42, ...storedRole, model: AVAILABLE_MODELS[0], options, enabled: false })).toEqual({
-      id: 42, aiRoleId: 'editor', model: AVAILABLE_MODELS[0], options, enabled: false,
+  it('normalizes invalid current-schema values and conflicting options', () => {
+    expect(normalizeAiConfig({
+      id: 42, model: 'invalid-model', aiRoleId: 'invalid-role' as never,
+      options: { ...DEFAULT_OPTIONS, shorten: true, lengthen: true }, enabled: false,
+    })).toEqual({
+      id: 42, model: AVAILABLE_MODELS[0], aiRoleId: 'editor',
+      options: { ...DEFAULT_OPTIONS, shorten: true, lengthen: false }, enabled: false,
     });
   });
 });

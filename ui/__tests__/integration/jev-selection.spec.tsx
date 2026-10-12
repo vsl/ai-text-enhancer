@@ -16,6 +16,7 @@ const config: AiConfig = {
     shorten: false,
     lengthen: false,
     addEmojis: false,
+      avoidCommonAiSymbols: true,
     formality: 'Neutral',
     tone: 'Confident',
     languageLevel: '',

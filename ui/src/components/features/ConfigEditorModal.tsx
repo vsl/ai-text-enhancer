@@ -13,18 +13,8 @@ import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/features/InfoTooltip";
 import { useAuth } from "@/context/AuthContext";
 import { AiConfig, AiRoleId } from "@/lib/types";
-import {
-  AVAILABLE_MODELS,
-  MODEL_NAMES,
-  AVAILABLE_AI_ROLES,
-  OPTIONS_CHECKBOXES,
-  FORMALITY,
-  TONES,
-  LANGUAGE_LEVELS,
-  LANGUAGES,
-  TOOLTIP_TEXTS,
-  getAiRoleLabel,
-} from "@/lib/constants";
+import { AVAILABLE_MODELS, MODEL_NAMES, AVAILABLE_AI_ROLES, OPTIONS_CHECKBOXES, FORMALITY, TONES, LANGUAGE_LEVELS, LANGUAGES, getAiRoleLabel } from '@/config/catalog.config';
+import { TOOLTIP_TEXTS } from '@/config/messages.config';
 
 /**
  * Props for the ConfigEditorModal component
@@ -159,7 +149,6 @@ export function ConfigEditorModal({
       <SheetContent
         side="right"
         className="w-full sm:max-w-[550px] gap-0 border-border-strong bg-card p-0 shadow-none"
-        aria-describedby="editor-modal-description"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           titleRef.current?.focus({ preventScroll: true });
@@ -167,10 +156,10 @@ export function ConfigEditorModal({
       >
         <SheetHeader className="shrink-0 border-b border-border px-6 pb-5 pt-6 sm:px-8">
           <span className="text-sm text-tertiary">{mode === "edit" ? "Edit assistant" : "Add assistant"}</span>
-          <SheetTitle ref={titleRef} tabIndex={-1} id="editor-modal-title" className="text-2xl font-semibold tracking-tight">
+          <SheetTitle ref={titleRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight">
             {mode === "edit" ? getAiRoleLabel(configData.aiRoleId) : "New AI Assistant"}
           </SheetTitle>
-          <SheetDescription id="editor-modal-description" className="sr-only">
+          <SheetDescription className="sr-only">
             Configure AI assistant settings including model, role, actions, style, and language options.
           </SheetDescription>
         </SheetHeader>

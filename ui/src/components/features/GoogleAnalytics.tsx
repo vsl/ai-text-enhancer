@@ -1,15 +1,16 @@
+import { SITE_CONFIG } from '@/config/site.config';
 import Script from 'next/script';
 
 export function GoogleAnalytics() {
   // Only load Google Analytics in production
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' || !SITE_CONFIG.analyticsMeasurementId) {
     return null;
   }
 
   return (
     <>
       <Script
-        src="https://www.googletagmanager.com/gtag/js?id=G-YWBC6M6SC2"
+        src={`https://www.googletagmanager.com/gtag/js?id=${SITE_CONFIG.analyticsMeasurementId}`}
         strategy="afterInteractive"
       />
       <Script id="google-analytics" strategy="afterInteractive">
@@ -17,7 +18,7 @@ export function GoogleAnalytics() {
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-YWBC6M6SC2');
+          gtag('config', '${SITE_CONFIG.analyticsMeasurementId}');
         `}
       </Script>
     </>

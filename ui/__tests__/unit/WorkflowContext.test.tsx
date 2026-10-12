@@ -24,7 +24,9 @@ jest.mock('../../src/context/AuthContext', () => ({
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { WorkflowProvider, useWorkflow } from '@/context/WorkflowContext';
-import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS, ERROR_MESSAGES } from '@/lib/constants';
+import { AVAILABLE_MODELS } from '@/config/catalog.config';
+import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS } from '@/config/workflows.config';
+import { ERROR_MESSAGES } from '@/config/messages.config';
 import { AiConfig } from '@/lib/types';
 
 // Destructure mock functions for easier access

@@ -3,11 +3,13 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { AiConfig, Workflow, Result } from '@/lib/types';
-import { DEFAULT_WORKFLOWS, DEFAULT_OPTIONS, AVAILABLE_MODELS, AUTH_ERROR_MESSAGES, normalizeAiConfig } from '@/lib/constants';
-import { API_BASE_URL } from '@/lib/runtime-config';
+import { DEFAULT_WORKFLOWS } from '@/config/workflows.config';
+import { AUTH_ERROR_MESSAGES } from '@/config/messages.config';
+import { createDefaultAssistant, parseStoredWorkflows } from '@/lib/workflow-config';
+import { enhanceText, EnhancementApiError } from '@/lib/enhance-api';
 import { getErrorMessage } from '@/lib/utils';
 import { useAuth } from './AuthContext';
-import type { BatchRequest, BatchResponse, BatchSelection } from '../../../backend/src/types/api.types';
+import type { BatchSelection } from '../../../backend/src/types/api.types';
 
 /**
  * WorkflowContext interface defining the shape of the context
@@ -54,14 +56,15 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   // Persistent state using localStorage
   const [workflows, setWorkflows] = useLocalStorage<Workflow[]>(
     'aiTextEnhancerWorkflows',
-    DEFAULT_WORKFLOWS
+    DEFAULT_WORKFLOWS,
+    parseStoredWorkflows,
   );
   const [selectedWorkflow, setSelectedWorkflow] = useLocalStorage<string>(
     'aiTextEnhancerLastSelectedWorkflow',
     DEFAULT_WORKFLOWS[0].name
   );
 
-  const configs = workflows.find(workflow => workflow.name === selectedWorkflow)?.configs.map(normalizeAiConfig) ?? [];
+  const configs = workflows.find(workflow => workflow.name === selectedWorkflow)?.configs ?? [];
 
   // Local state
   const [results, setResults] = useState<Map<number, Result>>(new Map());
@@ -78,7 +81,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
     setWorkflows(prevWorkflows => {
       return prevWorkflows.map(workflow => workflow.name === selectedWorkflow
-        ? { ...workflow, configs: update(workflow.configs.map(normalizeAiConfig)) }
+        ? { ...workflow, configs: update(workflow.configs) }
         : workflow);
     });
   }, [selectedWorkflow, setWorkflows]);
@@ -93,13 +96,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
    * Create a new workflow
    */
   const handleCreateWorkflow = useCallback((newWorkflowName: string) => {
-    const newConfig: AiConfig = {
-      id: Date.now(),
-      model: AVAILABLE_MODELS[0],
-      aiRoleId: 'editor',
-      options: { ...DEFAULT_OPTIONS },
-      enabled: true,
-    };
+    const newConfig = createDefaultAssistant(Date.now());
     const newWorkflow: Workflow = { name: newWorkflowName, configs: [newConfig] };
 
     setWorkflows(current => [...current, newWorkflow]);
@@ -194,7 +191,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     const enabledConfigs = configs.filter(c => c.enabled);
     
     // Validate inputs
-    if (!inputText.trim() || enabledConfigs.length === 0) return;
+    if (!inputText.trim() || enabledConfigs.length === 0 || abortControllerRef.current) return;
 
     // Create new abort controller
     const controller = new AbortController();
@@ -217,62 +214,12 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       return newResults;
     });
 
-    // Build request payload
-    const assistants: BatchRequest['assistants'] = enabledConfigs.map(config => {
-      const { languageLevel, translateTo, ...options } = config.options;
-      return {
-        id: config.id.toString(),
-        model: config.model,
-        aiRoleId: config.aiRoleId,
-        userText: inputText,
-        contextText,
-        options: {
-          ...options,
-          languageLevel: languageLevel || 'default',
-          ...(translateTo && { translateTo }),
-        },
-      };
-    });
-    const request: BatchRequest = { assistants };
-
-    let requestErrorMessage: string | undefined;
     try {
-      // Get auth token
       const token = await getAuthToken();
-
-      // Make API request
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      };
-
-      const response = await fetch(`${API_BASE_URL}/enhance`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers,
-        body: JSON.stringify(request),
-      });
-
-      // Check if request was aborted
+      const responseData = await enhanceText({ configs: enabledConfigs, userText: inputText,
+        contextText, token, signal: controller.signal });
       if (controller.signal.aborted) return;
 
-      // Check if response is ok
-      if (!response.ok) {
-        // Replace an expired anonymous session and reload.
-        if (response.status === 401) {
-          await resetSession();
-          window.location.reload();
-          return; // Exit early since page will reload
-        }
-
-        const errorBody = await response.json().catch(() => null) as { error?: { code?: string } } | null;
-        const code = errorBody?.error?.code || (response.status === 429 ? 'QUOTA_EXCEEDED' : '');
-        requestErrorMessage = AUTH_ERROR_MESSAGES[code] || getErrorMessage(code);
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      // Parse response
-      const responseData = await response.json() as BatchResponse;
       setSelection(responseData.selection);
 
       // Calculate total tokens used from all successful results BEFORE updating state
@@ -316,7 +263,12 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
     } catch (error: unknown) {
       const caughtError = error instanceof Error ? error : new Error('Unknown error');
-      if (caughtError.name === 'AbortError') {
+      if (caughtError instanceof EnhancementApiError && caughtError.status === 401) {
+        await resetSession();
+        window.location.reload();
+        return;
+      }
+      if (controller.signal.aborted || caughtError.name === 'AbortError') {
         console.log('Request cancelled by user.');
         // Update UI for cancelled requests
         setResults(prevResults => {
@@ -339,7 +291,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           enabledConfigs.forEach(config => {
             newResults.set(config.id, {
               configId: config.id,
-              text: requestErrorMessage || getErrorMessage(''),
+              text: caughtError instanceof EnhancementApiError
+                ? AUTH_ERROR_MESSAGES[caughtError.code] || getErrorMessage(caughtError.code)
+                : getErrorMessage(''),
               isLoading: false,
               error: true,
             });

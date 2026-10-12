@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { TIER_LIMITS } from '@/lib/constants';
+import { TIER_LIMITS } from '@/config/catalog.config';
 
 jest.mock('next/navigation', () => ({ usePathname: () => '/' }));
 jest.mock('../../src/context/AuthContext', () => ({

@@ -1,3 +1,4 @@
+import { EVALUATION_DEFAULTS } from '../evaluations/config.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { BOUNDARY_CASES } from '../evaluations/boundary-cases.ts';
@@ -10,7 +11,7 @@ if (process.argv.includes('--help')) {
 }
 const key = process.env.OPENROUTER_API_KEY;
 if (!key) throw new Error('OPENROUTER_API_KEY is required');
-const repetitions = Number(process.argv.find(arg => arg.startsWith('--repeat='))?.slice(9) ?? '1');
+const repetitions = Number(process.argv.find(arg => arg.startsWith('--repeat='))?.slice(9) ?? EVALUATION_DEFAULTS.smokeRepetitions);
 if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 100) throw new Error('--repeat must be 1 to 100');
 const filter = process.argv.find(arg => arg.startsWith('--case='))?.slice(7) ?? '';
 const cases = BOUNDARY_CASES.filter(item => item.id.includes(filter));

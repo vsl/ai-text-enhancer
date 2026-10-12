@@ -7,7 +7,8 @@ import { ResultTextarea } from '@/components/features/ResultTextarea';
 import { InfoTooltip } from '@/components/features/InfoTooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AiConfig, Result } from '@/lib/types';
-import { TOOLTIP_TEXTS, getAiRoleLabel, MODEL_NAMES } from '@/lib/constants';
+import { getAiRoleLabel, MODEL_NAMES } from '@/config/catalog.config';
+import { TOOLTIP_TEXTS } from '@/config/messages.config';
 import type { BatchSelection } from '../../../../backend/src/types/api.types';
 
 type SuccessfulSelection = Extract<BatchSelection, { status: 'success' }>;

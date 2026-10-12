@@ -1,69 +1,27 @@
 import { defineConfig, devices } from '@playwright/test';
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// require('dotenv').config();
+const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
 
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
 export default defineConfig({
   testDir: './e2e',
-  /* Run tests in files in parallel */
   fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-  },
-
-  /* Configure projects for major browsers */
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    // Uncomment to test on Firefox and WebKit
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-  ],
-
-  /* Run your local dev server before starting the tests */
+  workers: process.env.CI ? 1 : 4,
+  reporter: process.env.CI ? 'github' : 'list',
+  use: { baseURL, trace: 'on-first-retry', screenshot: 'only-on-failure' },
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: process.env.E2E_STATIC_EXPORT ? 'python3 -m http.server 3000 --directory out >/dev/null 2>&1' : 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: process.env.E2E_STATIC_EXPORT
+      ? 'node e2e/serve-export.mjs'
+      : `npm run dev -- --hostname 127.0.0.1 --port ${new URL(baseURL).port || '3000'}`,
+    url: baseURL,
+    reuseExistingServer: false,
+    env: {
+      E2E_BASE_URL: baseURL,
+      NEXT_PUBLIC_APP_SUPABASE_URL: 'https://e2e.supabase.co',
+      NEXT_PUBLIC_APP_SUPABASE_ANON_KEY: 'e2e-anon-key',
+      NEXT_PUBLIC_API_BASE_URL: 'https://e2e.supabase.co/functions/v1',
+    },
   },
 });

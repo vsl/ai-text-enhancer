@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test('Home and App share one graphite theme without a switch', async ({ page }) => {
   for (const route of ['/', '/text-ai-assistants']) {

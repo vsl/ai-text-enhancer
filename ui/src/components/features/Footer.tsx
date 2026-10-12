@@ -1,3 +1,4 @@
+import { SITE_CONFIG } from '@/config/site.config';
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
@@ -8,7 +9,7 @@ export function Footer() {
           © {currentYear} AI Text Enhancer
         </p>
         <a
-          href="https://github.com/vsl/ai-text-enhancer"
+          href={SITE_CONFIG.repositoryUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-muted-foreground transition-colors hover:text-foreground"

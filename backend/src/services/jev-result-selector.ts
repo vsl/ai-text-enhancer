@@ -1,3 +1,4 @@
+import { RUNTIME_DEFAULTS } from '../config/runtime.config.ts';
 import { getRoleById } from '../config/roles.config.ts';
 import { LANGUAGE_NAMES } from '../config/transformation-options.config.ts';
 import type { DecisionConnector, DecisionRequest } from '../connectors/openrouter-decision-connector.ts';
@@ -53,7 +54,7 @@ export type ResultSelector = {
 export class JevResultSelector {
   constructor(
     private readonly connector: DecisionConnector,
-    private readonly model: string = 'typesafe/jev-1.13',
+    private readonly model: string = RUNTIME_DEFAULTS.jev.modelId,
   ) {}
 
   async select(

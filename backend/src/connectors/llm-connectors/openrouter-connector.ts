@@ -1,3 +1,6 @@
+import { loadTracingConfig } from '../../config/observability.config.ts';
+import { RUNTIME_DEFAULTS } from '../../config/runtime.config.ts';
+import { PROVIDER_CONFIG } from '../../config/providers.config.ts';
 /** OpenRouter connector using the native fetch API. */
 import type { LLMConnector, LLMRequestParams, LLMResponse } from '../../types/llm.types.ts';
 import {
@@ -24,10 +27,10 @@ export class OpenRouterConnector implements LLMConnector {
   constructor(private apiKey: string) {}
 
   async sendRequest(params: LLMRequestParams): Promise<LLMResponse> {
-    const timeout = params.timeout || 30000;
+    const timeout = params.timeout ?? RUNTIME_DEFAULTS.timeoutMs;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
-    const url = 'https://openrouter.ai/api/v1/chat/completions';
+    const url = PROVIDER_CONFIG.openrouter.chatUrl;
     const body = {
       model: params.model,
       messages: [
@@ -36,7 +39,7 @@ export class OpenRouterConnector implements LLMConnector {
       ],
       ...(params.temperature !== undefined && { temperature: params.temperature }),
       ...(params.serviceTier && { service_tier: params.serviceTier }),
-      max_tokens: params.maxTokens ?? 2048,
+      max_tokens: params.maxTokens ?? RUNTIME_DEFAULTS.maxOutputTokens,
       ...((params.reasoningEffort !== undefined || params.reasoningEnabled !== undefined) && { reasoning: {
         ...(params.reasoningEffort !== undefined && { effort: params.reasoningEffort }),
         ...(params.reasoningEnabled !== undefined && { enabled: params.reasoningEnabled }),
@@ -49,7 +52,7 @@ export class OpenRouterConnector implements LLMConnector {
         : { type: 'json_object' },
       provider: { require_parameters: true },
     };
-    const debug = process.env.LOG_LEVEL?.toLowerCase() === 'debug' && isContentCaptureEnabled();
+    const debug = loadTracingConfig().logLevel === 'debug' && isContentCaptureEnabled();
 
     if (debug) {
       console.debug('[OPENROUTER][DEBUG] request', JSON.stringify({ requestId: params.requestId, method: 'POST', url, body }));
@@ -75,8 +78,8 @@ export class OpenRouterConnector implements LLMConnector {
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.apiKey}`,
-                'HTTP-Referer': 'https://github.com/vsl/ai-text-enhancer',
-                'X-Title': 'AI Text Enhancer',
+                'HTTP-Referer': PROVIDER_CONFIG.openrouter.referer,
+                'X-Title': PROVIDER_CONFIG.openrouter.title,
               },
               body: JSON.stringify(body),
               signal: controller.signal,

@@ -1,3 +1,4 @@
+import { BOOTSTRAP_USERS } from '../../fixtures/bootstrap-users.ts';
 /**
  * Unit Tests for AdminService
  * Tests admin operations for user and quota management
@@ -17,9 +18,11 @@ jest.mock('../../../src/repositories/quota.repository.ts');
 const mockSupabaseClient = {
   from: jest.fn(),
   auth: {
+    getUser: jest.fn(),
     admin: {
       listUsers: jest.fn(),
       createUser: jest.fn(),
+      deleteUser: jest.fn(),
     },
   },
 };
@@ -48,6 +51,29 @@ describe('AdminService', () => {
     adminService = new AdminService(mockSupabaseClient as any);
     mockUserRepo = (adminService as any).userRepo as jest.Mocked<UserRepository>;
     mockQuotaRepo = (adminService as any).quotaRepo as jest.Mocked<QuotaRepository>;
+  });
+
+  describe('authenticateAdmin', () => {
+    it('accepts an active administrator', async () => {
+      mockSupabaseClient.auth.getUser.mockResolvedValue({ data: { user: { id: mockUser.userId } }, error: null });
+      mockUserRepo.getUserById.mockResolvedValue({ ...mockUser, isAdmin: true });
+      await expect(adminService.authenticateAdmin('token')).resolves.toBe(mockUser.userId);
+    });
+
+    it.each([
+      { isAdmin: false, isActive: true },
+      { isAdmin: true, isActive: false },
+    ])('rejects unauthorized profile %p', async (flags) => {
+      mockSupabaseClient.auth.getUser.mockResolvedValue({ data: { user: { id: mockUser.userId } }, error: null });
+      mockUserRepo.getUserById.mockResolvedValue({ ...mockUser, ...flags });
+      await expect(adminService.authenticateAdmin('token')).rejects.toThrow('Active admin privileges required');
+    });
+
+    it('rejects an invalid session before looking up privileges', async () => {
+      mockSupabaseClient.auth.getUser.mockResolvedValue({ data: { user: null }, error: new Error('expired') });
+      await expect(adminService.authenticateAdmin('token')).rejects.toThrow('Invalid or expired token');
+      expect(mockUserRepo.getUserById).not.toHaveBeenCalled();
+    });
   });
 
   describe('adjustTokens', () => {
@@ -347,6 +373,31 @@ describe('AdminService', () => {
   });
 
   describe('bootstrapUsers', () => {
+    it('checks every auth page and compares email case-insensitively', async () => {
+      mockSupabaseClient.auth.admin.listUsers
+        .mockResolvedValueOnce({ data: { users: Array.from({ length: 1000 }, (_, i) => ({ email: `existing-${i}@example.com` })) }, error: null })
+        .mockResolvedValueOnce({ data: { users: [{ email: BOOTSTRAP_USERS[0].email.toUpperCase() }] }, error: null });
+      const result = await adminService.bootstrapUsers([BOOTSTRAP_USERS[0]]);
+      expect(result.usersSkipped).toBe(1);
+      expect(mockSupabaseClient.auth.admin.createUser).not.toHaveBeenCalled();
+      expect(mockSupabaseClient.auth.admin.listUsers).toHaveBeenLastCalledWith({ page: 2, perPage: 1000 });
+    });
+
+    it('stops before account creation when listing fails', async () => {
+      mockSupabaseClient.auth.admin.listUsers.mockResolvedValue({ data: { users: [] }, error: new Error('unavailable') });
+      await expect(adminService.bootstrapUsers(BOOTSTRAP_USERS)).rejects.toThrow('Failed to bootstrap users');
+      expect(mockSupabaseClient.auth.admin.createUser).not.toHaveBeenCalled();
+    });
+
+    it('rolls back only the newly created account when profile setup fails', async () => {
+      mockSupabaseClient.auth.admin.listUsers.mockResolvedValue({ data: { users: [] }, error: null });
+      mockSupabaseClient.auth.admin.createUser.mockResolvedValue({ data: { user: { id: 'created-user' } }, error: null });
+      mockSupabaseClient.from.mockReturnValue({ update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: new Error('profile failure') }) }) });
+      mockSupabaseClient.auth.admin.deleteUser.mockResolvedValue({ error: null });
+      await expect(adminService.bootstrapUsers([BOOTSTRAP_USERS[0]])).rejects.toThrow('Failed to bootstrap users');
+      expect(mockSupabaseClient.auth.admin.deleteUser).toHaveBeenCalledWith('created-user');
+    });
+
     it('should create all bootstrap users successfully', async () => {
       // Mock: No existing users
       mockSupabaseClient.auth.admin.listUsers.mockResolvedValue({
@@ -365,13 +416,13 @@ describe('AdminService', () => {
       // Mock: database updates (chained eq() calls)
       mockSupabaseClient.from.mockReturnValue({
         update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({ data: {}, error: null,
             eq: jest.fn().mockResolvedValue({ data: {}, error: null }),
           }),
         }),
       });
 
-      const result = await adminService.bootstrapUsers();
+      const result = await adminService.bootstrapUsers(BOOTSTRAP_USERS);
 
       expect(result.success).toBe(true);
       expect(result.usersCreated).toBe(6);
@@ -401,7 +452,7 @@ describe('AdminService', () => {
         error: null,
       });
 
-      const result = await adminService.bootstrapUsers();
+      const result = await adminService.bootstrapUsers(BOOTSTRAP_USERS);
 
       expect(result.success).toBe(true);
       expect(result.usersCreated).toBe(0);
@@ -434,13 +485,13 @@ describe('AdminService', () => {
       // Mock: database updates (chained eq() calls)
       mockSupabaseClient.from.mockReturnValue({
         update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({ data: {}, error: null,
             eq: jest.fn().mockResolvedValue({ data: {}, error: null }),
           }),
         }),
       });
 
-      const result = await adminService.bootstrapUsers();
+      const result = await adminService.bootstrapUsers(BOOTSTRAP_USERS);
 
       expect(result.success).toBe(true);
       expect(result.usersCreated).toBe(3);
@@ -460,10 +511,10 @@ describe('AdminService', () => {
         error: { message: 'Email already exists' },
       });
 
-      await expect(adminService.bootstrapUsers()).rejects.toThrow(
+      await expect(adminService.bootstrapUsers(BOOTSTRAP_USERS)).rejects.toThrow(
         AdminServiceError
       );
-      await expect(adminService.bootstrapUsers()).rejects.toThrow(
+      await expect(adminService.bootstrapUsers(BOOTSTRAP_USERS)).rejects.toThrow(
         'Failed to bootstrap users'
       );
     });
@@ -481,13 +532,13 @@ describe('AdminService', () => {
 
       // Mock successful profile/quota updates but failed purchase update
       let callCount = 0;
-      mockSupabaseClient.from.mockImplementation(() => {
+      mockSupabaseClient.from.mockImplementation((table: string) => {
         callCount++;
-        if (callCount <= 12) {
+        if (table !== 'token_purchases') {
           // First 12 calls (2 per user x 6 users) succeed
           return {
             update: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({ data: {}, error: null,
                 eq: jest.fn().mockResolvedValue({ data: {}, error: null }),
               }),
             }),
@@ -509,7 +560,7 @@ describe('AdminService', () => {
 
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      const result = await adminService.bootstrapUsers();
+      const result = await adminService.bootstrapUsers(BOOTSTRAP_USERS);
 
       expect(result.success).toBe(true);
       expect(result.usersCreated).toBe(6);

@@ -1,8 +1,3 @@
-// ============================================
-// PLATFORM-SPECIFIC REQUEST HANDLING
-// Still Deno-specific but isolated for easy porting
-// ============================================
-
 import type { BatchOrchestrator } from '../../../src/services/batch-orchestrator.ts';
 import type { AuthMiddleware } from '../../../src/services/auth-middleware.ts';
 import type { SystemConfig } from '../../../src/types/config.types.ts';

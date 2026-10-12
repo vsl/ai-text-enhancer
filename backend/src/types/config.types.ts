@@ -16,12 +16,6 @@ export interface SystemConfig {
   /** Supabase configuration */
   supabase: SupabaseConfig;
 
-  /** Optional bootstrap secret key for admin user creation */
-  bootstrapSecretKey?: string;
-
-  /** Rate limiting configuration by tier */
-  rateLimits: RateLimitConfig;
-
   /** Request timeout in milliseconds */
   timeout: number;
 
@@ -148,83 +142,4 @@ export interface PaymentConfig {
 
   /** Stripe publishable key (safe to expose to frontend) */
   stripePublishableKey: string;
-}
-
-/**
- * @deprecated Use SupabaseConfig instead
- * User Service configuration (legacy)
- */
-export interface UserServiceConfig {
-  /** Base URL for user service API */
-  url: string;
-
-  /** API key for user service authentication */
-  apiKey: string;
-}
-
-/**
- * Rate limit configuration
- */
-export interface RateLimitConfig {
-  free: TierLimits;
-  plus: TierLimits;
-  premium: TierLimits;
-}
-
-/**
- * Tier-specific rate limits
- */
-export interface TierLimits {
-  /** Maximum requests per day */
-  requestsPerDay: number;
-  
-  /** Maximum requests per hour */
-  requestsPerHour: number;
-  
-  /** Maximum tokens per request */
-  maxTokensPerRequest: number;
-  
-  /** Maximum tokens per day */
-  maxTokensPerDay: number;
-}
-
-/**
- * Environment variables interface
- */
-export interface EnvironmentConfig {
-  /** OpenRouter API key */
-  OPENROUTER_API_KEY: string;
-
-  /** Supabase project URL */
-  SUPABASE_URL: string;
-
-  /** Supabase service role key */
-  APP_SUPABASE_SERVICE_ROLE_KEY: string;
-  /** Optional: Bootstrap secret key for admin user creation */
-  BOOTSTRAP_SECRET_KEY?: string;
-
-  /** Optional: LM Studio base URL */
-  LM_STUDIO_BASE_URL?: string;
-
-  /** Optional: LLM request timeout in milliseconds */
-  LLM_TIMEOUT_MS?: string;
-
-  /** Optional: Maximum batch size */
-  MAX_BATCH_SIZE?: string;
-
-  /** Optional: Whether to expose detailed error messages (true/false) */
-  EXPOSE_ERROR_DETAILS?: string;
-
-  /** Optional Jev result-selection overrides */
-  JEV_MODEL_ID?: string;
-  JEV_TIMEOUT_MS?: string;
-
-  /** Optional LangSmith tracing configuration */
-  LANGSMITH_TRACING?: string;
-  LANGSMITH_CAPTURE_CONTENT?: string;
-  LANGSMITH_API_KEY?: string;
-  LANGSMITH_PROJECT?: string;
-  LANGSMITH_ENDPOINT?: string;
-  APP_ENV?: 'staging' | 'production';
-  APP_RELEASE?: string;
 }

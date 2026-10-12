@@ -10,4 +10,4 @@
   shared staging Supabase project.
 - Update the backend in the same change when the API contract changes.
 
-See `CLAUDE.md` and `docs/` for detailed architecture and feature documentation.
+See `../docs/architecture.md`, `../docs/testing.md`, and this application's `docs/` for maintained documentation.

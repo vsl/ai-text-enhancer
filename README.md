@@ -17,7 +17,7 @@ General-purpose AI chats are flexible, but recurring writing tasks often require
 - Configures improvements, corrections, formatting, length, tone, formality, language level, translation, and emojis per assistant.
 - **Avoid common AI symbols** — optionally discourages em dashes, semicolons, unnecessary formatting, and other frequently overused AI-writing patterns when simpler phrasing works.
 - Lets assistants use different currently configured OpenRouter models and returns partial results when an individual model fails.
-- Sends two or more valid outputs to TypeSafe Jev through the OpenRouter Decisions API. Jev returns a selected result and relative candidate probabilities; a failed evaluation never discards generated text.
+- Sends valid outputs to TypeSafe Jev through the OpenRouter Decisions API. Jev returns a selected result, rubric scores, and decision confidence; a failed evaluation never discards generated text.
 - Saves workflows in browser `localStorage`. The public demo uses invisible Supabase anonymous auth and a weekly token allowance, with no traditional signup flow.
 
 ## Architecture
@@ -48,7 +48,7 @@ The `ui/` app exports static files. Secrets, quota checks, provider calls, and J
 | Testing | Jest, Playwright, prompt evaluations |
 | Development | Node.js 22; optional Docker or Podman shell |
 
-The configured demo models are [GPT-5 Nano, OpenRouter Free, Qwen3 30B A3B Instruct 2507, GPT-6 Luna, and Claude Haiku 5.5](backend/src/config/models.config.ts). The backend model catalog defines their provider IDs and display names; a UI parity test keeps the browser labels aligned.
+The configured demo models and their generation settings are listed in [the model catalog](backend/src/config/models.config.ts). The backend model catalog defines their provider IDs and display names; a UI parity test keeps the browser labels aligned.
 
 ## Prompt engineering and transformations
 
@@ -59,7 +59,7 @@ Each assistant keeps its distinct role prompt. Enabled transformations add instr
 - **Static frontend:** The UI needs no Next.js server, while server-side keys remain in Edge Functions.
 - **Portable core:** Business logic can be tested under Node; Deno and Supabase APIs stay at the boundary.
 - **Partial success:** One timeout or model failure should not erase useful outputs from other assistants.
-- **Noncritical Jev:** Generation remains usable when the decision service is unavailable. Jev's probabilities express relative preference among that run's candidates, not correctness or an absolute quality score.
+- **Noncritical Jev:** Generation remains usable when the decision service is unavailable. Jev's quality scores are normalized rubric levels; decision confidence is a separate value. Neither guarantees correctness.
 - **Browser workflows:** Local persistence is sufficient for the anonymous demo and avoids account-bound workflow storage.
 
 ## Tracing and data handling
@@ -75,7 +75,8 @@ LangSmith tracing is optional. `LANGSMITH_TRACING=true` with an API key records 
 │   ├── src/               # services, connectors, config, observability
 │   ├── supabase/          # Edge Functions and migrations
 │   ├── tests/             # unit and integration checks
-│   └── evaluations/       # prompt regression cases
+│   ├── evaluations/       # engines, fixtures, experiment definitions and review artifacts
+│   └── planned/           # disabled payment function adapters
 ├── docs/                  # current setup and product flow
 └── .github/workflows/     # UI and backend checks/deployments
 ```
@@ -95,6 +96,7 @@ Copy [the UI environment template](ui/.env.local.example) to `ui/.env.local` and
 ## Verification
 
 ```bash
+npm --prefix ui run type-check
 npm --prefix ui test -- --runInBand
 npm --prefix ui run build
 npm --prefix ui run test:e2e
@@ -115,6 +117,15 @@ triggered and do not run in ordinary unit-test CI.
 
 ## Monetization status and license
 
-A Stripe token-purchase subsystem exists as a monetization prototype, but payment functions are intentionally disabled in the current deployment. The deployed public demo uses a weekly anonymous allowance; old token-package prices are not a live offering.
+A Stripe token-purchase subsystem exists as a monetization prototype, but payment functions are intentionally disabled in the current deployment. The deployed public demo uses a weekly anonymous allowance; token-package settings are not a live offering. See [the payment plan and activation gates](backend/docs/payments.md).
 
 This repository is proprietary and view-only. See [LICENSE](LICENSE) for the complete terms.
+
+## Developer documentation
+
+- [Architecture and code boundaries](docs/architecture.md)
+- [Configuration ownership and overrides](backend/docs/configuration.md)
+- [Tests and verification](docs/testing.md)
+- [API contract](backend/docs/api-reference.md)
+- [Contribution and cleanup conventions](CONTRIBUTING.md)
+- [Release review and outstanding verification](docs/release-review.md)

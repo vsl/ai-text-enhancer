@@ -7,13 +7,11 @@ export class TestEnv {
   private static originalEnv: NodeJS.ProcessEnv;
 
   /**
-   * Setup test environment with mock services enabled
+   * Save and restore the test environment
    */
   static setup(): void {
     TestEnv.originalEnv = { ...process.env };
     process.env.NODE_ENV = 'test';
-    process.env.ALLOW_MOCK_AUTH = 'true';
-    process.env.ALLOW_MOCK_QUOTA = 'true';
   }
 
   /**

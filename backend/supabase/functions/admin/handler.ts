@@ -1,10 +1,7 @@
-// ============================================
-// PLATFORM-SPECIFIC REQUEST HANDLING FOR ADMIN
-// Deno-specific but isolated for easy porting
-// ============================================
-
+import { ADMIN_POLICY } from '../../../src/config/admin.config.ts';
 import type { AdminService } from '../../../src/services/admin.service.ts';
-import { AuthenticationError } from '../../../src/errors/auth-errors.ts';
+import { AuthenticationError, AuthorizationError } from '../../../src/errors/auth-errors.ts';
+import type { BootstrapUser } from '../../../src/types/admin.types.ts';
 import { AdminServiceError } from '../../../src/services/admin.service.ts';
 import { UserRepositoryError } from '../../../src/repositories/user.repository.ts';
 import { QuotaRepositoryError } from '../../../src/repositories/quota.repository.ts';
@@ -12,7 +9,8 @@ import { getFunctionPath } from '../../../src/utils/function-path.ts';
 
 interface Services {
   adminService: AdminService;
-  bootstrapSecretKey: string;
+  bootstrapSecretKey?: string;
+  bootstrapUsers: BootstrapUser[];
 }
 
 export async function handleRequest(
@@ -41,7 +39,7 @@ export async function handleRequest(
     }
 
     // All other routes require admin authentication
-    const userId = await authenticateAdmin(req, services);
+    await authenticateAdmin(req, services);
 
     // Route: POST /users/:userId/tokens
     const tokensMatch = pathname.match(/^\/users\/([^/]+)\/tokens$/);
@@ -79,12 +77,15 @@ export async function handleRequest(
 }
 
 async function handleBootstrap(req: Request, services: Services, corsHeaders: Record<string, string>) {
+  if (!services.bootstrapSecretKey || services.bootstrapUsers.length === 0) {
+    return jsonResponse({ error: { code: 'BOOTSTRAP_DISABLED', message: 'Bootstrap is not configured' } }, 503, corsHeaders);
+  }
   const authHeader = req.headers.get('Authorization');
   if (authHeader !== services.bootstrapSecretKey) {
     throw new AuthenticationError('Invalid bootstrap secret key');
   }
 
-  const result = await services.adminService.bootstrapUsers();
+  const result = await services.adminService.bootstrapUsers(services.bootstrapUsers);
   return jsonResponse(result, 200, corsHeaders);
 }
 
@@ -95,25 +96,15 @@ async function authenticateAdmin(req: Request, services: Services): Promise<stri
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await services.adminService['supabase'].auth.getUser(token);
-
-  if (error || !user) {
-    throw new AuthenticationError('Invalid or expired token');
-  }
-
-  const userProfile = await services.adminService['userRepo'].getUserById(user.id);
-  if (!userProfile.isAdmin) {
-    throw new AuthenticationError('Admin privileges required');
-  }
-
-  return user.id;
+  return services.adminService.authenticateAdmin(token);
 }
 
 async function handleAdjustTokens(req: Request, userId: string, services: Services, corsHeaders: Record<string, string>) {
-  const body = await req.json();
+  const body = await readObject(req);
   const { tokens, description } = body;
 
-  if (typeof tokens !== 'number') {
+  if (typeof tokens !== 'number' || !Number.isSafeInteger(tokens)
+    || (description !== undefined && typeof description !== 'string')) {
     return jsonResponse({ error: { code: 'INVALID_REQUEST', message: 'tokens must be a number' } }, 400, corsHeaders);
   }
 
@@ -122,14 +113,14 @@ async function handleAdjustTokens(req: Request, userId: string, services: Servic
 }
 
 async function handleChangeTier(req: Request, userId: string, services: Services, corsHeaders: Record<string, string>) {
-  const body = await req.json();
+  const body = await readObject(req);
   const { tier } = body;
 
-  if (!tier || typeof tier !== 'string') {
+  if (tier !== 'free' && tier !== 'plus' && tier !== 'premium') {
     return jsonResponse({ error: { code: 'INVALID_REQUEST', message: 'tier is required and must be a string' } }, 400, corsHeaders);
   }
 
-  const result = await services.adminService.changeTier(userId, tier as any);
+  const result = await services.adminService.changeTier(userId, tier);
   return jsonResponse(result, 200, corsHeaders);
 }
 
@@ -139,7 +130,7 @@ async function handleGetUser(userId: string, services: Services, corsHeaders: Re
 }
 
 async function handleUpdateStatus(req: Request, userId: string, services: Services, corsHeaders: Record<string, string>) {
-  const body = await req.json();
+  const body = await readObject(req);
   const { isActive } = body;
 
   if (typeof isActive !== 'boolean') {
@@ -154,8 +145,8 @@ async function handleUpdateStatus(req: Request, userId: string, services: Servic
 }
 
 async function handleListUsers(url: URL, services: Services, corsHeaders: Record<string, string>) {
-  const limit = parseInt(url.searchParams.get('limit') || '50', 10);
-  const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+  const limit = paginationValue(url, 'limit', ADMIN_POLICY.defaultListLimit);
+  const offset = paginationValue(url, 'offset', ADMIN_POLICY.defaultListOffset);
 
   const result = await services.adminService.listUsers(limit, offset);
   return jsonResponse(result, 200, corsHeaders);
@@ -170,6 +161,10 @@ function handleError(error: unknown, corsHeaders: Record<string, string>): Respo
       401,
       corsHeaders
     );
+  }
+
+  if (error instanceof AuthorizationError) {
+    return jsonResponse({ error: { code: 'AUTHORIZATION_FAILED', message: error.message } }, 403, corsHeaders);
   }
 
   if (error instanceof AdminServiceError || error instanceof UserRepositoryError || error instanceof QuotaRepositoryError) {
@@ -189,10 +184,18 @@ function handleError(error: unknown, corsHeaders: Record<string, string>): Respo
   }
 
   return jsonResponse(
-    { error: { code: 'INTERNAL_ERROR', message: (error as Error).message } },
+    { error: { code: 'INTERNAL_ERROR', message: 'An internal error occurred' } },
     500,
     corsHeaders
   );
+}
+
+async function readObject(req: Request): Promise<Record<string, unknown>> {
+  const body: unknown = await req.json();
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new AdminServiceError('Request body must be a JSON object');
+  }
+  return body as Record<string, unknown>;
 }
 
 function jsonResponse(body: unknown, status: number, headers: Record<string, string>): Response {
@@ -200,4 +203,14 @@ function jsonResponse(body: unknown, status: number, headers: Record<string, str
     status,
     headers: { 'Content-Type': 'application/json', ...headers }
   });
+}
+
+function paginationValue(url: URL, name: string, fallback: number): number {
+  const raw = url.searchParams.get(name);
+  if (raw === null) return fallback;
+  const value = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(value)) {
+    throw new AdminServiceError(`${name} must be a nonnegative integer`);
+  }
+  return value;
 }

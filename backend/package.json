@@ -14,15 +14,12 @@
     "eval:review": "node --import ./scripts/register-npm-imports.mjs --experimental-transform-types scripts/evaluate-experiment.ts",
     "eval:calibrate": "node --import ./scripts/register-npm-imports.mjs --experimental-transform-types scripts/evaluate-experiment.ts --calibrate",
     "type-check:evaluations": "tsc --project tsconfig.evaluations.json",
-    "test:evaluation-export": "node --import ./scripts/register-npm-imports.mjs --experimental-transform-types scripts/test-evaluation-export.ts && node --import ./scripts/register-npm-imports.mjs --experimental-transform-types scripts/test-evaluation-export.ts --fail-export",
+    "test:evaluation-export": "node --import ./scripts/register-npm-imports.mjs --experimental-transform-types tests/integration/evaluation-export.smoke.ts && node --import ./scripts/register-npm-imports.mjs --experimental-transform-types tests/integration/evaluation-export.smoke.ts --fail-export",
     "type-check": "tsc --noEmit",
-    "lint:portability": "grep -r 'Deno\\.' src/ && echo '❌ ERROR: Deno imports found in src/' || echo '✅ OK: No Deno imports in src/'",
+    "lint:portability": "node scripts/check-portability.mjs",
     "setup:env": "./scripts/setup-env.sh",
-    "deploy": "./scripts/deploy.sh",
-    "logs": "./scripts/logs.sh",
-    "logs:tail": "./scripts/logs.sh --tail",
     "health": "./scripts/health-check.sh",
-    "dev": "supabase functions serve enhance --env-file .env.local --no-verify-jwt"
+    "dev": "supabase functions serve --env-file .env.local --no-verify-jwt"
   },
   "keywords": [
     "ai",
@@ -31,19 +28,15 @@
     "serverless",
     "supabase"
   ],
-  "author": "",
   "devDependencies": {
     "@langfuse/client": "5.13.1",
     "@langfuse/otel": "5.13.1",
     "@langfuse/tracing": "5.13.1",
     "@opentelemetry/sdk-node": "0.223.0",
-    "@supabase/supabase-js": "^2.76.1",
+    "@supabase/supabase-js": "2.76.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.7.1",
-    "@typescript-eslint/eslint-plugin": "^8.46.0",
-    "@typescript-eslint/parser": "^8.46.0",
     "jest": "^30.2.0",
-    "jose": "^6.1.0",
     "stripe": "^19.3.0",
     "supabase": "2.101.0",
     "ts-jest": "^29.4.5",
@@ -51,5 +44,9 @@
   },
   "dependencies": {
     "langsmith": "0.10.5"
-  }
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "private": true
 }

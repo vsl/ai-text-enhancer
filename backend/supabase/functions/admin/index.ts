@@ -1,23 +1,17 @@
-// ============================================
-// PLATFORM-SPECIFIC CODE (Deno/Supabase)
-// Admin API Edge Function Handler
-// Target: <100 lines
-// ============================================
-
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { handleRequest } from './handler.ts';
 import { AdminService } from '../../../src/services/admin.service.ts';
-import { initializeSupabase } from '../../../src/config/supabase.config.ts';
-import { getEnvVar } from '../../../src/config/loader.ts';
+import { initializeSupabase } from '../../../src/connectors/supabase-client.ts';
+import { loadSupabaseConfig } from '../../../src/config/loader.ts';
+import { loadBootstrapConfig } from '../../../src/config/admin.config.ts';
 
 // Load environment variables (using APP_ prefix to avoid Edge Functions restriction)
-const SUPABASE_URL = getEnvVar('SUPABASE_URL');
-const APP_SUPABASE_SERVICE_ROLE_KEY = getEnvVar('APP_SUPABASE_SERVICE_ROLE_KEY');
-const BOOTSTRAP_SECRET_KEY = getEnvVar('BOOTSTRAP_SECRET_KEY');
+const config = loadSupabaseConfig();
+const bootstrap = loadBootstrapConfig();
 
 // Initialize Supabase client
-const supabase = initializeSupabase(SUPABASE_URL!, APP_SUPABASE_SERVICE_ROLE_KEY!);
+const supabase = initializeSupabase(config.url, config.serviceRoleKey);
 
 // Initialize admin service
 const adminService = new AdminService(supabase);
@@ -26,6 +20,7 @@ const adminService = new AdminService(supabase);
 Deno.serve(async (req: Request) => {
   return await handleRequest(req, {
     adminService,
-    bootstrapSecretKey: BOOTSTRAP_SECRET_KEY,
+    bootstrapSecretKey: bootstrap.secretKey,
+    bootstrapUsers: bootstrap.users,
   });
 });

@@ -1,3 +1,4 @@
+import { EVALUATION_DEFAULTS } from '../evaluations/config.ts';
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
@@ -5,11 +6,11 @@ import { pathToFileURL } from 'node:url';
 import { GeminiConnector } from '../src/connectors/llm-connectors/gemini-connector.ts';
 import { OpenRouterConnector } from '../src/connectors/llm-connectors/openrouter-connector.ts';
 import { OpenRouterDecisionConnector } from '../src/connectors/openrouter-decision-connector.ts';
-import { caseTags, createExperimentReport, runExperiment, validateExperiment, validateConcurrency, prepareExperiment, plannedCalls, type ExperimentDefinition, type ExperimentReport } from '../src/evaluation/experiments.ts';
-import { createReview, evaluateGates, validateStoredReport, type ReviewArtifact } from '../src/evaluation/experiment-review.ts';
+import { caseTags, createExperimentReport, runExperiment, validateExperiment, validateConcurrency, prepareExperiment, plannedCalls, type ExperimentDefinition, type ExperimentReport } from '../evaluations/lib/experiments.ts';
+import { createReview, evaluateGates, validateStoredReport, type ReviewArtifact } from '../evaluations/lib/experiment-review.ts';
 import { executionFingerprint, loadSuite } from './lib/evaluation-files.ts';
 import { CALIBRATION_CONTROLS } from '../evaluations/calibration-cases.ts';
-import { evaluateWithJev } from '../src/evaluation/jev-evaluator.ts';
+import { evaluateWithJev } from '../evaluations/lib/jev-evaluator.ts';
 import { publishExperiment, publishCalibration, type Publication } from './lib/langfuse-export.ts';
 import { fingerprintPrompt } from '../src/services/prompt-builder.ts';
 
@@ -24,7 +25,7 @@ for (const arg of args) {
 }
 const option = (name: string) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const flag = (name: string) => args.includes(`--${name}`);
-const concurrency = Number(option('concurrency') ?? 1);
+const concurrency = Number(option('concurrency') ?? EVALUATION_DEFAULTS.concurrency);
 validateConcurrency(concurrency);
 if (option('concurrency') !== undefined && (flag('calibrate') || option('report'))) throw new Error('--concurrency only applies to eval:compare');
 const load = async <T>(path: string): Promise<T> => JSON.parse(await readFile(resolve(path), 'utf8')) as T;
@@ -111,17 +112,11 @@ if (flag('help')) {
   for (const arg of args.filter(a => a.startsWith('--reuse='))) {
     const source = await loadReport(arg.slice(8));
     await validateStoredReport(source);
-    // Older clean reports can be fingerprinted from their exact committed code.
-    // Dirty/unavailable historical code cannot be reconstructed safely.
-    if (!source.executionHash && !source.git.dirty) {
-      try { source.executionHash = await executionFingerprint(source.git.revision); }
-      catch { console.warn(`Cannot reconstruct production code for ${source.comparisonId}; no results will be reused.`); }
-    }
     sources.push(source);
   }
   const prepared = await prepareExperiment(definition, report, sources);
   const calls = plannedCalls(report, prepared);
-  console.log(`${definition.id} (${definition.suite ?? 'base'}): ${cases.length} cases, ${report.definition.repetitions} repetitions, concurrency ${concurrency}; at most ${calls.generations} new generation + ${calls.judgments} new judge calls, plus ${calls.catalogChecks} catalog checks. Reuse: ${calls.reusedGenerations} generations + ${calls.reusedJudgments} judgments. Publication adds 0 AI calls.`);
+  console.log(`${definition.id} (${definition.suite ?? EVALUATION_DEFAULTS.suite}): ${cases.length} cases, ${report.definition.repetitions} repetitions, concurrency ${concurrency}; at most ${calls.generations} new generation + ${calls.judgments} new judge calls, plus ${calls.catalogChecks} catalog checks. Reuse: ${calls.reusedGenerations} generations + ${calls.reusedJudgments} judgments. Publication adds 0 AI calls.`);
   const promptErrors = prepared.filter(p => p.record.error);
   if (promptErrors.length) throw new Error(`Prompt preparation failed before paid calls: ${promptErrors.map(p => `${p.record.candidateId}/${p.record.caseId}: ${p.record.error!.message}`).join('; ')}`);
   if (!flag('dry-run')) {

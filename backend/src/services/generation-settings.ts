@@ -1,3 +1,4 @@
+import { RUNTIME_DEFAULTS } from '../config/runtime.config.ts';
 import { getLimitsForTier } from '../config/tier-limits.config.ts';
 import type { UserTier } from '../types/auth.types.ts';
 import type { ModelConfig } from '../types/config.types.ts';
@@ -8,8 +9,8 @@ export type GenerationSettings = Pick<LLMRequestParams,
 
 export function generationSettings(
   model: Pick<ModelConfig, 'structuredOutputMode' | 'serviceTier' | 'reasoningEffort' | 'reasoningEnabled'>,
-  tier: UserTier = 'free',
-  timeout = 30000,
+  tier: UserTier = RUNTIME_DEFAULTS.tier,
+  timeout: number = RUNTIME_DEFAULTS.timeoutMs,
 ): GenerationSettings {
   return {
     structuredOutputMode: model.structuredOutputMode,

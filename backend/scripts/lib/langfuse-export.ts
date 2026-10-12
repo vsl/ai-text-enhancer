@@ -3,10 +3,10 @@ import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { propagateAttributes, startObservation } from '@langfuse/tracing';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { fingerprintPrompt } from '../../src/services/prompt-builder.ts';
-import { caseTags, type AttemptRecord, type ExperimentReport, type ReuseSource } from '../../src/evaluation/experiments.ts';
-import { summarizeCandidate, tokenBuckets } from '../../src/evaluation/experiment-review.ts';
+import { caseTags, type AttemptRecord, type ExperimentReport, type ReuseSource } from '../../evaluations/lib/experiments.ts';
+import { summarizeCandidate, tokenBuckets } from '../../evaluations/lib/experiment-review.ts';
 import type { CalibrationControl } from '../../evaluations/calibration-cases.ts';
-import type { JudgeEvaluation } from '../../src/evaluation/jev-evaluator.ts';
+import type { JudgeEvaluation } from '../../evaluations/lib/jev-evaluator.ts';
 
 export interface Publication {
   status: 'complete' | 'error';

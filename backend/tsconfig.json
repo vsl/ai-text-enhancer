@@ -2,7 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,
@@ -14,12 +16,22 @@
     "sourceMap": true,
     "allowImportingTsExtensions": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     }
   },
-  "include": ["src/**/*", "npm-imports.d.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": [
+    "src/**/*",
+    "npm-imports.d.ts",
+    "supabase/functions/**/handler.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts"
+  ]
 }

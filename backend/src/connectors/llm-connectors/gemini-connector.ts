@@ -1,3 +1,5 @@
+import { RUNTIME_DEFAULTS } from '../../config/runtime.config.ts';
+import { PROVIDER_CONFIG } from '../../config/providers.config.ts';
 /** Google Gemini connector using the native REST API. */
 import type { LLMConnector, LLMRequestParams, LLMResponse } from '../../types/llm.types.ts';
 import { LLMAuthenticationError, LLMError, LLMRateLimitError, LLMTimeoutError } from '../../errors/llm-errors.ts';
@@ -12,16 +14,16 @@ export class GeminiConnector implements LLMConnector {
   constructor(private apiKey: string) {}
 
   async sendRequest(params: LLMRequestParams): Promise<LLMResponse> {
-    const timeout = params.timeout || 30000;
+    const timeout = params.timeout ?? RUNTIME_DEFAULTS.timeoutMs;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${params.model}:generateContent?key=${this.apiKey}`;
+    const url = `${PROVIDER_CONFIG.gemini.baseUrl}/${params.model}:generateContent?key=${this.apiKey}`;
     const body = {
       systemInstruction: { parts: [{ text: params.systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: params.userPrompt }] }],
       generationConfig: {
         ...(params.temperature !== undefined && { temperature: params.temperature }),
-        maxOutputTokens: params.maxTokens ?? 2048,
+        maxOutputTokens: params.maxTokens ?? RUNTIME_DEFAULTS.maxOutputTokens,
         responseMimeType: 'application/json',
         responseSchema: TEXT_OUTPUT_SCHEMA,
       },

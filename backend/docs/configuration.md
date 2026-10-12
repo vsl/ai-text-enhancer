@@ -1,520 +1,113 @@
-> **Historical reference:** This document may describe earlier providers, limits, or deployment steps. For the current public demo, use the [root README](../../README.md), current source configuration, and deployment workflow. Stripe payment functions are a disabled prototype, not live endpoints.
+# Configuration
 
-# Configuration Guide
+Application policy lives in `backend/src/config/` and `ui/src/config/`.
+Evaluation policy lives in `backend/evaluations/`. Environment values supply
+secrets and deployment-specific overrides; they are not duplicated inside
+services or components. Framework/build files remain at each application's root
+where their tools discover them.
 
-Complete guide to environment setup, configuration modules, and system configuration.
+## Authoritative locations
 
-**Last Updated:** January 2025
+| Setting | Location |
+| --- | --- |
+| Provider model IDs, capabilities, reasoning and service tier | `backend/src/config/models.config.ts` |
+| Detailed role prompts and role model access | `backend/src/config/roles.config.ts` |
+| Transformation values and language names | `backend/src/config/transformation-options.config.ts` |
+| Input, output-token and assistant limits by tier | `backend/src/config/tier-limits.config.ts` |
+| Timeout, batch ceiling, raw connector output budget and token estimates | `backend/src/config/runtime.config.ts` |
+| Provider endpoints and attribution | `backend/src/config/providers.config.ts` |
+| Optional trace defaults and secret redaction inputs | `backend/src/config/observability.config.ts` |
+| Explicit initial admin accounts | `backend/src/config/admin.config.ts`, through server secrets |
+| UI labels, controls and public tier projection | `ui/src/config/catalog.config.ts` |
+| Initial assistants and saved workflows | `ui/src/config/workflows.config.ts` |
+| User-facing messages | `ui/src/config/messages.config.ts` |
+| Repository URL and Analytics measurement ID | `ui/src/config/site.config.ts` |
+| UI feedback and refresh timings | `ui/src/config/interaction.config.ts` |
+| Required public build environment values | `ui/src/config/runtime.config.ts` |
+| Experiment defaults and gates | `backend/evaluations/config.ts`; per-experiment overrides in `experiments/` |
+| Anonymous weekly allowance and reset schedule | `private.runtime_settings` and the quota migration |
+| Planned token packages | `backend/src/config/payment.config.ts`; not a live offering |
 
----
+Values in configuration files are intentional, reviewable policy defaults.
+Services and connectors reference those values instead of repeating literals.
+Protocol structure, algorithmic constants and test fixtures are not deployment
+configuration. Do not introduce environment variables for every implementation
+detail.
 
-## Table of Contents
+## Environment files
 
-1. [Quick Reference](#quick-reference)
-2. [Environment Variables](#environment-variables)
-3. [Configuration Modules](#configuration-modules)
-4. [Getting Supabase Credentials](#getting-supabase-credentials)
-5. [Configuration Examples](#configuration-examples)
+- Copy `ui/.env.local.example` to `ui/.env.local`. All three public URLs/keys are
+  required; Next.js embeds them at build time. A changed value requires a rebuild.
+- Copy `backend/.env.local.example` to `backend/.env.local` for the local functions.
+  Hosted functions receive `SUPABASE_URL` from Supabase automatically.
+- Copy `backend/.env.evaluation.example` to `backend/.env.evaluation` for CLI
+  evaluation and publication. Load it explicitly with Node's `--env-file` option.
+  These credentials are not synchronized to Edge Functions.
 
----
+Private `.env*` files are ignored; only templates are committed. Keep provider,
+service-role, database and CLI access keys server-side. `setup-env.sh` reads a
+trusted shell-compatible file: quote JSON and values containing spaces.
 
-## Quick Reference
+The public demo requires `OPENROUTER_API_KEY`, `SUPABASE_URL`, and
+`APP_SUPABASE_SERVICE_ROLE_KEY`. The profile/admin endpoints only need the
+Supabase settings. Blank optional numeric overrides use committed defaults;
+nonblank values must be whole numbers in range. Boolean flags accept exactly
+`true` or `false`, with blank values using their defaults. Invalid configuration
+fails startup rather than silently accepting values such as `30000ms`.
 
-### Environment Variables Table
+| Optional backend override | Default | Constraint |
+| --- | --- | --- |
+| `LLM_TIMEOUT_MS` | Runtime timeout policy | 1,000–300,000 ms |
+| `MAX_BATCH_SIZE` | Runtime batch policy | 1–100; tier-specific limits also apply |
+| `JEV_MODEL_ID` | Runtime Jev model policy | Nonblank override |
+| `JEV_TIMEOUT_MS` | Runtime Jev timeout policy | Positive safe integer |
+| `EXPOSE_ERROR_DETAILS` | `false` | Boolean |
+| `LANGSMITH_TRACING` | `false` | Enabled only with `LANGSMITH_API_KEY` |
+| `LANGSMITH_CAPTURE_CONTENT` | `false` | Boolean; permits sensitive content capture |
 
-| Variable | Required | Purpose | Example Value |
-|----------|----------|---------|---------------|
-| `SUPABASE_URL` | Yes | Supabase API URL | `http://127.0.0.1:54321` |
-| `APP_SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key (secret) | `eyJhbGc...` |
-| `APP_SUPABASE_JWT_SECRET` | Yes | JWT signing secret | `super-secret-jwt-token...` |
-| `BOOTSTRAP_SECRET_KEY` | Yes | Bootstrap endpoint protection | `local-dev-secret-123` |
-| `GEMINI_API_KEY` | Yes | Google Gemini API key | `AIzaSy...` |
-| `OPENROUTER_API_KEY` | No | OpenRouter API key | `sk-or-v1-...` |
-| `LM_STUDIO_BASE_URL` | No | Local LM Studio URL | `http://localhost:1234` |
-| `LLM_TIMEOUT_MS` | No | LLM request timeout | `30000` (default) |
-| `MAX_BATCH_SIZE` | No | Max assistants per batch | `10` (default) |
-| `LANGSMITH_TRACING` | No | Enable LangSmith tracing | `true` |
-| `LANGSMITH_API_KEY` | With tracing | LangSmith API key | `lsv2_...` |
-| `LANGSMITH_PROJECT` | With tracing | Trace project | `ai-text-enhancer-staging` |
-| `LANGSMITH_ENDPOINT` | No | LangSmith US endpoint | `https://api.smith.langchain.com` |
-| `APP_ENV` | No | Deployment environment | `staging` |
-| `APP_RELEASE` | No | Git release SHA | `abc123...` |
-| `LANGFUSE_BASE_URL` | With eval publication | Existing Langfuse instance API URL | Your instance URL |
-| `LANGFUSE_PUBLIC_KEY` | With eval publication | Langfuse evaluation project public key | `pk-lf-...` |
-| `LANGFUSE_SECRET_KEY` | With eval publication | Langfuse evaluation project secret key (server-side only) | `sk-lf-...` |
+`LANGSMITH_PROJECT`, `LANGSMITH_ENDPOINT`, `APP_ENV`, `APP_RELEASE`, and `LOG_LEVEL`
+configure tracing/deployment diagnostics. GitHub Actions sets deployment metadata
+and chooses staging/production secrets. Timeout/batch/Jev defaults remain in
+TypeScript, so empty Actions overrides do not define a second policy.
 
-### Quick Setup Commands
+## Admin bootstrap
 
-```bash
-# 1. Copy example environment file
-cp .env.local.example .env.local
+Bootstrap is disabled unless `ADMIN_BOOTSTRAP_USERS_JSON` contains an explicit
+nonempty user array and `BOOTSTRAP_SECRET_KEY` contains at least 32 characters.
+The user data is a server secret, not an HTTP request body or committed fixture.
+Each entry must specify `email`, a unique 16+ character `password`, `tier`,
+`isAdmin`, `tokens`, `isActive`, and `description`. Use independently generated
+passwords for real accounts. Existing accounts are skipped; this mechanism does
+not rotate their passwords or update their privileges. Account lookup is paginated
+and case-insensitive. A failed profile/quota setup removes only the account just
+created by that operation, so it can be retried; accounts successfully created
+earlier in the same bootstrap remain in place.
 
-# 2. Get Supabase credentials
-supabase status
+The deployment workflow accepts optional `STAGING_ADMIN_BOOTSTRAP_USERS_JSON`
+and `PRODUCTION_ADMIN_BOOTSTRAP_USERS_JSON` repository secrets. Unset values
+leave bootstrap disabled. Remove the user JSON after initialization. Known-password
+fixtures in `tests/fixtures/` and `supabase/seed.sql` are local-only test data.
 
-# 3. Get JWT secret
-supabase status -o json | grep JWT_SECRET
+## Database allowance
 
-# 4. Edit .env.local with your values
-nano .env.local  # or use your preferred editor
+The database owns the actual anonymous allowance. Change it in the appropriate
+project as the database owner:
 
-# 5. Start Supabase
-supabase start
+```sql
+update private.runtime_settings
+set bigint_value = <amount>
+where setting_name = 'anonymous_weekly_token_allowance';
 
-# 6. Start development server
-npm run dev
+-- Explicitly apply to existing anonymous accounts when intended:
+select private.reset_anonymous_quotas();
 ```
 
----
-
-## Environment Variables
-
-### Deep Dive
-
-#### Supabase Configuration
-
-**SUPABASE_URL**
-- **Purpose:** Base URL for Supabase API
-- **Local:** `http://127.0.0.1:54321` (from `supabase status`)
-- **Production:** Auto-provided by Supabase Edge Functions environment
-- **Required:** Yes
-- **Where used:** `src/config/loader.ts`, Supabase client initialization
-
-**APP_SUPABASE_SERVICE_ROLE_KEY**
-- **Purpose:** Service role key for admin database operations
-- **Security:** NEVER expose to clients, server-side only
-- **Capabilities:** Bypasses Row Level Security (RLS), full database access
-- **Local:** Get from `supabase status` (labeled as "service_role key")
-- **Production:** Get from Supabase Dashboard → Settings → API
-- **Required:** Yes
-- **Where used:** `src/config/supabase.config.ts`, database repositories
-
-**APP_SUPABASE_JWT_SECRET**
-- **Purpose:** Secret used to sign and verify JWT tokens
-- **Security:** NEVER expose to clients
-- **Local:** Get from `supabase status -o json | grep JWT_SECRET`
-- **Production:** Get from Supabase Dashboard → Settings → API
-- **Required:** Yes
-- **Where used:** `src/services/auth-service.ts` for JWT verification with `jose` library
-
-**BOOTSTRAP_SECRET_KEY**
-- **Purpose:** Protects `/admin/bootstrap` endpoint
-- **Security:** Change in production to a secure random string
-- **Used for:** Creating initial test users in development
-- **Local:** Can be simple like `local-dev-secret-123`
-- **Production:** Use a strong random string, store securely
-- **Required:** Yes
-- **Where used:** `supabase/functions/admin/handler.ts`
-
-#### LLM Provider API Keys
-
-**GEMINI_API_KEY**
-- **Purpose:** Google Gemini API authentication
-- **Get key:** [Google AI Studio](https://makersuite.google.com/app/apikey)
-- **Free tier:** Yes, with generous limits
-- **Required:** Yes
-- **Where used:** `src/connectors/llm-connectors/gemini-connector.ts`
-
-**OPENROUTER_API_KEY**
-- **Purpose:** OpenRouter API authentication (access to multiple models)
-- **Get key:** [OpenRouter Keys](https://openrouter.ai/keys)
-- **Free tier:** Some models are free
-- **Required:** No (only if using OpenRouter models)
-- **Where used:** `src/connectors/llm-connectors/openrouter-connector.ts`
-
-#### Optional Configuration
-
-**LM_STUDIO_BASE_URL**
-- **Purpose:** Local LM Studio API endpoint for development
-- **Default:** `http://localhost:1234`
-- **Required:** No (only for local LLM testing)
-- **Setup:** Download [LM Studio](https://lmstudio.ai/), start local server
-- **Where used:** `src/connectors/llm-connectors/lmstudio-connector.ts`
-
-**LLM_TIMEOUT_MS**
-- **Purpose:** Timeout for LLM API requests in milliseconds
-- **Default:** `30000` (30 seconds)
-- **Range:** `5000` - `60000` recommended
-- **Required:** No
-- **Where used:** All LLM connectors use `AbortController` with this timeout
-
-**MAX_BATCH_SIZE**
-- **Purpose:** Maximum number of assistants per batch request
-- **Default:** `10`
-- **Range:** `1` - `20` (higher values increase processing time)
-- **Required:** No
-- **Where used:** `src/services/batch-orchestrator.ts` for validation
-
-**LOG_LEVEL**
-- **Purpose:** Set to `debug` to log complete OpenRouter request and response payloads with a correlation ID
-- **Default:** Unset (payload logging disabled)
-- **Required:** No
-- **Security:** Debug logs contain user prompts, context, and generated text. Enable only while diagnosing an issue and never log the authorization header or API key.
-- **Local:** Add `LOG_LEVEL=debug` to `.env.local`
-- **Supabase Edge Functions:** Run `supabase secrets set LOG_LEVEL=debug`; set it to another value when finished
-
-#### LangSmith tracing
-
-Tracing is disabled unless `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are both set. CI enables tracing when `LANGSMITH_API_KEY` is configured and disables it otherwise; it selects `ai-text-enhancer-staging` or `ai-text-enhancer-production`. `APP_RELEASE` is the deployed Git SHA. Keep `LANGSMITH_ENDPOINT=https://api.smith.langchain.com` for the US workspace.
-
-Traces omit user source/context, assembled prompts, raw provider responses, and final output by default. Set the GitHub Actions repository secret `LANGSMITH_CAPTURE_CONTENT=true` only for a sensitive diagnostic deployment; credentials remain redacted. Restrict workspace access and retention accordingly, and never enable raw `LOG_LEVEL=debug` payload logging in normal staging or production operation.
-
-Role prompt text remains versioned in Git. Increment that role's `systemPromptVersion` for a role prompt change. Increment the shared `PROMPT_VERSION` for shared policy or transformation instruction changes. LangSmith stores the resulting composite revision and SHA-256 prompt fingerprint; it is not a prompt registry.
-
-#### Langfuse evaluation workspace
-
-We use **Langfuse for offline model and prompt evaluation**: experiment comparison,
-named code/Jev scores, output review and human calibration. Production tracing
-continues to use LangSmith; Langfuse is not a production dependency.
-
-`LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are read only by
-the Node evaluation publisher. They are optional for local JSON experiments and
-required when using `--publish`. Put them in your private `backend/.env.local`
-(both backend example files include blank entries), or export them for the CLI.
-Use your existing instance URL and project keys; this change does not provision
-an instance. Do not add these keys to `ui/.env.local` or deploy them to Edge
-Functions. In the paid evaluation workflow, store the keys as repository secrets
-and `LANGFUSE_BASE_URL` as a repository variable.
-
-Node does not automatically load `.env.local`. From `backend/`, load it explicitly:
-
-```bash
-node --env-file=.env.local --import ./scripts/register-npm-imports.mjs \
-  --experimental-transform-types scripts/evaluate-experiment.ts \
-  --suite=base --dry-run
-```
-
-Remove `--dry-run` to make paid AI calls; add `--publish` to export the completed
-results. The default comparison definitions use 32 base cases and one repetition.
-Use `--suite=all --repeat=3` only for a deliberate full acceptance evaluation.
-Saved results can be reused with `--reuse=evaluation-results/ID/report.json`.
-Evaluation exports contain exact prompts, source/context and outputs, unlike the
-default content-redacted production tracing. Use synthetic/anonymized fixtures
-and restrict Langfuse project access and retention.
-
-See the [evaluation guide](./evaluations.md) for cache matching, costs, comparison
-review and owner-approved baselines.
-
----
-
-## Configuration Modules
-
-All configuration is defined in TypeScript modules under `src/config/` for type safety and validation.
-
-### Overview
-
-- **models.config.ts** - Available LLM models
-- **roles.config.ts** - AI assistant roles (12 roles)
-- **quota.config.ts** - Token quota limits per tier
-- **tier-limits.config.ts** - Input validation limits per tier
-- **loader.ts** - Loads and validates environment variables
-- **validator.ts** - Validates configuration consistency
-- **supabase.config.ts** - Supabase client initialization
-
-### models.config.ts
-
-Defines available LLM models with their properties.
-
-**Structure:**
-```typescript
-export const MODELS: ModelConfig[] = [
-  {
-    id: 'gemini-flash',              // Internal model ID
-    provider: 'gemini',              // Maps to connector
-    providerModelId: 'gemini-2.5-flash', // Actual API model name
-    allowedTiers: ['free', 'plus', 'premium'], // Array of tiers
-    displayName: 'Gemini 2.5 Flash',
-    contextWindow: 1000000,
-    costPer1kTokens: { input: 0.00, output: 0.00 }
-  }
-  // ... more models
-];
-```
-
-**Current Models:**
-1. **gemini-flash** - Google Gemini 2.5 Flash (free/plus/premium)
-2. **open-router-free** - OpenRouter free models (free/plus/premium)
-3. **lm-studio-local** - Local LM Studio (development only)
-
-**Adding a New Model:**
-```typescript
-// 1. Add to models.config.ts
-{
-  id: 'gpt-4-turbo',
-  provider: 'openai',
-  providerModelId: 'gpt-4-turbo-preview',
-  allowedTiers: ['premium'],
-  displayName: 'GPT-4 Turbo',
-  contextWindow: 128000,
-  costPer1kTokens: { input: 0.01, output: 0.03 }
-}
-
-// 2. Create connector in src/connectors/llm-connectors/openai-connector.ts
-// 3. Update LLMConnectorFactory to include new connector
-// 4. Run: npm run type-check
-```
-
-### roles.config.ts
-
-Defines AI assistant roles with system prompts.
-
-**Structure:**
-```typescript
-export const ROLES: RoleConfig[] = [
-  {
-    id: 'editor',
-    name: 'Editor',
-    systemPrompt: 'You are a professional text editor...',
-    allowedModels: ['gemini-flash', 'open-router-free']
-  }
-  // ... more roles
-];
-```
-
-**Current Roles (12 total):**
-1. **editor** - Professional text editor
-2. **translator** - Multi-language translator
-3. **writer** - Creative content writer
-4. **businesswriter** - Business communication
-5. **poet** - Poetry and creative writing
-6. **academicwriter** - Academic writing
-7. **technicalwriter** - Technical documentation
-8. **copywriter** - Marketing copy
-9. **scriptwriter** - Screenplays and scripts
-10. **journalist** - News and journalism
-11. **blogger** - Blog post writing
-12. **socialmedia** - Social media content
-
-**Adding a New Role:**
-```typescript
-// Add to roles.config.ts
-{
-  id: 'legal-writer',
-  name: 'Legal Writer',
-  systemPrompt: 'You are an expert legal writer specialized in drafting legal documents...',
-  allowedModels: ['gemini-flash', 'open-router-free']
-}
-
-// Run: npm run type-check
-```
-
-### quota.config.ts
-
-Token quota limits per user tier.
-
-**Structure:**
-```typescript
-export const QUOTA_LIMITS: Record<UserTier, number> = {
-  free: 100_000,      // 100k tokens
-  plus: 1_000_000,    // 1M tokens
-  premium: 10_000_000 // 10M tokens
-};
-```
-
-**Usage:**
-- Pre-flight estimation before processing
-- Displayed to users in UI
-- Enforced by QuotaMiddleware
-
-**Changing Limits:**
-```typescript
-// Edit quota.config.ts
-export const QUOTA_LIMITS: Record<UserTier, number> = {
-  free: 50_000,       // Reduced to 50k
-  plus: 500_000,      // Reduced to 500k
-  premium: 5_000_000  // Reduced to 5M
-};
-
-// No deployment required - config loaded at startup
-```
-
-### tier-limits.config.ts
-
-Input validation limits per tier.
-
-**Structure:**
-```typescript
-export const TIER_LIMITS: Record<UserTier, TierLimits> = {
-  free: {
-    maxUserTextLength: 500,
-    maxContextTextLength: 800,
-    maxBatchSize: 5
-  },
-  plus: {
-    maxUserTextLength: 2000,
-    maxContextTextLength: 3000,
-    maxBatchSize: 10
-  },
-  premium: {
-    maxUserTextLength: 10000,
-    maxContextTextLength: 15000,
-    maxBatchSize: 10
-  }
-};
-```
-
-**Usage:**
-- Validated in BatchOrchestrator before processing
-- Enforces tier-based input restrictions
-- Throws `TierLimitExceededError` if exceeded
-
-### loader.ts
-
-Loads and validates environment variables at startup.
-
-**Key Functions:**
-
-**`getEnvVar(name: string, required: boolean = true): string | undefined`**
-- Helper to read environment variables
-- Throws error if required variable is missing
-- Returns undefined for optional variables
-
-**`loadConfig(): AppConfig`**
-- Main function that loads all configuration
-- Combines environment variables with config modules
-- Validates configuration using validator.ts
-- Throws errors on invalid configuration
-
-**Usage:**
-```typescript
-import { loadConfig } from '../config/loader.js';
-
-// In handler or service initialization
-const config = loadConfig();
-console.log(config.system.llmTimeoutMs); // 30000
-console.log(config.models[0].displayName); // "Gemini 2.5 Flash"
-```
-
----
-
-## Getting Supabase Credentials
-
-### Local Development
-
-**Step 1: Start Supabase**
-```bash
-supabase start
-```
-
-**Step 2: Get All Credentials**
-```bash
-supabase status
-```
-
-Example output:
-```
-API URL: http://127.0.0.1:54321
-GraphQL URL: http://127.0.0.1:54321/graphql/v1
-DB URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-Studio URL: http://127.0.0.1:54323
-Inbucket URL: http://127.0.0.1:54324
-JWT secret: super-secret-jwt-token-with-at-least-32-characters-long
-anon key: eyJhbGc... (this is the publishable key)
-service_role key: eyJhbGc... (this is the secret key)
-```
-
-**Step 3: Extract JWT Secret**
-```bash
-supabase status -o json | jq -r '.JWT_SECRET'
-```
-
-**Step 4: Map to Environment Variables**
-
-| `supabase status` | `.env.local` Variable | Notes |
-|---|---|---|
-| API URL | `SUPABASE_URL` | Use as-is |
-| service_role key | `APP_SUPABASE_SERVICE_ROLE_KEY` | Secret key |
-| JWT secret | `APP_SUPABASE_JWT_SECRET` | From JSON output |
-
-### Production (Supabase Cloud)
-
-**Step 1: Open Supabase Dashboard**
-- Go to the [Supabase Dashboard](https://supabase.com/dashboard)
-- Select your project
-
-**Step 2: Navigate to API Settings**
-- Settings → API
-
-**Step 3: Copy Credentials**
-- **Project URL** → Copy to `SUPABASE_URL`
-- **Project API keys** → `service_role` (secret) → Copy to `APP_SUPABASE_SERVICE_ROLE_KEY`
-- **JWT Secret** → Reveal → Copy to `APP_SUPABASE_JWT_SECRET`
-
-**Step 4: Set in Supabase Edge Functions**
-
-Use Supabase CLI:
-```bash
-supabase secrets set APP_SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-supabase secrets set APP_SUPABASE_JWT_SECRET="your-jwt-secret"
-supabase secrets set BOOTSTRAP_SECRET_KEY="your-bootstrap-secret"
-supabase secrets set GEMINI_API_KEY="your-gemini-key"
-supabase secrets set OPENROUTER_API_KEY="your-openrouter-key"
-```
-
-Or use `npm run setup:env` script which reads from `.env.local`.
-
----
-
-## Configuration Examples
-
-### Minimal Configuration (.env.local)
-
-```bash
-# Required only
-SUPABASE_URL=http://127.0.0.1:54321
-APP_SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
-APP_SUPABASE_JWT_SECRET=super-secret-jwt-token...
-BOOTSTRAP_SECRET_KEY=local-dev-secret-123
-GEMINI_API_KEY=AIzaSy...
-```
-
-### Full Configuration (.env.local)
-
-```bash
-# Supabase
-SUPABASE_URL=http://127.0.0.1:54321
-APP_SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
-APP_SUPABASE_JWT_SECRET=super-secret-jwt-token...
-BOOTSTRAP_SECRET_KEY=local-dev-secret-123
-
-# LLM Providers
-GEMINI_API_KEY=AIzaSy...
-OPENROUTER_API_KEY=sk-or-v1-...
-LM_STUDIO_BASE_URL=http://localhost:1234
-
-# Optional Overrides
-LLM_TIMEOUT_MS=30000
-MAX_BATCH_SIZE=10
-```
-
-### Production Configuration
-
-```bash
-# Supabase (from dashboard)
-SUPABASE_URL=https://your-project.supabase.co
-APP_SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
-APP_SUPABASE_JWT_SECRET=your-production-jwt-secret
-BOOTSTRAP_SECRET_KEY=your-strong-random-secret-here
-
-# LLM Providers
-GEMINI_API_KEY=your-production-gemini-key
-OPENROUTER_API_KEY=your-production-openrouter-key
-
-# Production Overrides
-LLM_TIMEOUT_MS=45000
-MAX_BATCH_SIZE=15
-```
-
----
-
-## Next Steps
-
-- **Testing:** See [Testing Guide](./testing.md) for test user setup
-- **Deployment:** See [Deployment Guide](./deployment.md) for production setup
-- **Adding Features:** See [Developer Guides](./developer-guides.md) for how to add models/roles
-- **Architecture:** See [Architecture](./architecture.md) for system design
-
----
-
-**Last Updated:** January 2025
-**Maintained By:** Development Team
+Existing migrations also encode initial registered-user balances. Do not edit
+already applied migrations or reset deployed data to make a first-release tree
+look shorter; schema changes require a new migration.
+
+## Planned payments
+
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PUBLISHABLE_KEY` are
+required only by the disabled payment adapters. The current deployment and secret
+synchronization do not enable this feature. See [payment activation gates](payments.md).

@@ -2,7 +2,7 @@
 
 import { ShieldCheck } from "lucide-react";
 import { Options } from "@/lib/types";
-import { LANGUAGE_LEVELS, LANGUAGES } from "@/lib/constants";
+import { LANGUAGE_LEVELS, LANGUAGES } from '@/config/catalog.config';
 
 interface ConfigSummaryTagsProps {
   options: Options;

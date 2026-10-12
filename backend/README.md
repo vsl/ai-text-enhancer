@@ -5,11 +5,14 @@ Supabase Edge Functions and platform-neutral TypeScript services for the [AI Tex
 - `src/`: validation, prompt building, parallel orchestration, provider connectors, configuration, quota handling, and optional LangSmith tracing.
 - `supabase/functions/`: Deno request handlers for `enhance`, `me`, and `admin`.
 - `supabase/migrations/`: Postgres quota and supporting schema.
-- `tests/` and `evaluations/`: deterministic tests and prompt regression cases.
+- `tests/`: deterministic unit, HTTP-boundary and SDK integration checks.
+- `evaluations/`: offline engines, fixtures, experiment definitions and review artifacts.
 
-The Stripe token-purchase code is a prototype. `create-checkout` and `stripe-webhook` are deliberately removed by the deployment workflow and are not current public endpoints. Older payment documents in [docs](docs/index.md) describe the prototype's implementation history.
+The Stripe feature is planned and disabled. Its portable logic is isolated in
+`src/payments/`; its HTTP adapters live in `planned/payments/functions/`, outside
+the deployed function directory. See [the payment plan](docs/payments.md).
 
-`LANGSMITH_TRACING` is optional. With tracing enabled, `LANGSMITH_CAPTURE_CONTENT=false` remains the default and exports operational metadata without raw source, context, model output, or Jev candidate text. Set content capture to `true` only for sensitive server-side diagnostics; credential redaction still applies. See [.env.example](.env.example).
+`LANGSMITH_TRACING` is optional. With tracing enabled, `LANGSMITH_CAPTURE_CONTENT=false` remains the default and exports operational metadata without raw source, context, model output, or Jev candidate text. Set content capture to `true` only for sensitive server-side diagnostics; credential redaction still applies. See [.env.local.example](.env.local.example).
 
 From the repository root, use Node.js 22:
 

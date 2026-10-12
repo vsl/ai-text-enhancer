@@ -2,7 +2,7 @@
  * Configuration Loader Tests
  */
 
-import { loadConfig, loadPaymentConfig, getEnvVar, hasRequiredEnvVars } from '../../../src/config/loader';
+import { loadConfig, loadPaymentConfig, getEnvVar } from '../../../src/config/loader';
 
 describe('Configuration Loader', () => {
   // Store original environment
@@ -32,6 +32,7 @@ describe('Configuration Loader', () => {
     delete process.env.MAX_BATCH_SIZE;
     delete process.env.JEV_MODEL_ID;
     delete process.env.JEV_TIMEOUT_MS;
+    delete process.env.EXPOSE_ERROR_DETAILS;
     delete process.env.STRIPE_SECRET_KEY;
     delete process.env.STRIPE_WEBHOOK_SECRET;
     delete process.env.STRIPE_PUBLISHABLE_KEY;
@@ -149,37 +150,28 @@ describe('Configuration Loader', () => {
       expect(providerNames).toHaveLength(1);
     });
 
-    it('should include rate limits for all tiers', () => {
-      setupRequiredEnv();
+  });
 
-      const config = loadConfig();
-      
-      expect(config.rateLimits.free).toBeDefined();
-      expect(config.rateLimits.plus).toBeDefined();
-      expect(config.rateLimits.premium).toBeDefined();
-      
-      expect(config.rateLimits.free.requestsPerDay).toBe(100);
-      expect(config.rateLimits.plus.requestsPerDay).toBe(1000);
-      expect(config.rateLimits.premium.requestsPerDay).toBe(10000);
-    });
+  it.each(['30000ms', '1.5', '1e4', ' 30000 ', '9007199254740992'])('rejects malformed timeout %s', value => {
+    setupRequiredEnv({ LLM_TIMEOUT_MS: value });
+    expect(() => loadConfig()).toThrow('LLM_TIMEOUT_MS');
+  });
 
-    it('should include token limits for all tiers', () => {
-      setupRequiredEnv();
+  it('rejects invalid booleans instead of silently disabling a flag', () => {
+    setupRequiredEnv({ EXPOSE_ERROR_DETAILS: 'yes' });
+    expect(() => loadConfig()).toThrow('EXPOSE_ERROR_DETAILS must be true or false');
+  });
 
-      const config = loadConfig();
-      
-      // Free tier token limits
-      expect(config.rateLimits.free.maxTokensPerRequest).toBe(3500);
-      expect(config.rateLimits.free.maxTokensPerDay).toBe(50000);
-      
-      // Plus tier token limits
-      expect(config.rateLimits.plus.maxTokensPerRequest).toBe(4096);
-      expect(config.rateLimits.plus.maxTokensPerDay).toBe(500000);
-      
-      // Premium tier token limits
-      expect(config.rateLimits.premium.maxTokensPerRequest).toBe(8192);
-      expect(config.rateLimits.premium.maxTokensPerDay).toBe(5000000);
-    });
+  it('keeps provider and system catalogs independent across loads', () => {
+    setupRequiredEnv();
+    const config = loadConfig();
+    config.llmProviders[0].models[0].allowedTiers.length = 0;
+    config.models[0].costPer1kTokens.input = -1;
+    config.roles[0].allowedModels.length = 0;
+    const next = loadConfig();
+    expect(next.llmProviders[0].models[0].allowedTiers.length).toBeGreaterThan(0);
+    expect(next.models[0].costPer1kTokens.input).toBeGreaterThanOrEqual(0);
+    expect(next.roles[0].allowedModels.length).toBeGreaterThan(0);
   });
 
   describe('loadPaymentConfig', () => {
@@ -213,19 +205,4 @@ describe('Configuration Loader', () => {
     });
   });
 
-  describe('hasRequiredEnvVars', () => {
-    it('should return false when any required variable is missing', () => {
-      process.env.SUPABASE_URL = 'http://localhost:54321';
-      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-      // Missing APP_SUPABASE_SERVICE_ROLE_KEY
-
-      expect(hasRequiredEnvVars()).toBe(false);
-    });
-
-    it('should return true when all required variables are present', () => {
-      setupRequiredEnv();
-
-      expect(hasRequiredEnvVars()).toBe(true);
-    });
-  });
 });
